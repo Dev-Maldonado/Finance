@@ -46,4 +46,4 @@ Resolver os recursos pendentes por módulo, começando por conciliação de amor
 
 ## Hospedagem solicitada
 
-Projeto Supabase indicado pelo usuário: `jqxuwhvkcdfxuxfktzmw`. A chave pública foi preservada somente em configuração privada. A conexão hospedada ainda não foi validada: o proxy retornou 403; domínio adicionado ao rascunho de rede, pendente de publicação. Não há deploy Vercel nem migrations remotas aplicadas. Faltam acesso Vercel e credenciais administrativas Supabase; confirmar dados existentes antes de migrations.
+Projeto Supabase indicado pelo usuário: `jqxuwhvkcdfxuxfktzmw`. A chave pública foi preservada somente em configuração privada. A rede passou a permitir conexão ao projeto: Auth settings respondeu 200 com a chave pública; consulta de accounts respondeu 404, sem confirmação de schema FINORA disponível. Domínio adicionado ao rascunho de rede; publicação das configurações não confirmada. Não há deploy Vercel nem migrations remotas aplicadas. Faltam acesso Vercel e credenciais administrativas Supabase; confirmar dados existentes antes de migrations.
