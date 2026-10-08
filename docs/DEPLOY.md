@@ -24,12 +24,14 @@ Configure SMTP e confirmação de email no Supabase Auth. Após obter o domínio
 
 Importe `Dev-Maldonado/Finance`, selecione a branch `main`, diretório raiz do repositório, framework Next.js, Node.js 24 e build `npm run build`.
 
-Configure estas variáveis antes do build, usando os valores do projeto hospedado:
+O projeto público `jqxuwhvkcdfxuxfktzmw` já está definido como padrão no código, usando somente sua URL e chave publicável. Assim, um deploy sem variáveis públicas abre o login conectado a esse projeto. Para apontar a outro projeto, configure URL e chave pública juntas antes do build; configurações parciais são recusadas.
+
+Configure estas variáveis usando os valores do projeto hospedado:
 
 | Variável | Uso |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL HTTPS do Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública anon do projeto |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL HTTPS, opcional para substituir o projeto padrão |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública anon/publicável, junto com a URL de substituição |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave secreta de serviço, somente backend |
 | `CRON_SECRET` | Segredo aleatório para autenticar sincronização |
 | `BRAPI_API_TOKEN` | Opcional, conforme cobertura/plano |

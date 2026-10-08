@@ -53,3 +53,9 @@ A chave secreta fornecida foi aceita pelo PostgREST (HTTP 200); a rota financial
 ## Verificação após instalação pelo SQL Editor
 
 O usuário informou execução do bootstrap. Verificação remota somente leitura confirmou 37 tabelas esperadas, view account_balances e cinco RPCs expostas. As 38 consultas de estrutura responderam 200 com chave de serviço; consultas sem login não retornaram linhas. Auth respondeu 200, cadastro/login por email habilitados e confirmação de email exigida. Foram encontrados 12 registros de regras tributárias e três provedores. Não foram criados usuários nem alterados registros na validação. Isolamento entre usuários autenticados, fluxo de emails e URLs de redirecionamento precisam de verificação após deploy; este check não valida esses fluxos. O usuário fará o deploy manualmente.
+
+## Correção de configuração no deploy
+
+A tela enviada indicava ausência de variáveis públicas no deploy. URL e chave publicável do projeto informado foram centralizadas em src/lib/supabase-config.ts como configuração padrão, compartilhada por navegador, servidor, proxy e sincronização. Sobrescritas precisam fornecer URL e chave juntas para evitar mistura entre projetos. Nenhum segredo administrativo foi adicionado ao código. Perfil privado hospedado preservado em .env.hosted, evitando que .env.production.local se sobreponha ao banco local nos builds de teste.
+
+36 testes unitários e 18 checks integrados passaram. Build sem variáveis públicas e teste no navegador exibiram login (200), sem tela de configuração ou erros JS; API privada sem sessão respondeu 401. Build local e dois testes de navegador completos também passaram após reinicialização com o perfil local. Login real no domínio publicado e entrega de emails continuam dependentes do deploy manual e URLs do Supabase Auth.

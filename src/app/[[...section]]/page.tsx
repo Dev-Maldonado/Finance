@@ -1,4 +1,5 @@
 import { Finora } from "@/components/finora";
+import { supabasePublicConfig } from "@/lib/supabase-config";
 export default async function Page({
   params,
 }: {
@@ -9,10 +10,7 @@ export default async function Page({
     <Finora
       section={section?.[0] ?? "dashboard"}
       detail={section?.[1]}
-      configured={Boolean(
-        process.env.NEXT_PUBLIC_SUPABASE_URL &&
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      )}
+      configured={Boolean(supabasePublicConfig())}
     />
   );
 }

@@ -16,7 +16,9 @@ npm run dev
 
 O banco local usa volume Docker `finora-local_finora-data`. Recarregar ou reiniciar a aplicação preserva os registros. Não confie em volumes locais como backup ou garantia de restauração em outra máquina. Para produção, configure um projeto Supabase persistente, backups e SMTP apropriado.
 
-Para Supabase hospedado, copie `.env.example` para uma configuração privada e informe URL/chave pública, chave de serviço apenas no servidor e segredo do agendador. Aplique `supabase/migrations` em ordem no projeto. Não execute `db:start` para inicializar dados em uma instância hospedada. Autorize o domínio exato desse projeto nas configurações de rede do ambiente.
+O projeto Supabase hospedado informado pelo usuário já está configurado como padrão público no código; um deploy sem variáveis públicas abre o login. Para substituir esse projeto, informe URL e chave pública juntas. A chave de serviço e o segredo do agendador continuam exclusivamente nas variáveis seguras do servidor. Aplique `supabase/migrations` em ordem no projeto. Não execute `db:start` para inicializar dados em uma instância hospedada. Autorize o domínio exato desse projeto nas configurações de rede do ambiente.
+
+Mantenha credenciais de outro banco em um arquivo privado que não seja carregado automaticamente pelo Next.js, como `.env.hosted`, e carregue-o somente ao executar comandos desse perfil. `.env.production.local` tem prioridade sobre `.env.local` no build de produção e pode redirecionar testes locais para um banco hospedado.
 
 ```bash
 npm run test

@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { CDIRateProvider, BrapiProvider } from "./providers";
 import { syncCVM, syncFundRegistry } from "./cvm-sync";
+import { requireSupabasePublicConfig } from "../lib/supabase-config";
 export async function syncMarket() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
-    key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Configuração de sincronização ausente");
+  const { url } = requireSupabasePublicConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new Error("Configuração de sincronização ausente");
   const db = createClient(url, key, { auth: { persistSession: false } });
   const today = new Date().toISOString().slice(0, 10);
   const outcomes = [];
