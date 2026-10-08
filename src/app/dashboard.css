@@ -179,3 +179,13 @@
   .cdi-metrics strong { font-size: 22px; }
 }
 @media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
+
+.dashboard-overall { display: grid; grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr)); gap: 20px; padding: 22px 24px; border: 1px solid var(--dash-border); border-radius: 16px; background: #f0edf8; margin-bottom: 24px; }
+.dashboard-overall h2 { font-size: 13px; margin: 0 0 9px; }
+.dashboard-overall-title p { margin: 0; font-size: 11px; color: var(--dash-muted); line-height: 1.7; }
+.dashboard-overall > div:not(:first-child) { display: flex; flex-direction: column; gap: 9px; }
+.dashboard-overall span { font-size: 10px; color: #6d6483; }
+.dashboard-overall strong { font-size: 20px; font-weight: 600; }
+.dashboard-overall small { font-size: 10px; color: var(--dash-muted); line-height: 1.6; }
+@media (max-width: 1200px) { .dashboard-overall { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dashboard-overall-title { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .dashboard-overall { grid-template-columns: 1fr; padding: 20px; gap: 22px; } .dashboard-overall-title { grid-column: auto; } }
