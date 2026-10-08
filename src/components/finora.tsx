@@ -35,6 +35,9 @@ import {
   MoreHorizontal,
   ChevronDown,
 } from "lucide-react";
+import { Dashboard } from "./dashboard";
+import { CDIStatus, type BenchmarkStatus } from "./cdi-status";
+import { savingsMetrics } from "@/lib/savings-metrics";
 import { ProventEvents } from "./provent-events";
 import { Auth } from "./auth";
 import { DeleteDialog } from "./delete-dialog";
@@ -52,7 +55,7 @@ import { WealthChart } from "./wealth-chart";
 import { SavingsChart } from "./savings-chart";
 import { savingsHistory } from "@/financial/savings-history";
 import type { Lot, Movement, Rate } from "@/financial/engine";
-import { FlowChart, CategoryChart, palette } from "./chart";
+import { FlowChart } from "./chart";
 import { exportData } from "./exports";
 const nav = [
   ["dashboard", "Dashboard", LayoutDashboard],
@@ -184,6 +187,10 @@ function Workspace({
   const [showExcluded, setShowExcluded] = useState(false);
   const [showExcludedPurchases, setShowExcludedPurchases] = useState(false);
   const [invoiceMonth, setInvoiceMonth] = useState(localDate().slice(0, 7));
+  useEffect(() => {
+    const selected = new URLSearchParams(window.location.search).get("month");
+    if (section === "cartoes" && selected && /^\d{4}-(0[1-9]|1[0-2])$/.test(selected)) setInvoiceMonth(selected);
+  }, [section]);
   const [session, setSession] = useState<boolean | null>(null),
     [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
@@ -211,6 +218,7 @@ function Workspace({
   }, [configured, qc]);
   const query = useQuery<Snapshot>({
     queryKey: ["snapshot"],
+    refetchInterval: 5 * 60 * 1000,
     enabled: session === true,
     queryFn: async () => {
       const res = await fetch("/api/snapshot");
@@ -220,6 +228,21 @@ function Workspace({
     },
   });
   const snapshot = query.data;
+  const benchmarkQuery = useQuery<BenchmarkStatus>({
+    queryKey: ["benchmarks"],
+    enabled: session === true && !!snapshot && rows(snapshot, "savings_lots").some(l => ["cdi", "selic", "fixed"].includes(str(l, "indexer"))),
+    staleTime: 4 * 60 * 60 * 1000,
+    refetchInterval: 4 * 60 * 60 * 1000,
+    retry: false,
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/benchmarks", { method: "POST" });
+        const data = await response.json() as BenchmarkStatus;
+        if (data.results?.some(r => r.status === "success")) void qc.invalidateQueries({ queryKey: ["snapshot"] });
+        return data;
+      } catch { return { error: "Não foi possível verificar o CDI. Último histórico preservado." }; }
+    },
+  });
   const today = localDate();
   const allInvoices = useMemo(() => snapshot ? cardInvoices(snapshot, today) : [], [snapshot, today]);
   const performance = useMemo(
@@ -736,227 +759,15 @@ function Workspace({
           {snapshot && summary && (
             <>
               {current[0] === "dashboard" && (
-                <>
-                  <div className="stats">
-                    <Stat
-                      label="Saldo disponível"
-                      value={summary.cash}
-                      icon={Wallet}
-                      detail="Contas e dinheiro · sem limites de cartão"
-                    />
-                    <Stat
-                      label="Entradas"
-                      value={summary.income}
-                      icon={ArrowDownLeft}
-                      tone="green"
-                      detail="Receitas confirmadas no período"
-                    />
-                    <Stat
-                      label="Saídas"
-                      value={summary.expense}
-                      icon={ArrowUpRight}
-                      tone="pink"
-                      detail="Despesas e compras · sem duplicar faturas"
-                    />
-                    <Stat
-                      label="Gastos nos cartões"
-                      value={summary.cardExpense}
-                      icon={CreditCard}
-                      tone="orange"
-                      detail="Compras registradas no período"
-                    />
-                    <Stat
-                      label="Rendimentos recebidos"
-                      value={summary.yields}
-                      icon={TrendingUp}
-                      tone="green"
-                      detail="Valores efetivamente confirmados"
-                    />
-                    <Stat
-                      label="Patrimônio líquido"
-                      value={summary.netWorth}
-                      icon={ChartNoAxesCombined}
-                      detail="Patrimônio menos cartões e outras obrigações"
-                    />
-                  </div>
-                  <div className="dashboard-grid">
-                    <Panel
-                      title="Seu dinheiro ao longo do tempo"
-                      subtitle={`Entradas, saídas e rendimentos · ${pretty(start)} a ${pretty(end)}`}
-                      action={
-                        <div className="period-tabs">
-                          <button
-                            className={
-                              chartMode === "monthly" ? "selected" : ""
-                            }
-                            onClick={() => setChartMode("monthly")}
-                          >
-                            Mensal
-                          </button>
-                          <button
-                            className={chartMode === "annual" ? "selected" : ""}
-                            onClick={() => setChartMode("annual")}
-                          >
-                            Anual
-                          </button>
-                        </div>
-                      }
-                    >
-                      <div className="chart-legend">
-                        <span>
-                          <i />
-                          Entradas
-                        </span>
-                        <span>
-                          <i className="pink-dot" />
-                          Saídas
-                        </span>
-                        <span>
-                          <i className="green-dot" />
-                          Rendimentos
-                        </span>
-                      </div>
-                      <FlowChart data={flowData} />
-                    </Panel>
-                    <Panel
-                      title="Gastos por categoria"
-                      subtitle="Cada escolha faz parte da sua história"
-                      action={
-                        <Link href="/categorias">
-                          <ArrowUpRight size={18} />
-                        </Link>
-                      }
-                    >
-                      {categoryData.length ? (
-                        <>
-                          <CategoryChart data={categoryData} />
-                          <div className="category-legend">
-                            {categoryData.slice(0, 5).map((c, i) => (
-                              <button
-                                key={c.id}
-                                onClick={() => {
-                                  setSearch(c.name);
-                                  setNotice(
-                                    `Categoria ${c.name}: ${brl(c.value)} no período.`,
-                                  );
-                                }}
-                              >
-                                <span>
-                                  <i
-                                    style={{
-                                      background: palette[i % palette.length],
-                                    }}
-                                  />
-                                  {c.name}
-                                </span>
-                                <strong>{brl(c.value)}</strong>
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <Empty message="Seus gastos aparecerão aqui." />
-                      )}
-                    </Panel>
-                    <Panel
-                      title="Meus cartões"
-                      subtitle="Tudo sob controle, sem surpresas"
-                      action={
-                        <Link href="/cartoes" className="text-link">
-                          Ver todos <ArrowRight size={14} />
-                        </Link>
-                      }
-                    >
-                      {rows(snapshot, "credit_cards").length ? (
-                        renderCard(rows(snapshot, "credit_cards")[0])
-                      ) : (
-                        <Empty action={() => open("card")} />
-                      )}
-                    </Panel>
-                    <Panel
-                      title="Minhas caixinhas"
-                      subtitle="Pequenos passos. Grandes conquistas."
-                      action={
-                        <Link href="/caixinhas" className="text-link">
-                          Ver todas <ArrowRight size={14} />
-                        </Link>
-                      }
-                    >
-                      {summary.goals.length ? (
-                        summary.goals
-                          .slice(0, 3)
-                          .map((g) => renderGoal(g, false))
-                      ) : (
-                        <Empty action={() => open("goal")} />
-                      )}
-                    </Panel>
-                    <Panel
-                      title="Meus investimentos"
-                      subtitle="Seu patrimônio em movimento"
-                      action={
-                        <Link href="/investimentos" className="text-link">
-                          Ver carteira <ArrowRight size={14} />
-                        </Link>
-                      }
-                    >
-                      <div className="investment-total">
-                        <span>Total da carteira em BRL</span>
-                        <strong>{brl(summary.investments)}</strong>
-                        <p>
-                          Cotações disponíveis ou custo de aquisição
-                          identificado.
-                        </p>
-                      </div>
-                      {summary.positions.slice(0, 4).map((p) => (
-                        <div className="list-row" key={str(p.asset, "id")}>
-                          <span className="asset-icon">
-                            {str(p.asset, "ticker").slice(0, 2)}
-                          </span>
-                          <div>
-                            <strong>{str(p.asset, "ticker")}</strong>
-                            <small>{str(p.asset, "name")}</small>
-                          </div>
-                          <strong>
-                            {p.supported ? brl(p.value) : "Moeda estrangeira"}
-                          </strong>
-                        </div>
-                      ))}
-                    </Panel>
-                    <Panel
-                      title="Resumo do período"
-                      subtitle="O resultado das suas escolhas"
-                    >
-                      <div className="summary-tile">
-                        <span>Entradas menos despesas</span>
-                        <strong>
-                          {brl(money(D(summary.income).minus(summary.expense)))}
-                        </strong>
-                        <small>Sem confundir aportes com despesas</small>
-                      </div>
-                      {[
-                        ["Patrimônio bruto", summary.assets],
-                        ["Guardado em caixinhas", summary.savings],
-                        ["Compromissos de cartão", summary.cardLiability],
-                      ].map(([l, v]) => (
-                        <div className="list-row" key={l}>
-                          <span>{l}</span>
-                          <strong>{brl(v)}</strong>
-                        </div>
-                      ))}
-                    </Panel>
-                  </div>
-                  <Panel
-                    title="Transações recentes"
-                    subtitle="Os últimos movimentos da sua vida financeira"
-                    action={
-                      <Link href="/transacoes" className="text-link">
-                        Ver todas <ArrowRight size={14} />
-                      </Link>
-                    }
-                  >
-                    {transactionTable(filteredTx.slice(0, 6))}
-                  </Panel>
-                </>
+                <Dashboard snapshot={snapshot} summary={summary} start={start} end={end} period={period} today={today}
+                  benchmarkStatus={benchmarkQuery.data} updatingCDI={benchmarkQuery.isFetching}
+                  onRefreshCDI={() => { void benchmarkQuery.refetch(); }}
+                  onPay={invoice => setModal({ form: forms.invoice, initial: { invoice_id: invoice.id, account_id: invoice.accountId, amount: invoice.pending, date: today } })}
+                  onSaveWealth={async () => {
+                    try { await post("/api/snapshot", {}); setNotice("Posição patrimonial de hoje registrada."); refresh(); }
+                    catch (e) { setNotice(String(e)); }
+                  }}
+                />
               )}
               {current[0] === "contas" && (
                 <div className="cards-grid">
@@ -1231,6 +1042,7 @@ function Workspace({
                       Conciliar rendimento
                     </button>
                   </div>
+                  <CDIStatus snapshot={snapshot} today={today} status={benchmarkQuery.data} updating={benchmarkQuery.isFetching} onRefresh={() => { void benchmarkQuery.refetch(); }} />
                   <div className="cards-grid">
                     {summary.goals
                       .filter((g) => !detail || g.goal.id === detail)
@@ -1913,6 +1725,7 @@ function Workspace({
     g: NonNullable<typeof summary>["goals"][number],
     detail: boolean,
   ) {
+    const yieldMetrics = snapshot ? savingsMetrics(snapshot, today).details.find(m => m.goalId === g.goal.id) : null;
     const progress = Math.min(
       100,
       D(g.principal).div(str(g.goal, "target")).mul(100).toNumber(),
@@ -1950,6 +1763,8 @@ function Workspace({
               <span>Rendimento bruto estimado</span>
               <strong>{brl(g.gross)}</strong>
             </div>
+            <div className="list-row"><span>Último dia útil disponível · bruto estimado</span><strong>{brl(yieldMetrics?.daily ?? "0")}</strong></div>
+            <div className="list-row"><span>Rendimento do mês atual · bruto estimado</span><strong>{brl(yieldMetrics?.monthly ?? "0")}</strong></div>
             <div className="list-row">
               <span>Líquido estimado</span>
               <strong>

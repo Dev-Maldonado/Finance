@@ -133,12 +133,12 @@ export function financialSummary(
   );
   const goals = rows(s, "savings_goals").map((goal) => {
     const rates = rows(s, "benchmark_rates")
-      .filter((r) => r.series === "12")
+      .filter((r) => r.series === "12" && r.validated !== false)
       .sort((a, b) =>
         str(a, "date").localeCompare(str(b, "date")),
       ) as unknown as Rate[];
     const lots = rows(s, "savings_lots").filter(
-      (l) => l.goal_id === goal.id,
+      (l) => l.goal_id === goal.id && str(l, "start_date") <= asOf,
     ) as unknown as Lot[];
     const movements = rows(s, "savings_movements").filter(
       (m) => m.goal_id === goal.id,
@@ -147,7 +147,7 @@ export function financialSummary(
       const lotRates =
         l.indexer === "selic"
           ? (rows(s, "benchmark_rates")
-              .filter((r) => r.series === "11")
+              .filter((r) => r.series === "11" && r.validated !== false)
               .sort((a, b) =>
                 str(a, "date").localeCompare(str(b, "date")),
               ) as unknown as Rate[])

@@ -12,7 +12,8 @@
     "test:e2e": "node --env-file=.env.local node_modules/@playwright/test/cli.js test",
     "sync": "node --env-file=.env.local --import tsx scripts/sync.ts",
     "jobs": "node --env-file=.env.local --import tsx scripts/scheduler.ts",
-    "test:integration": "node --env-file=.env.local --import tsx scripts/integration-test.ts"
+    "test:integration": "node --env-file=.env.local --import tsx scripts/integration-test.ts",
+    "sync:benchmarks": "node --env-file=.env.local --import tsx scripts/sync-benchmarks.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.0",

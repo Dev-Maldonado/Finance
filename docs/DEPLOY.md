@@ -49,7 +49,19 @@ Nunca use as credenciais locais geradas por `db:start`. A chave de serviço não
 
 ## Sincronização e verificação
 
-O scheduler `npm run jobs` exige um processo persistente; a Vercel não o mantém em execução. A carga inicial da CVM pode exceder limites de tempo/memória de funções serverless. Execute `npm run sync` em um runner persistente configurado para o Supabase hospedado e agende esse processo diariamente. Não considere atualização automática ativa apenas por publicar o frontend. `/api/sync` aceita POST autenticado com `CRON_SECRET`, mas o runner precisa respeitar os limites do provedor de hospedagem.
+### CDI automático na Vercel
+
+O `vercel.json` agenda `/api/benchmarks` diariamente às 12:00 UTC (09:00 em Brasília), inclusive no plano com um cron diário. Configure `SUPABASE_SERVICE_ROLE_KEY` e `CRON_SECRET` em **Production** nas variáveis seguras da Vercel e faça novo deploy da `main`. O cron usa `Authorization: Bearer` com o segredo; solicitações sem autorização retornam 401. Nunca coloque esses valores em variáveis públicas. Confira a execução em Vercel → Cron Jobs e a data de verificação em Caixinhas. O agendamento só passa a existir após o deploy; não foi ativado diretamente neste ambiente.
+
+O backend atualiza CDI (SGS 12) e Selic (SGS 11) independentemente da carga CVM. Ao abrir o app com aplicações elegíveis, também verifica taxas, usando cache de quatro horas, com verificação periódica enquanto o app está aberto e opção “Atualizar CDI”. O cron funciona sem navegador aberto. Falhas preservam taxas anteriores e exibem a referência utilizada, sem repetir uma taxa antiga como se fosse nova. Respostas lentas têm timeout e retry limitado. Aportes antigos fazem backfill em janelas de até um ano por execução; aplicações com cobertura parcial ficam identificadas até completar o histórico. Atualizações de valores publicados mantêm a auditoria já existente no banco.
+
+Os lotes capitalizam taxas diárias efetivamente publicadas, aplicando seu percentual contratado e respeitando datas/resgates. Os ganhos diário, mensal e acumulado são **estimados**; não criam receitas, não aumentam o saldo confirmado da conta e não significam conexão com Nubank. A conciliação do saldo e dos rendimentos continua explícita. Os dias sem taxa publicada, incluindo finais de semana e feriados, não recebem uma taxa inventada. Nenhuma migration nova é necessária para dashboard/CDI automático.
+
+Para um runner com o perfil local configurado, `npm run sync:benchmarks` executa somente os indexadores. No ambiente hospedado, use um perfil privado correspondente ao projeto de produção. Não envie perfis ao GitHub.
+
+### Mercado e fundos
+
+O scheduler `npm run jobs` exige um processo persistente; a Vercel não o mantém em execução. A carga inicial da CVM pode exceder limites de tempo/memória de funções serverless. Execute `npm run sync` em um runner persistente configurado para o Supabase hospedado e agende esse processo diariamente. O cron de CDI não atualiza CVM/brapi. `/api/sync` aceita POST autenticado com `CRON_SECRET`, mas o runner precisa respeitar os limites do provedor de hospedagem.
 
 Após o deploy, confira página inicial, cadastro/login/logout, email de recuperação, persistência de conta/transação, acesso sem sessão retornando 401 e isolamento entre duas contas de teste. Não execute `test:integration` ou `test:e2e` do perfil local contra produção. Verifique as datas de CDI/cotações e os logs de provedores antes de considerar a sincronização operacional.
 

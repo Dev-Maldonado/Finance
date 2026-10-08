@@ -50,6 +50,7 @@ export function FlowChart({
             }
           />
           <Area
+            isAnimationActive={false}
             type="monotone"
             dataKey="income"
             name="Entradas"
@@ -58,6 +59,7 @@ export function FlowChart({
             fill="url(#purple)"
           />
           <Area
+            isAnimationActive={false}
             type="monotone"
             dataKey="expense"
             name="Saídas"
@@ -66,6 +68,7 @@ export function FlowChart({
             fill="transparent"
           />
           <Area
+            isAnimationActive={false}
             type="monotone"
             dataKey="yield"
             name="Rendimentos"
@@ -97,6 +100,7 @@ export function CategoryChart({
         <PieChart>
           <Pie
             data={data}
+            isAnimationActive={false}
             dataKey="value"
             innerRadius={58}
             outerRadius={84}

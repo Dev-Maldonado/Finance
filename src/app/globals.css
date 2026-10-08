@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./dashboard.css";
 :root {
   --purple: #5b35d5;
   --lilac: #f0ebff;

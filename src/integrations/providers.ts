@@ -14,12 +14,13 @@ export async function fetchData(
   url: string,
   init: RequestInit = {},
   attempts = 3,
+  timeoutMs = 15000,
 ): Promise<Response> {
   for (let i = 0; i < attempts; i++) {
     try {
       const options: RequestInit & { dispatcher?: ProxyAgent } = {
         ...init,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(timeoutMs),
         cache: "no-store",
         ...(dispatcher ? { dispatcher } : {}),
       };
