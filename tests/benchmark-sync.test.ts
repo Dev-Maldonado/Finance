@@ -1,8 +1,14 @@
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { updateBenchmarks } from '../src/integrations/benchmark-sync';
+import { BenchmarkConfigurationError, syncBenchmarks, updateBenchmarks } from '../src/integrations/benchmark-sync';
 import { CDIRateProvider } from '../src/integrations/providers';
 type Entry = Record<string, unknown>;
+afterEach(() => vi.unstubAllEnvs());
+test('missing server credential produces a configuration error before contacting providers', () => {
+  vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '   ');
+  expect(() => syncBenchmarks()).toThrow(BenchmarkConfigurationError);
+  expect(() => syncBenchmarks()).toThrow('Production da Vercel');
+});
 function fakeDB(initial: Record<string, Entry[]> = {}) {
   const tables: Record<string, Entry[]> = { benchmark_rates: [], provider_sync_states: [], provider_sync_logs: [], savings_lots: [], ...initial };
   const db = { from(table: string) {

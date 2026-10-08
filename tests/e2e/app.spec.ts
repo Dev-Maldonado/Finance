@@ -337,7 +337,7 @@ test("caixinha, cartão e relatório usam dados persistidos e mantêm proteçõe
       page.getByText("R$ 500,00", { exact: true }).first(),
     ).toBeVisible();
     await expect(
-      page.getByText(/Data-base CDI:|Sem taxas históricas disponíveis/),
+      page.getByText(/Data-base CDI:|Sem taxas históricas disponíveis|Aguardando primeira taxa publicada desde/),
     ).toBeVisible();
     await page.goto("/cartoes");
     await page

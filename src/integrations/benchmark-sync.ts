@@ -14,6 +14,7 @@ const serverFetch: typeof fetch = (input, init) => {
 
 const CACHE_MS = 4 * 60 * 60 * 1000;
 const shift = (date: string, days: number) => new Date(Date.parse(date) + days * 86400000).toISOString().slice(0, 10);
+export class BenchmarkConfigurationError extends Error {}
 export type BenchmarkOutcome = { series: string; status: 'success' | 'cached' | 'error'; records: number; lastDate?: string | null; message?: string };
 
 // Isolated from the slower CVM/market jobs so serverless daily updates stay bounded.
@@ -71,8 +72,11 @@ let pending: Promise<BenchmarkOutcome[]> | undefined;
 export function syncBenchmarks() {
   if (pending) return pending;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new Error('Atualização automática exige a configuração de serviço no servidor.');
-  const db = createClient(requireSupabasePublicConfig().url, key, { auth: { persistSession: false }, global: { fetch: serverFetch } });
+  if (!key?.trim()) throw new BenchmarkConfigurationError('Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis privadas Production da Vercel e faça redeploy.');
+  let url: string;
+  try { url = requireSupabasePublicConfig().url; }
+  catch { throw new BenchmarkConfigurationError('Revise a URL e a chave pública do Supabase no deploy; configurações parciais são recusadas.'); }
+  const db = createClient(url, key.trim(), { auth: { persistSession: false }, global: { fetch: serverFetch } });
   pending = updateBenchmarks(db).finally(() => { pending = undefined; });
   return pending;
 }

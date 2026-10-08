@@ -27,3 +27,14 @@ test('historical coverage of non-publishing days is recorded independently of th
   snapshot.provider_sync_states = [{ provider: 'bcb-cdi-history', last_date: '2026-10-03' }];
   expect(savingsMetrics(snapshot, '2026-10-06').details[0]).toMatchObject({ complete: true, daily: '0.50', monthly: '0.50' });
 });
+
+test('a deposit newer than the last published rate waits without claiming incomplete history or inventing gains', () => {
+  const snapshot = sample();
+  snapshot.savings_lots = [{ id: 'a', goal_id: 'g', principal: '1708.15', remaining: '1708.15', start_date: '2026-10-08', percentage: '100', indexer: 'cdi', product: 'rdb', tax_exempt: false }];
+  snapshot.savings_movements = [];
+  snapshot.benchmark_rates = [{ id: 'r', series: '12', date: '2026-10-07', value: '0.050788', validated: true }];
+  snapshot.provider_sync_states = [{ provider: 'bcb-cdi-history', last_date: '2025-10-08' }];
+  expect(savingsMetrics(snapshot, '2026-10-08').details[0]).toMatchObject({ complete: true, waitingForRate: true, waitingSince: '2026-10-08', asOf: null, daily: '0.00', monthly: '0.00' });
+  snapshot.benchmark_rates = [...snapshot.benchmark_rates, { id: 'r2', series: '12', date: '2026-10-08', value: '0.050788', validated: true }];
+  expect(savingsMetrics(snapshot, '2026-10-09').details[0]).toMatchObject({ complete: true, waitingForRate: false, waitingSince: null, asOf: '2026-10-08', daily: '0.87', monthly: '0.87' });
+});

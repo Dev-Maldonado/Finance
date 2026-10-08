@@ -1791,6 +1791,8 @@ function Workspace({
             <p className="notice">
               {!g.supported
                 ? "Metodologia contratual pendente; rendimento automático indisponível."
+                : yieldMetrics?.waitingForRate
+                  ? `Aguardando primeira taxa publicada desde ${pretty(yieldMetrics.waitingSince ?? "")}. A taxa anterior ao aporte não gera rendimento.`
                 : g.asOf
                   ? `Data-base CDI: ${pretty(g.asOf)}. Estimativa não é saldo confirmado pelo banco.`
                   : "Sem taxas históricas disponíveis. Nenhuma taxa foi inventada."}

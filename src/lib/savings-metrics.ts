@@ -11,6 +11,8 @@ export function savingsMetrics(snapshot: Snapshot, today: string) {
     let day = D(0), month = D(0), cumulative = D(0);
     const baseDates: string[] = [];
     let complete = true;
+    let waitingForRate = false;
+    const waitingDates: string[] = [];
     for (const lot of lots.filter(l => l.goal_id === goal.id && l.start_date <= today)) {
       const lotRates = rates.filter(r => r.series === (lot.indexer === 'selic' ? '11' : '12')) as unknown as Rate[];
       const relevant = lotRates.filter(r => r.date >= lot.start_date && r.date <= today);
@@ -18,7 +20,12 @@ export function savingsMetrics(snapshot: Snapshot, today: string) {
       if (['cdi', 'selic', 'fixed'].includes(lot.indexer)) {
         const history = rows(snapshot, 'provider_sync_states').find(r => r.provider === (lot.indexer === 'selic' ? 'bcb-selic-history' : 'bcb-cdi-history'));
         const coveredFrom = str(history ?? {}, 'last_date') || lotRates[0]?.date || today;
-        if (!latest || coveredFrom > lot.start_date) complete = false;
+        const lastPublished = lotRates.filter(r => r.date <= today).at(-1)?.date;
+        if (coveredFrom > lot.start_date || !lastPublished) complete = false;
+        if (!latest && lastPublished && lastPublished < lot.start_date) {
+          waitingForRate = true;
+          waitingDates.push(lot.start_date);
+        }
         if (latest) baseDates.push(latest);
       }
       if (lot.indexer === 'manual') complete = false;
@@ -32,7 +39,7 @@ export function savingsMetrics(snapshot: Snapshot, today: string) {
       month = month.plus(current.minus(totalAt(dateShift(`${today.slice(0, 7)}-01`, -1))));
       if (latest) day = day.plus(totalAt(latest).minus(totalAt(dateShift(latest, -1))));
     }
-    return { goalId: str(goal, 'id'), daily: money(day), monthly: money(month), cumulative: money(cumulative), asOf: baseDates.sort().at(0) ?? null, complete };
+    return { goalId: str(goal, 'id'), daily: money(day), monthly: money(month), cumulative: money(cumulative), asOf: baseDates.sort().at(0) ?? null, complete, waitingForRate, waitingSince: waitingDates.sort()[0] ?? null };
   });
   const sum = (key: 'daily' | 'monthly') => money(details.reduce((a, d) => a.plus(d[key]), D(0)));
   return { latestCDI, details, daily: sum('daily'), monthly: sum('monthly') };

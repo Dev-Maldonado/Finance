@@ -62,6 +62,7 @@ test('complete dashboard distinguishes results, bills and cash; savings update a
     const syncResponse = await page.request.post('/api/benchmarks', { headers: { Origin: 'http://localhost:3000' } });
     expect(syncResponse.ok(), await syncResponse.text()).toBe(true);
     const syncData = await syncResponse.json();
+    expect(Math.abs(Date.now() - Date.parse(syncData.checkedAt))).toBeLessThan(10000);
     expect(syncData.results.find((r: { series: string }) => r.series === '12').lastDate).toBeTruthy();
     const balanceBefore = await admin.from('account_balances').select('balance').eq('id', account.data!.id).single();
     await page.getByRole('button', { name: 'Atualizar CDI', exact: true }).click();
@@ -95,5 +96,61 @@ test('complete dashboard distinguishes results, bills and cash; savings update a
     await expect(page.getByText('Rendimento do mês atual · bruto estimado')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: 'test-results/savings-daily-mobile.png', fullPage: true });
+  } finally { expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull(); }
+});
+
+test('new deposits wait for an eligible publication and recalculate when it arrives', async ({ page }) => {
+  const email = `cdi-waiting-${randomUUID()}@example.test`, password = randomUUID() + 'Aa1!';
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  expect(created.error).toBeNull();
+  const userId = created.data.user!.id;
+  try {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+    const prior = new Date(`${today}T12:00:00Z`); prior.setUTCDate(prior.getUTCDate() - 1);
+    const priorDate = prior.toISOString().slice(0, 10);
+    const checkedAt = new Date().toISOString();
+    let published = false;
+    await page.route('**/api/snapshot', async route => {
+      const response = await route.fetch();
+      const snapshot = await response.json();
+      snapshot.benchmark_rates = [{ series: '12', date: published ? today : priorDate, value: '0.050788', source: 'Browser test fixture', validated: true }];
+      snapshot.provider_sync_states = [
+        { provider: 'bcb-cdi', last_success: `${priorDate}T12:00:00Z`, last_date: priorDate },
+        { provider: 'bcb-cdi-history', last_date: priorDate },
+      ];
+      await route.fulfill({ response, json: snapshot });
+    });
+    await page.route('**/api/benchmarks', route => route.fulfill({ json: { checkedAt, results: [{ series: '12', status: 'cached', lastDate: priorDate }] } }));
+    await page.goto('/');
+    await page.getByLabel('E-mail').fill(email);
+    await page.getByLabel('Senha', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
+    await expect(page.getByText('Saldo disponível', { exact: true })).toBeVisible();
+    const account = await admin.from('financial_accounts').insert({ user_id: userId, name: 'Conta CDI', kind: 'bank', initial_balance: '2000' }).select('id').single();
+    expect(account.error).toBeNull();
+    const op = async (action: string, payload: Record<string, unknown>) => {
+      const response = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action, payload, request_id: randomUUID() } });
+      expect(response.ok(), await response.text()).toBe(true);
+      return response.json();
+    };
+    const goal = await op('create_goal', { name: 'Aporte novo', target: '5000', indexer: 'cdi', percentage: '100', product: 'rdb' });
+    await op('savings_deposit', { goal_id: goal.id, account_id: account.data!.id, amount: '1708.15', date: today });
+    await page.goto('/caixinhas');
+    const cdi = page.getByLabel('Atualização automática do CDI');
+    await expect(cdi).toContainText('Aguardando primeira taxa publicada');
+    await expect(cdi).not.toContainText('histórico parcial');
+    await expect(cdi).toContainText('Verificação no servidor:');
+    await expect(cdi).toContainText('Histórico válido reutilizado');
+    await expect(cdi.locator('.cdi-metrics')).toContainText('R$ 0,00');
+    await page.screenshot({ path: 'test-results/cdi-waiting-desktop.png', fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: 'test-results/cdi-waiting-mobile.png', fullPage: true });
+    published = true;
+    await page.reload();
+    await expect(cdi).not.toContainText('Aguardando primeira taxa publicada');
+    await expect(cdi.locator('.cdi-metrics')).toContainText('R$ 0,87');
+    const inventedYield = await admin.from('savings_movements').select('id').eq('user_id', userId).eq('type', 'confirmed_yield');
+    expect(inventedYield.data).toEqual([]);
   } finally { expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull(); }
 });

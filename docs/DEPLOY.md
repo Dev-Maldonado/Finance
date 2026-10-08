@@ -57,6 +57,8 @@ O backend atualiza CDI (SGS 12) e Selic (SGS 11) independentemente da carga CVM.
 
 Os lotes capitalizam taxas diárias efetivamente publicadas, aplicando seu percentual contratado e respeitando datas/resgates. Os ganhos diário, mensal e acumulado são **estimados**; não criam receitas, não aumentam o saldo confirmado da conta e não significam conexão com Nubank. A conciliação do saldo e dos rendimentos continua explícita. Os dias sem taxa publicada, incluindo finais de semana e feriados, não recebem uma taxa inventada. Nenhuma migration nova é necessária para dashboard/CDI automático.
 
+Um aporte posterior à última taxa armazenada mostra **Aguardando primeira taxa publicada**, com rendimento zero até existir uma taxa elegível; isso não indica histórico incompleto quando a cobertura já alcança a data do aporte. A interface separa **Verificação no servidor** (horário da requisição, inclusive com cache) de **Taxas consultadas no BCB** (última sincronização persistida). Uma resposta em cache pode reutilizar a mesma referência por quatro horas. A indicação de chave ausente aparece somente para configuração ausente; outras falhas não devem ser interpretadas automaticamente como falta de credencial.
+
 Para um runner com o perfil local configurado, `npm run sync:benchmarks` executa somente os indexadores. No ambiente hospedado, use um perfil privado correspondente ao projeto de produção. Não envie perfis ao GitHub.
 
 ### Mercado e fundos

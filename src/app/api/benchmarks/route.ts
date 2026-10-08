@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { authenticatedDb } from '@/lib/server';
 import { fail, sameOrigin } from '@/lib/http';
-import { syncBenchmarks } from '@/integrations/benchmark-sync';
+import { syncBenchmarks, BenchmarkConfigurationError } from '@/integrations/benchmark-sync';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 async function update() {
   try {
     const results = await syncBenchmarks();
-    return NextResponse.json({ results }, { status: results.some(r => r.status === 'error') ? 503 : 200, headers: { 'Cache-Control': 'no-store' } });
-  } catch {
-    return NextResponse.json({ error: 'Configure SUPABASE_SERVICE_ROLE_KEY no servidor para atualizar o CDI automaticamente.' }, { status: 503 });
+    return NextResponse.json({ checkedAt: new Date().toISOString(), results }, { status: results.some(r => r.status === 'error') ? 503 : 200, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof BenchmarkConfigurationError ? error.message : 'Falha interna ao verificar os indexadores. O último histórico válido foi preservado.' }, { status: 503 });
   }
 }
 // Vercel Cron sends an authenticated GET. No browser session is used by this job.
