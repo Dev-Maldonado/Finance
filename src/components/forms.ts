@@ -196,6 +196,7 @@ export const forms: Record<string, FormDef> = {
   },
   invoice: {
     title: "Pagar fatura",
+    editTitle: "Pagar fatura",
     action: "pay_invoice",
     fields: [
       { key: "invoice_id", label: "Fatura", source: "invoices" },

@@ -82,3 +82,5 @@ O script de instalação e as instruções de inicialização também foram salv
 Para hospedagem em Vercel com Supabase, consulte [DEPLOY.md](docs/DEPLOY.md).
 
 Cartões permitem cor personalizada no cadastro/edição. Compras registradas têm Editar/Excluir; parcelas, faturas e limite são recalculados. Receitas/despesas independentes têm exclusão confirmada e opção de mostrar registros excluídos. Para atualizar um Supabase existente, aplique [a migration incremental](docs/supabase-update-card-corrections.sql) antes do deploy; faturas com pagamentos exigem conciliação antes de mudanças financeiras nas compras.
+
+Na página Cartões, selecione o mês de vencimento para consultar a fatura mensal. O total, os pagamentos e o saldo a pagar aparecem separados do comprometimento de todas as faturas. Há filtro por cartão, detalhamento das parcelas, prévia dos próximos seis meses e registro de pagamento com saldo preenchido. Meses futuros consideram somente compras registradas; a consulta mensal não exige uma migration adicional.

@@ -586,6 +586,44 @@ button.primary:hover {
 .card-values strong {
   font-size: 13px;
 }
+.card-values small { display: block; margin-top: 5px; color: #8a819c; font-size: 8px; }
+.card-monthly-invoice { background: var(--lilac); border-radius: 10px; padding: 14px; margin-top: 16px; }
+.card-monthly-invoice > span { display: block; color: #716387; font-size: 10px; }
+.card-monthly-invoice > strong { display: block; font-size: 24px; margin: 7px 0; color: var(--purple); }
+.card-monthly-invoice > small { display: block; color: #716387; }
+.invoice-month-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.invoice-month-toolbar h2 { font-size: 18px; margin: 0 0 7px; }
+.invoice-month-toolbar p { font-size: 11px; color: #8a819c; margin: 0; }
+.invoice-month-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.invoice-month-picker input { width: 150px; }
+.invoice-card-filter { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; font-size: 12px; }
+.invoice-card-filter select { max-width: 280px; width: 100%; }
+.invoice-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; background: #f8f6fd; padding: 14px; border-radius: 10px; margin-bottom: 16px; }
+.invoice-totals span { display: block; font-size: 10px; color: #81768e; margin-bottom: 9px; }
+.invoice-totals strong { display: block; font-size: clamp(14px, 2vw, 21px); color: #34254d; }
+.invoice-values strong { font-size: 16px; }
+.monthly-invoice { border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-top: 15px; }
+.monthly-invoice-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.monthly-invoice-heading h3 { margin: 0; font-size: 14px; }
+.monthly-invoice-heading p { margin: 6px 0 0; color: #81768e; font-size: 10px; }
+.monthly-invoice-actions { display: flex; flex-wrap: wrap; gap: 15px; align-items: start; }
+.monthly-invoice-actions details { flex: 1; min-width: 0; }
+.monthly-invoice-actions summary { cursor: pointer; font-size: 12px; color: var(--purple); padding: 10px 0; }
+.upcoming-invoices-title { margin: 26px 0 8px; font-size: 15px; }
+.upcoming-invoices-note { color: #81768e; font-size: 11px; line-height: 1.6; }
+.upcoming-invoices-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.upcoming-invoices-grid button { display: flex; flex-direction: column; align-items: start; text-align: left; padding: 15px; gap: 10px; white-space: normal; }
+.upcoming-invoices-grid span { font-size: 11px; }
+.upcoming-invoices-grid strong { font-size: 17px; }
+.upcoming-invoices-grid small { color: #81768e; font-size: 9px; line-height: 1.5; }
+@media (max-width: 480px) {
+  .invoice-month-picker { width: 100%; }
+  .invoice-totals { gap: 7px; padding: 10px; }
+  .invoice-totals strong { font-size: 13px; }
+  .invoice-totals span { font-size: 9px; line-height: 1.5; }
+  .monthly-invoice { padding: 12px; }
+  .upcoming-invoices-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .progress {
   height: 5px;
   background: #f1edf8;

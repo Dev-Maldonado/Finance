@@ -12,6 +12,84 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } },
 );
+test("monthly invoices separate installments, future months and partial payments", async ({ page }) => {
+  const email = `invoices-${randomUUID()}@example.test`, password = randomUUID() + "Aa1!";
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  expect(created.error).toBeNull();
+  const userId = created.data.user!.id;
+  try {
+    const account = await admin.from("financial_accounts").insert({ user_id: userId, name: "Invoice bank", kind: "bank", initial_balance: "5000" }).select("id").single();
+    expect(account.error).toBeNull();
+    const cards = await admin.from("credit_cards").insert([
+      { user_id: userId, name: "Monthly card A", account_id: account.data!.id, last_four: "1111", credit_limit: "1000", closing_day: 5, due_day: 10 },
+      { user_id: userId, name: "Monthly card B", account_id: account.data!.id, last_four: "2222", credit_limit: "1000", closing_day: 5, due_day: 10 },
+    ]).select("id,name");
+    expect(cards.error).toBeNull();
+    const a = cards.data!.find(card => card.name === "Monthly card A")!;
+    const b = cards.data!.find(card => card.name === "Monthly card B")!;
+    await page.goto("/");
+    await page.getByLabel("E-mail").fill(email);
+    await page.getByLabel("Senha", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Entrar na minha conta" }).click();
+    await expect(page.getByText("Saldo disponível", { exact: true })).toBeVisible();
+    await page.goto("/cartoes");
+    const month = await page.getByLabel("Mês das faturas").inputValue();
+    const date = `${month}-01`;
+    const op = async (action: string, payload: Record<string, unknown>) => {
+      const result = await page.request.post("/api/operations", {
+        headers: { Origin: "http://localhost:3000" },
+        data: { action, payload, request_id: randomUUID() },
+      });
+      expect(result.ok()).toBe(true);
+    };
+    await op("purchase", { card_id: a.id, description: "Three monthly installments", amount: "300.01", installments: 3, date });
+    await op("purchase", { card_id: b.id, description: "Single monthly purchase", amount: "40", installments: 1, date });
+    const invoices = await admin.from("credit_card_invoices").select("id").eq("user_id", userId).eq("card_id", a.id).eq("due_date", `${month}-10`).single();
+    expect(invoices.error).toBeNull();
+    await op("pay_invoice", { invoice_id: invoices.data!.id, account_id: account.data!.id, amount: "25", date });
+    await page.reload();
+    const summary = page.getByLabel("Resumo mensal das faturas");
+    await expect(summary).toContainText("R$ 140,00");
+    await expect(summary).toContainText("R$ 25,00");
+    await expect(summary).toContainText("R$ 115,00");
+    const cardA = page.locator(".bank-card").filter({ hasText: "Monthly card A" }).locator("..");
+    await expect(cardA.locator(".card-monthly-invoice")).toContainText("R$ 100,00");
+    await expect(cardA.locator(".card-values")).toContainText("R$ 275,01");
+    await page.getByRole("button", { name: "Próximo mês", exact: true }).click();
+    await expect(summary).toContainText("R$ 100,00");
+    await expect(summary).not.toContainText("R$ 140,00");
+    const article = page.getByRole("article", { name: "Fatura de Monthly card A", exact: true });
+    await article.locator("summary").click();
+    await expect(article).toContainText("Three monthly installments");
+    await expect(article).toContainText("2/3");
+    await page.getByRole("button", { name: "Próximo mês", exact: true }).click();
+    await expect(summary).toContainText("R$ 100,01");
+    await page.getByLabel("Filtrar faturas por cartão").selectOption(b.id);
+    await expect(summary).toContainText("R$ 0,00");
+    await expect(page.getByText("Nenhuma fatura registrada com vencimento neste mês.")).toBeVisible();
+    await page.getByLabel("Filtrar faturas por cartão").selectOption("");
+    await page.getByRole("button", { name: "Mês atual", exact: true }).click();
+    await page.getByRole("article", { name: "Fatura de Monthly card A", exact: true }).getByRole("button", { name: "Registrar pagamento", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Pagar fatura", exact: true })).toBeVisible();
+    await expect(page.getByLabel("Valor (R$)", { exact: true })).toHaveValue("75.00");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await expect(summary).toContainText("R$ 100,00");
+    await expect(summary).toContainText("R$ 40,00");
+    await expect(page.getByRole("article", { name: "Fatura de Monthly card A", exact: true })).toContainText("Paga");
+    await page.reload();
+    await expect(summary).toContainText("R$ 40,00");
+    await page.screenshot({ path: "test-results/monthly-invoices-desktop.png", fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByLabel("Mês das faturas")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole("button", { name: "Próximo mês", exact: true }).click();
+    await expect(summary).toContainText("R$ 100,00");
+    await page.screenshot({ path: "test-results/monthly-invoices-mobile.png", fullPage: true });
+  } finally {
+    expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull();
+  }
+});
 test("card color and corrections of purchases, expenses and income persist", async ({ page }) => {
   const email = `correction-${randomUUID()}@example.test`, password = randomUUID() + "Aa1!";
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });

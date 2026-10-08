@@ -73,3 +73,9 @@ Cartões agora possuem cor editável/persistente e texto com contraste adaptado.
 Migration 202610080017 aplicada somente no banco local. Supabase hospedado exige executar docs/supabase-update-card-corrections.sql no SQL Editor antes do deploy; bootstrap não deve ser reaplicado ao banco existente. Wrapper incremental testado em banco descartável com o bootstrap anterior e reexecução idempotente.
 
 41 testes unitários, TypeScript/build e 21 checks locais de integração passaram, incluindo centavos, parcelas, RLS, rollback de limite e proteção de pagamentos existentes. Quatro testes de navegador passaram, incluindo edição/exclusão de receita e despesa no celular, persistência de cores claras/escuras, correção/exclusão de compra e conferência de saldos após recarregar. Não houve alterações no banco de produção.
+
+## Faturas mensais e próximas faturas
+
+A página Cartões passou a usar um seletor próprio por mês de vencimento, separado dos filtros de movimentações. Cada cartão destaca a fatura selecionada, o valor pago e o saldo a pagar, mantendo limite disponível e total comprometido em campos distintos. Uma central permite filtrar cartões, conferir parcelas/compras de cada fatura, navegar por meses anteriores/futuros, visualizar os seis meses seguintes e iniciar pagamento do saldo com a fatura/conta preenchidas. O dashboard destaca a fatura do mês corrente. Valores derivam de parcelas e pagamentos já persistidos, com Decimal; crédito de uma fatura não reduz o valor a pagar de outro cartão. Fechamento exibido é derivado dos dias cadastrados do cartão, sem mudar vencimentos históricos. Nenhuma migration nova ou alteração em produção foi executada nesta etapa.
+
+47 testes unitários, TypeScript/build, 21 checks locais de integração e cinco testes de navegador passaram na versão final. Cobrem dois cartões, compra parcelada em três meses, centavos, pagamento parcial/completo, filtro, meses sem fatura, persistência após recarregar e layout móvel.

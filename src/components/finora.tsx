@@ -39,6 +39,8 @@ import { ProventEvents } from "./provent-events";
 import { Auth } from "./auth";
 import { DeleteDialog } from "./delete-dialog";
 import { cardColors } from "@/lib/card-color";
+import { cardInvoices, invoiceMonthLabel, invoiceTotals } from "@/lib/card-invoices";
+import { InvoiceMonthPicker, MonthlyInvoices } from "./monthly-invoices";
 import { AssetSearch } from "./asset-search";
 import { browserDb } from "@/lib/supabase";
 import { Snapshot, Row, rows, str, financialSummary } from "@/lib/summary";
@@ -181,6 +183,7 @@ function Workspace({
   const [removal, setRemoval] = useState<{ kind: "transaction" | "purchase"; row: Row } | null>(null);
   const [showExcluded, setShowExcluded] = useState(false);
   const [showExcludedPurchases, setShowExcludedPurchases] = useState(false);
+  const [invoiceMonth, setInvoiceMonth] = useState(localDate().slice(0, 7));
   const [session, setSession] = useState<boolean | null>(null),
     [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
@@ -217,6 +220,8 @@ function Workspace({
     },
   });
   const snapshot = query.data;
+  const today = localDate();
+  const allInvoices = useMemo(() => snapshot ? cardInvoices(snapshot, today) : [], [snapshot, today]);
   const performance = useMemo(
     () => (snapshot ? portfolioPerformance(snapshot, start, end) : null),
     [snapshot, start, end],
@@ -664,7 +669,7 @@ function Workspace({
               ))}
             </div>
           </div>
-          <div className="period-bar">
+          {current[0] !== "cartoes" && <div className="period-bar">
             <div className="period-tabs">
               {[
                 ["month", "Este mês"],
@@ -715,7 +720,7 @@ function Workspace({
                 </span>
               )}
             </div>
-          </div>
+          </div>}
           {notice && (
             <p role="status" className="notice" onClick={() => setNotice("")}>
               {notice}
@@ -1130,6 +1135,10 @@ function Workspace({
               )}
               {current[0] === "cartoes" && (
                 <>
+                  <div className="invoice-month-toolbar">
+                    <div><h2>Faturas por mês</h2><p>Valores pelo mês de vencimento, separados do total comprometido.</p></div>
+                    <InvoiceMonthPicker month={invoiceMonth} today={today} onChange={setInvoiceMonth} />
+                  </div>
                   <div className="cards-grid">
                     {rows(snapshot, "credit_cards").map((c) => (
                       <Panel
@@ -1150,80 +1159,19 @@ function Workspace({
                     )}
                   </div>
                   <Panel
-                    title="Faturas e parcelas"
-                    subtitle="Fechamento, vencimento e pagamentos parciais"
+                    title={`Faturas de ${invoiceMonthLabel(invoiceMonth)}`}
+                    subtitle="Total, pagamentos e saldo de cada cartão no mês selecionado"
                   >
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Cartão</th>
-                            <th>Vencimento</th>
-                            <th>Total</th>
-                            <th>Pago</th>
-                            <th>Saldo</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows(snapshot, "credit_card_invoices")
-                            .sort((a, b) =>
-                              str(a, "due_date").localeCompare(
-                                str(b, "due_date"),
-                              ),
-                            )
-                            .map((inv) => {
-                              const total = sum(
-                                  rows(
-                                    snapshot,
-                                    "credit_card_installments",
-                                  ).filter((i) => i.invoice_id === inv.id),
-                                  "amount",
-                                ),
-                                paid = sum(
-                                  rows(snapshot, "credit_card_payments").filter(
-                                    (p) => p.invoice_id === inv.id,
-                                  ),
-                                  "amount",
-                                ),
-                                balance = total.minus(paid),
-                                card = rows(snapshot, "credit_cards").find(
-                                  (c) => c.id === inv.card_id,
-                                );
-                              const due = str(inv, "due_date"),
-                                closing = new Date(due + "T12:00:00Z");
-                              if (
-                                Number(card?.due_day) <=
-                                Number(card?.closing_day)
-                              )
-                                closing.setUTCMonth(closing.getUTCMonth() - 1);
-                              closing.setUTCDate(Number(card?.closing_day));
-                              const status = balance.lte(0)
-                                ? "Paga"
-                                : paid.gt(0)
-                                  ? "Parcialmente paga"
-                                  : due < localDate()
-                                    ? "Atrasada"
-                                    : localDate() <
-                                        closing.toISOString().slice(0, 10)
-                                      ? "Aberta"
-                                      : "Fechada";
-                              return (
-                                <tr key={str(inv, "id")}>
-                                  <td>{card?.name}</td>
-                                  <td>{pretty(due)}</td>
-                                  <td>{brl(money(total))}</td>
-                                  <td>{brl(money(paid))}</td>
-                                  <td>{brl(money(balance))}</td>
-                                  <td>
-                                    <span className="badge">{status}</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
+                    <MonthlyInvoices
+                      snapshot={snapshot}
+                      month={invoiceMonth}
+                      today={today}
+                      onMonthChange={setInvoiceMonth}
+                      onPay={invoice => setModal({
+                        form: forms.invoice,
+                        initial: { invoice_id: invoice.id, account_id: invoice.accountId, amount: invoice.pending, date: today },
+                      })}
+                    />
                   </Panel>
                   <Panel title="Compras registradas" action={
                     <label className="excluded-toggle">
@@ -1890,6 +1838,8 @@ function Workspace({
     </div>
   );
   function renderCard(card: Row) {
+    const month = section === "cartoes" ? invoiceMonth : today.slice(0, 7);
+    const monthly = invoiceTotals(allInvoices.filter(invoice => invoice.cardId === card.id && invoice.month === month));
     const invoices = rows(snapshot!, "credit_card_invoices").filter(
         (i) => i.card_id === card.id,
       ),
@@ -1923,6 +1873,11 @@ function Workspace({
             <b>{str(card, "brand") || "CRÉDITO"}</b>
           </div>
         </div>
+        <div className="card-monthly-invoice">
+          <span>Total da fatura · {invoiceMonthLabel(month)}</span>
+          <strong>{brl(monthly.total)}</strong>
+          <small>Pago: {brl(monthly.paid)} · a pagar: {brl(monthly.pending)}</small>
+        </div>
         <div className="card-values">
           <div>
             <span>Limite disponível</span>
@@ -1931,8 +1886,9 @@ function Workspace({
             </strong>
           </div>
           <div>
-            <span>Comprometido</span>
+            <span>Total comprometido</span>
             <strong>{brl(money(committed))}</strong>
+            <small>Todas as faturas ainda não pagas</small>
           </div>
         </div>
         <div className="progress">

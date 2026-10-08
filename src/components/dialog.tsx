@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { FormDef } from "./forms";
 import { Snapshot, rows, str, Row } from "@/lib/summary";
+import { cardInvoices } from "@/lib/card-invoices";
+import { D } from "@/financial/engine";
 export async function post(url: string, body: unknown) {
   const response = await fetch(url, {
     method: "POST",
@@ -37,6 +39,13 @@ export function Dialog({
   }, []);
   function options(source?: string): [string, string][] {
     if (!source) return [];
+    if (source === "invoices") {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+      return cardInvoices(snapshot, today).filter(invoice => D(invoice.pending).gt(0)).map(invoice => [
+        invoice.id,
+        `${invoice.cardName} — ${invoice.due.split("-").reverse().join("/")} — ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(invoice.pending))} a pagar`,
+      ]);
+    }
     const table: Record<string, string> = {
       accounts: "financial_accounts",
       all_accounts: "financial_accounts",
