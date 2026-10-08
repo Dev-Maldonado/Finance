@@ -18,7 +18,11 @@ export type Snapshot = {
   user: { id: string; email: string };
   [key: string]: Row[] | { id: string; email: string };
 };
-export const rows = (s: Snapshot, key: string) => (s[key] as Row[]) ?? [];
+export const rows = (s: Snapshot, key: string, includeExcluded = false) => {
+  const records = (s[key] as Row[]) ?? [];
+  return key === "credit_card_purchases" && !includeExcluded
+    ? records.filter(r => r.status !== "cancelled") : records;
+};
 export const str = (r: Row, k: string) => String(r[k] ?? "");
 export function financialSummary(
   s: Snapshot,

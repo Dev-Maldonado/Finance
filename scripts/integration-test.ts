@@ -194,6 +194,56 @@ try {
     });
     assert.ok(over.error);
   });
+  await check("Cor do cartão persiste com isolamento de usuário", async () => {
+    const change = await db.from("credit_cards").update({ color: "#14A078" }).eq("id", card).select("color").single();
+    assert.equal(change.error, null); assert.equal(change.data!.color, "#14A078");
+    const forbidden = await b.db.from("credit_cards").update({ color: "#FFFFFF" }).eq("id", card).select("id");
+    assert.deepEqual(forbidden.data, []);
+  });
+  await check("Compra corrigida recalcula centavos/faturas e exclusão preserva auditoria", async () => {
+    const extra = await db.from("credit_cards").insert({ name: "Correction card", last_four: "9876", credit_limit: "1000", closing_day: 5, due_day: 10, account_id: account.id }).select("id").single();
+    assert.equal(extra.error, null);
+    const cardId = extra.data!.id;
+    const purchase = await rpc("purchase", { card_id: cardId, description: "Wrong purchase", amount: "100.01", date: "2026-10-01", installments: 3 });
+    const replacement = { card_id: cardId, description: "Correct purchase", amount: "90.02", date: "2026-10-06", installments: 2 };
+    const edited = await db.rpc("revise_card_purchase", { purchase_id: purchase.id, replacement, cancel: false });
+    assert.equal(edited.error, null);
+    const installments = await db.from("credit_card_installments").select("amount::text,invoice_id").eq("purchase_id", purchase.id);
+    assert.deepEqual(installments.data!.map(x => x.amount).sort(), ["45.01", "45.01"]);
+    const invoices = await db.from("credit_card_invoices").select("due_date").eq("card_id", cardId).order("due_date");
+    assert.deepEqual(invoices.data!.map(x => x.due_date), ["2026-11-10", "2026-12-10"]);
+    const other = await b.db.rpc("revise_card_purchase", { purchase_id: purchase.id, replacement, cancel: true });
+    assert.ok(other.error);
+    const invalid = await db.rpc("revise_card_purchase", { purchase_id: purchase.id, replacement: { ...replacement, amount: "2000" }, cancel: false });
+    assert.ok(invalid.error);
+    const still = await db.from("credit_card_purchases").select("amount::text").eq("id", purchase.id).single();
+    assert.equal(still.data!.amount, "90.02");
+    const remaining = await db.from("credit_card_installments").select("amount::text").eq("purchase_id", purchase.id);
+    assert.deepEqual(remaining.data!.map(x => x.amount).sort(), ["45.01", "45.01"]);
+    const deleted = await db.rpc("revise_card_purchase", { purchase_id: purchase.id, replacement: {}, cancel: true });
+    assert.equal(deleted.error, null);
+    const cancelled = await db.from("credit_card_purchases").select("status").eq("id", purchase.id).single();
+    assert.equal(cancelled.data!.status, "cancelled");
+    const noParts = await db.from("credit_card_installments").select("id").eq("purchase_id", purchase.id);
+    assert.deepEqual(noParts.data, []);
+    const noInvoices = await db.from("credit_card_invoices").select("id").eq("card_id", cardId);
+    assert.deepEqual(noInvoices.data, []);
+    const history = await db.from("credit_card_purchase_revisions").select("previous_installments").eq("purchase_id", purchase.id);
+    assert.equal(history.data!.length, 2);
+    assert.deepEqual(history.data!.map(x => x.previous_installments.length).sort(), [2, 3]);
+  });
+  await check("Correção não altera pagamento já conciliado", async () => {
+    const purchase = await db.from("credit_card_purchases").select("id").eq("description", "Laptop").single();
+    const replacement = { card_id: card, description: "Laptop revised", amount: "100", date: "2026-10-05", installments: 3 };
+    const changed = await db.rpc("revise_card_purchase", { purchase_id: purchase.data!.id, replacement, cancel: false });
+    assert.equal(changed.error, null);
+    const bad = await db.rpc("revise_card_purchase", { purchase_id: purchase.data!.id, replacement: { ...replacement, amount: "101" }, cancel: false });
+    assert.ok(bad.error);
+    const badDelete = await db.rpc("revise_card_purchase", { purchase_id: purchase.data!.id, replacement: {}, cancel: true });
+    assert.ok(badDelete.error);
+    const payments = await db.from("credit_card_payments").select("amount::text");
+    assert.deepEqual(payments.data!.map(x => x.amount), ["10.00"]);
+  });
   let goal: string;
   await check("Caixinha: lote e transferência atômicos", async () => {
     const r = await rpc("create_goal", {

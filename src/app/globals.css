@@ -750,6 +750,16 @@ button.primary:hover {
   max-width: 100%;
   overflow: auto;
 }
+.transaction-actions {
+  position: sticky;
+  right: 0;
+  background: #fff;
+  box-shadow: -4px 0 8px #24203308;
+  z-index: 1;
+}
+.transaction-actions .actions { flex-wrap: nowrap; }
+.excluded-toggle { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 12px; }
+.excluded-toggle input { width: auto; }
 table {
   border-collapse: collapse;
   width: 100%;

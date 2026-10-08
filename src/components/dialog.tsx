@@ -82,9 +82,9 @@ export function Dialog({
         delete data[f.key];
     }
     try {
-      if (form.endpoint === "/api/transactions")
+      if (form.endpoint === "/api/transactions" || form.endpoint === "/api/purchases")
         await post(form.endpoint, {
-          transaction_id: initial?.id,
+          [form.endpoint === "/api/transactions" ? "transaction_id" : "purchase_id"]: initial?.id,
           replacement: data,
         });
       else if (form.endpoint) await post(form.endpoint, data);
@@ -109,7 +109,7 @@ export function Dialog({
         <div className="dialog-head">
           <div>
             <span className="eyebrow">ORGANIZE SUAS FINANÇAS</span>
-            <h2>{initial ? "Editar cadastro" : form.title}</h2>
+            <h2>{initial ? form.editTitle || "Editar cadastro" : form.title}</h2>
           </div>
           <button
             type="button"

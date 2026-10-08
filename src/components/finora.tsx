@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import { ProventEvents } from "./provent-events";
 import { Auth } from "./auth";
+import { DeleteDialog } from "./delete-dialog";
+import { cardColors } from "@/lib/card-color";
 import { AssetSearch } from "./asset-search";
 import { browserDb } from "@/lib/supabase";
 import { Snapshot, Row, rows, str, financialSummary } from "@/lib/summary";
@@ -176,6 +178,9 @@ function Workspace({
   detail?: string;
 }) {
   const qc = useQueryClient();
+  const [removal, setRemoval] = useState<{ kind: "transaction" | "purchase"; row: Row } | null>(null);
+  const [showExcluded, setShowExcluded] = useState(false);
+  const [showExcludedPurchases, setShowExcludedPurchases] = useState(false);
   const [session, setSession] = useState<boolean | null>(null),
     [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
@@ -314,6 +319,7 @@ function Workspace({
         .filter(
           (r) =>
             str(r, "date") >= start &&
+            (r.status !== "cancelled" || (section === "transacoes" && showExcluded)) &&
             str(r, "date") <= end &&
             str(r, "description").toLowerCase().includes(search.toLowerCase()),
         )
@@ -414,7 +420,7 @@ function Workspace({
               <th>Data</th>
               <th>Status</th>
               <th className="right">Valor</th>
-              <th>Ações</th>
+              <th className="transaction-actions">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -471,7 +477,7 @@ function Workspace({
                     {t.status === "confirmed"
                       ? "Confirmado"
                       : t.status === "cancelled"
-                        ? "Cancelado"
+                        ? "Excluído"
                         : "Pendente"}
                   </span>
                 </td>
@@ -480,7 +486,7 @@ function Workspace({
                 >
                   {brl(str(t, "amount"))}
                 </td>
-                <td>
+                <td className="transaction-actions">
                   {["income", "expense", "yield", "adjustment"].includes(
                     str(t, "type"),
                   ) &&
@@ -504,20 +510,8 @@ function Workspace({
                         >
                           Editar
                         </button>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await post("/api/transactions", {
-                                transaction_id: t.id,
-                                cancel: true,
-                              });
-                              refresh();
-                            } catch (e) {
-                              setNotice(String(e));
-                            }
-                          }}
-                        >
-                          Cancelar
+                        <button onClick={() => setRemoval({ kind: "transaction", row: t })}>
+                          Excluir
                         </button>
                       </div>
                     )}
@@ -1020,6 +1014,10 @@ function Workspace({
               )}
               {current[0] === "transacoes" && (
                 <>
+                  <label className="excluded-toggle">
+                    <input type="checkbox" checked={showExcluded} onChange={e => setShowExcluded(e.target.checked)} />
+                    Mostrar lançamentos excluídos
+                  </label>
                   <Panel
                     title="Histórico de transações"
                     subtitle="Transferências e pagamentos são exibidos sem duplicar despesas."
@@ -1227,7 +1225,12 @@ function Workspace({
                       </table>
                     </div>
                   </Panel>
-                  <Panel title="Compras registradas">
+                  <Panel title="Compras registradas" action={
+                    <label className="excluded-toggle">
+                      <input type="checkbox" checked={showExcludedPurchases} onChange={e => setShowExcludedPurchases(e.target.checked)} />
+                      Mostrar compras excluídas
+                    </label>
+                  }>
                     <div className="table-wrap">
                       <table>
                         <thead>
@@ -1236,15 +1239,24 @@ function Workspace({
                             <th>Data</th>
                             <th>Total</th>
                             <th>Parcelas</th>
+                            <th className="transaction-actions">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {rows(snapshot, "credit_card_purchases").map((p) => (
+                          {rows(snapshot, "credit_card_purchases", showExcludedPurchases).map((p) => (
                             <tr key={str(p, "id")}>
-                              <td>{p.description}</td>
+                              <td><span>{p.description}</span>{p.status === "cancelled" && <span className="badge">Excluída</span>}</td>
                               <td>{pretty(str(p, "date"))}</td>
                               <td>{brl(str(p, "amount"))}</td>
                               <td>{p.installments}×</td>
+                              <td className="transaction-actions">
+                                {p.status !== "cancelled" && <div className="actions">
+                                  <button onClick={() => setModal({
+                                    form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: p,
+                                  })}>Editar</button>
+                                  <button onClick={() => setRemoval({ kind: "purchase", row: p })}>Excluir</button>
+                                </div>}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1870,6 +1882,11 @@ function Workspace({
           }}
         />
       )}
+      {removal && <DeleteDialog
+        {...removal}
+        onClose={() => setRemoval(null)}
+        onSaved={() => { setNotice("Registro excluído. Totais atualizados."); refresh(); }}
+      />}
     </div>
   );
   function renderCard(card: Row) {
@@ -1892,7 +1909,7 @@ function Workspace({
       );
     return (
       <>
-        <div className="bank-card">
+        <div className="bank-card" style={cardColors(str(card, "color"))}>
           <div>
             <span>{str(card, "institution") || "FINORA"}</span>
             <CreditCard size={23} />

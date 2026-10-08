@@ -16,7 +16,7 @@ npx supabase db push
 
 As migrations em `supabase/migrations` criam tabelas, funções financeiras e políticas de acesso. Não execute os scripts `scripts/local` no banco hospedado. Não copie usuários, credenciais ou dados de teste do banco local.
 
-Se a conexão PostgreSQL estiver indisponível no ambiente, abra o SQL Editor do projeto e execute o conteúdo de [supabase-bootstrap.sql](supabase-bootstrap.sql). Esse arquivo contém as 16 migrations iniciais em uma transação e registra o histórico do Supabase CLI. Ele bloqueia a execução quando há relações no schema `public` ou histórico de migrations existente; não apague tabelas para contornar esse bloqueio. O bootstrap foi validado em um banco PostgreSQL descartável, incluindo o bloqueio de reexecução. Para novas migrations após a instalação, use o fluxo incremental do CLI.
+Se a conexão PostgreSQL estiver indisponível no ambiente, abra o SQL Editor do projeto e execute o conteúdo de [supabase-bootstrap.sql](supabase-bootstrap.sql). Esse arquivo contém as 17 migrations iniciais em uma transação e registra o histórico do Supabase CLI. Ele bloqueia a execução quando há relações no schema `public` ou histórico de migrations existente; não apague tabelas para contornar esse bloqueio. O bootstrap foi validado em um banco PostgreSQL descartável, incluindo o bloqueio de reexecução. Para novas migrations após a instalação, use o fluxo incremental do CLI.
 
 Configure SMTP e confirmação de email no Supabase Auth. Após obter o domínio de produção, configure Site URL e Redirect URLs com esse domínio e a URL exata `/auth/callback`. Cadastros e recuperação de senha devem ser verificados com uma conta de teste própria.
 
@@ -54,3 +54,9 @@ O scheduler `npm run jobs` exige um processo persistente; a Vercel não o manté
 Após o deploy, confira página inicial, cadastro/login/logout, email de recuperação, persistência de conta/transação, acesso sem sessão retornando 401 e isolamento entre duas contas de teste. Não execute `test:integration` ou `test:e2e` do perfil local contra produção. Verifique as datas de CDI/cotações e os logs de provedores antes de considerar a sincronização operacional.
 
 Os recursos avançados pendentes continuam registrados em [STATUS.md](STATUS.md). Publicação não altera essa cobertura.
+
+## Atualização: cores e correções de lançamentos
+
+Para um projeto que já recebeu o bootstrap anterior, execute somente [supabase-update-card-corrections.sql](supabase-update-card-corrections.sql) no SQL Editor antes do novo deploy. Ele adiciona cor persistente aos cartões, exclusão de compras com histórico e a função de correção de parcelas. Foi validado em banco descartável, inclusive reexecução sem duplicar a migration. Não execute novamente o bootstrap no banco existente.
+
+Compras em faturas sem pagamento permitem alterar cartão, valor, data, parcelas e categoria, recalculando vencimentos e limite. Em faturas que já têm pagamento, descrição/categoria podem ser corrigidas; mudanças financeiras e exclusão são bloqueadas até conciliação do pagamento. Receitas e despesas independentes da conta permitem edição e exclusão, com saldo recalculado. Exclusão mantém histórico e remove o lançamento dos totais; movimentos vinculados a transferências, caixinhas e investimentos precisam da correção correspondente na origem.

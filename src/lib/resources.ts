@@ -62,6 +62,7 @@ export const schemas = {
   }),
   credit_cards: z.object({
     name: text,
+    color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#5B35D5"),
     institution: optional,
     brand: optional,
     last_four: z.string().regex(/^\d{4}$/),

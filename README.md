@@ -80,3 +80,5 @@ Esta implementação oferece os principais fluxos locais, mas ainda não satisfa
 O script de instalação e as instruções de inicialização também foram salvos no rascunho do ambiente. Revise e salve nas configurações, depois publique o ambiente. Isso não publica os arquivos no GitHub nem comprova restauração em uma nova tarefa.
 
 Para hospedagem em Vercel com Supabase, consulte [DEPLOY.md](docs/DEPLOY.md).
+
+Cartões permitem cor personalizada no cadastro/edição. Compras registradas têm Editar/Excluir; parcelas, faturas e limite são recalculados. Receitas/despesas independentes têm exclusão confirmada e opção de mostrar registros excluídos. Para atualizar um Supabase existente, aplique [a migration incremental](docs/supabase-update-card-corrections.sql) antes do deploy; faturas com pagamentos exigem conciliação antes de mudanças financeiras nas compras.

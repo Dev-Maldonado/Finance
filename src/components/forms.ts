@@ -9,6 +9,7 @@ export type Field = {
 };
 export type FormDef = {
   title: string;
+  editTitle?: string;
   resource?: string;
   action?: string;
   endpoint?: string;
@@ -120,6 +121,7 @@ export const forms: Record<string, FormDef> = {
   },
   transaction: {
     title: "Novo lançamento",
+    editTitle: "Editar lançamento",
     action: "transaction",
     fields: [
       { key: "description", label: "Descrição" },
@@ -160,9 +162,11 @@ export const forms: Record<string, FormDef> = {
   },
   card: {
     title: "Novo cartão",
+    editTitle: "Editar cartão",
     resource: "credit_cards",
     fields: [
       name,
+      { key: "color", label: "Cor do cartão", type: "color", default: "#5B35D5" },
       { key: "institution", label: "Instituição", required: false },
       { key: "brand", label: "Bandeira", required: false },
       { key: "last_four", label: "Quatro últimos dígitos", type: "text" },
@@ -174,6 +178,7 @@ export const forms: Record<string, FormDef> = {
   },
   purchase: {
     title: "Registrar compra",
+    editTitle: "Editar compra",
     action: "purchase",
     fields: [
       { key: "card_id", label: "Cartão", source: "cards" },
