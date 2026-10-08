@@ -1205,6 +1205,8 @@ footer small {
 }
 .auth-links {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
   margin-top: 20px;
 }

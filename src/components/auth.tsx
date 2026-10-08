@@ -1,31 +1,48 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { browserDb } from "@/lib/supabase";
+import { authCallbackUrl, authLinkError } from "@/lib/auth-links";
 import { ArrowUpRight, ChartNoAxesCombined, ShieldCheck } from "lucide-react";
 export function Auth({ onLogin }: { onLogin: () => void }) {
-  const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "reset" | "resend">("login");
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setMessage(authLinkError(window.location.search, window.location.hash));
+  }, []);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMessage("");
     try {
       const db = browserDb();
+      const redirectTo = authCallbackUrl(window.location.origin);
       if (mode === "reset") {
         const { error } = await db.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo,
         });
         if (error) throw error;
         setMessage(
           "Se o endereço estiver cadastrado, você receberá instruções para redefinir a senha.",
         );
+      } else if (mode === "resend") {
+        const { error } = await db.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: redirectTo },
+        });
+        if (error) throw error;
+        setMessage("Se houver um cadastro pendente, você receberá um novo email de confirmação.");
       } else {
         const { data, error } =
           mode === "signup"
-            ? await db.auth.signUp({ email, password })
+            ? await db.auth.signUp({
+                email,
+                password,
+                options: { emailRedirectTo: redirectTo },
+              })
             : await db.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (data.session) onLogin();
@@ -75,6 +92,8 @@ export function Auth({ onLogin }: { onLogin: () => void }) {
               ? "Seu próximo passo começa aqui"
               : mode === "reset"
                 ? "Recupere seu acesso"
+                : mode === "resend"
+                  ? "Confirme seu cadastro"
                 : "Bom ter você por aqui."}
           </h2>
           <p>Entre para cuidar do seu dinheiro com mais tranquilidade.</p>
@@ -89,7 +108,7 @@ export function Auth({ onLogin }: { onLogin: () => void }) {
                 autoComplete="email"
               />
             </label>
-            {mode !== "reset" && (
+            {(mode === "login" || mode === "signup") && (
               <label>
                 Senha
                 <input
@@ -111,6 +130,8 @@ export function Auth({ onLogin }: { onLogin: () => void }) {
                   ? "Criar minha conta"
                   : mode === "reset"
                     ? "Enviar instruções"
+                    : mode === "resend"
+                      ? "Enviar nova confirmação"
                     : "Entrar na minha conta"}
               <ArrowUpRight size={18} />
             </button>
@@ -121,6 +142,14 @@ export function Auth({ onLogin }: { onLogin: () => void }) {
             )}
           </form>
           <div className="auth-links">
+            <button
+              onClick={() => {
+                setMode(mode === "resend" ? "login" : "resend");
+                setMessage("");
+              }}
+            >
+              {mode === "resend" ? "Voltar para login" : "Reenviar confirmação"}
+            </button>
             <button
               onClick={() => {
                 setMode(mode === "signup" ? "login" : "signup");

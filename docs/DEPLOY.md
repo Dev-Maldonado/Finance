@@ -20,6 +20,15 @@ Se a conexão PostgreSQL estiver indisponível no ambiente, abra o SQL Editor do
 
 Configure SMTP e confirmação de email no Supabase Auth. Após obter o domínio de produção, configure Site URL e Redirect URLs com esse domínio e a URL exata `/auth/callback`. Cadastros e recuperação de senha devem ser verificados com uma conta de teste própria.
 
+No projeto informado, abra [Authentication → URL Configuration](https://supabase.com/dashboard/project/jqxuwhvkcdfxuxfktzmw/auth/url-configuration) e configure:
+
+- **Site URL:** `https://finance-two-lake.vercel.app`
+- **Redirect URLs:** `https://finance-two-lake.vercel.app/auth/callback`
+
+O app envia o callback do domínio atual no cadastro, reenvio de confirmação e recuperação. Supabase recusa callbacks fora da lista e pode usar Site URL como alternativa; manter localhost como Site URL de produção direciona os emails para o computador do usuário. A chave de serviço do app não concede permissão para editar essa configuração administrativa. Se houver templates personalizados de email, use o link de confirmação gerado pelo Supabase (`{{ .ConfirmationURL }}`), sem um endereço localhost fixo.
+
+Depois de corrigir as URLs e publicar o app atualizado, solicite um novo email em “Reenviar confirmação” ou “Esqueci minha senha”. Links com `otp_expired` já expiraram ou foram usados e não são recuperados pela alteração das URLs. Abra o novo link no navegador em que o solicitou (fluxo PKCE). Recuperação válida leva a Configurações, onde o formulário “Nova senha” permite salvar a senha.
+
 ## Vercel
 
 Importe `Dev-Maldonado/Finance`, selecione a branch `main`, diretório raiz do repositório, framework Next.js, Node.js 24 e build `npm run build`.
