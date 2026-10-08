@@ -2,7 +2,7 @@
 
 ## Entrega atual
 
-Aplicação funcional no checkout `/workspace/Finance`; requisitos portáveis em `docs/finora-context`. Não havia arquivos ou commits no repositório antes desta implementação. Publicação no GitHub autorizada pelo usuário. Hospedagem em Vercel e aplicação das migrations no Supabase dependem de credenciais administrativas seguras. Projeto informado: `jqxuwhvkcdfxuxfktzmw`; configuração pública de produção preservada em arquivo privado ignorado pelo Git. Veja `docs/DEPLOY.md`.
+Aplicação funcional no checkout `/workspace/Finance`; requisitos portáveis em `docs/finora-context`. Não havia arquivos ou commits no repositório antes desta implementação. Código publicado e conferido na branch `main` de `Dev-Maldonado/Finance` (commit inicial `1ec8134`). Hospedagem em Vercel e aplicação das migrations no Supabase dependem de credenciais administrativas seguras. Projeto informado: `jqxuwhvkcdfxuxfktzmw`; configuração pública de produção preservada em arquivo privado ignorado pelo Git. Veja `docs/DEPLOY.md`.
 
 ## Cobertura
 
@@ -43,3 +43,7 @@ O bloqueio de rede inicial deixou de ocorrer nas verificações seguintes. Os tr
 Instalação e instruções de startup foram salvas no rascunho de ambiente; revisar/salvar nas configurações e publicar o ambiente para ativá-las. Publicação e restauração em nova tarefa não foram verificadas. Aplicação, banco e scheduler estão em execução, com sincronização final usando os caches reais.
 
 Resolver os recursos pendentes por módulo, começando por conciliação de amortizações/resgates e produtos reais com seus contratos, sem inventar regras. Revisar a referência visual quando for fornecida.
+
+## Hospedagem solicitada
+
+Projeto Supabase indicado pelo usuário: `jqxuwhvkcdfxuxfktzmw`. A chave pública foi preservada somente em configuração privada. A conexão hospedada ainda não foi validada: o proxy retornou 403; domínio adicionado ao rascunho de rede, pendente de publicação. Não há deploy Vercel nem migrations remotas aplicadas. Faltam acesso Vercel e credenciais administrativas Supabase; confirmar dados existentes antes de migrations.
