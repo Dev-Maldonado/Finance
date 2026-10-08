@@ -1,0 +1,2 @@
+create table asset_cash_events(id uuid primary key default gen_random_uuid(),ticker text not null,date_com date not null,payment_date date not null,rate numeric(24,8) not null check(rate>0),label text not null,source text not null,source_id text not null unique,collected_at timestamptz not null default now());
+alter table asset_cash_events enable row level security;create policy market_read on asset_cash_events for select to authenticated using(true);grant select on asset_cash_events to authenticated;
