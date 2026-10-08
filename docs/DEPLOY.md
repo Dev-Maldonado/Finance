@@ -16,6 +16,8 @@ npx supabase db push
 
 As migrations em `supabase/migrations` criam tabelas, funções financeiras e políticas de acesso. Não execute os scripts `scripts/local` no banco hospedado. Não copie usuários, credenciais ou dados de teste do banco local.
 
+Se a conexão PostgreSQL estiver indisponível no ambiente, abra o SQL Editor do projeto e execute o conteúdo de [supabase-bootstrap.sql](supabase-bootstrap.sql). Esse arquivo contém as 16 migrations iniciais em uma transação e registra o histórico do Supabase CLI. Ele bloqueia a execução quando há relações no schema `public` ou histórico de migrations existente; não apague tabelas para contornar esse bloqueio. O bootstrap foi validado em um banco PostgreSQL descartável, incluindo o bloqueio de reexecução. Para novas migrations após a instalação, use o fluxo incremental do CLI.
+
 Configure SMTP e confirmação de email no Supabase Auth. Após obter o domínio de produção, configure Site URL e Redirect URLs com esse domínio e a URL exata `/auth/callback`. Cadastros e recuperação de senha devem ser verificados com uma conta de teste própria.
 
 ## Vercel
