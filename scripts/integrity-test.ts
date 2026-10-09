@@ -148,13 +148,13 @@ try {
     assert.equal((await db.rpc("revise_recurring", { recurrence_id: r.data!.id, replacement: {}, cancel: true })).error, null);
     const ended = await db.from("recurring_transactions").update({ active: true }).eq("id", r.data!.id);assert.ok(ended.error);
   });
-  await check("Atomic snapshot preserves exact decimals and filters cancelled financial records", async () => {
+  await check("Atomic snapshot preserves exact decimals and explicit investment history", async () => {
     const precise = await db.from("financial_accounts").insert({ name: "Exact numeric serialization", initial_balance: "123456789012345678.91" }).select("id").single();assert.equal(precise.error, null);
     const snapshot = await db.rpc("read_financial_snapshot");assert.equal(snapshot.error, null);
     const account = snapshot.data.financial_accounts.find((r: { id: string }) => r.id === precise.data!.id);assert.equal(account.initial_balance, "123456789012345678.91");assert.equal(typeof account.initial_balance, "string");
     assert.match(snapshot.data.snapshot_metadata[0].benchmark_start, /^\d{4}-\d{2}-\d{2}$/);
     assert.ok(snapshot.data.recurring_transactions.length > 0, "The atomic snapshot must include registered schedules");
-    assert.ok(snapshot.data.investment_operations.every((r: { status: string }) => r.status === "confirmed"));assert.ok(snapshot.data.savings_movements.every((r: { status: string }) => r.status === "confirmed"));
+    assert.ok(snapshot.data.investment_operations.some((r: { status: string }) => r.status === "cancelled"));assert.ok(snapshot.data.savings_movements.every((r: { status: string }) => r.status === "confirmed"));
     const other = await b.db.from("financial_integrity_revisions").select("id");assert.deepEqual(other.data, []);
   });
   await check("Market audits ignore collection-only updates and record actual corrections", async () => {
