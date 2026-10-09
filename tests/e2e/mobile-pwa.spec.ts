@@ -78,7 +78,7 @@ test('virtual viewport keeps mobile forms above the keyboard and restores naviga
  try {
   await page.getByRole('button',{name:'Novo lançamento',exact:true}).click();await page.getByLabel('Descrição',{exact:true}).focus();
   await page.evaluate(()=>{const viewport=(window as any).testViewport;viewport.height=420;viewport.dispatchEvent(new Event('resize'));});
-  await expect(page.getByRole('navigation',{name:'Navegação rápida'})).not.toBeVisible();const box=await page.getByRole('dialog').boundingBox();expect(box!.y+box!.height).toBeLessThanOrEqual(421);
+  await expect(page.getByRole('navigation',{name:'Navegação rápida'})).not.toBeVisible();await expect.poll(async()=>{const box=await page.getByRole('dialog').boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(421);
   await page.evaluate(()=>{const viewport=(window as any).testViewport;viewport.height=844;viewport.dispatchEvent(new Event('resize'));});
   await page.getByRole('dialog').getByRole('button',{name:'Cancelar',exact:true}).click();await expect(page.getByRole('navigation',{name:'Navegação rápida'})).toBeVisible();
  } finally {await admin.auth.admin.deleteUser(id);}

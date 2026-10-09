@@ -167,3 +167,6 @@
  body:has(.auth) .mobile-app-notices { position:static;margin:16px; }
  body:has(.mobile-update,.mobile-connection) .content { padding-bottom:calc(170px + env(safe-area-inset-bottom,0px)); }
 }
+@media (max-width:1023px), (hover:none) and (pointer:coarse) {
+ html[data-keyboard-open=true] .dialog { animation:none; }
+}
