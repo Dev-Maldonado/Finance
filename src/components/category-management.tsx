@@ -19,7 +19,7 @@ export function CategoryManagement({ snapshot, expenses, onEdit, onRemove }: { s
   const filtered = expenses.filter(expense => categoryMatches(categories, str(expense, 'category_id'), filter));
   return <>
     <section className="panel"><div className="panel-head"><div><h2>Gastos por categoria</h2><p>Totais da categoria principal incluem gastos diretos e subcategorias, uma única vez.</p></div></div><CategoryBreakdown categories={categories} expenses={expenses} /></section>
-    <div className="transaction-filters"><label>Filtrar categoria ou subcategoria<CategoryPicker categories={categories} label="Filtrar categorias" value={filter} onChange={setFilter} /></label></div>
+    <div className="transaction-filters"><label>Filtrar categoria ou subcategoria<CategoryPicker categories={categories} label="Filtrar categorias" value={filter} onChange={setFilter} filterMode /></label></div>
     <div className="cards-grid category-management">{tree.filter(node => !filter || categoryMatches(categories, filter, str(node.category, 'id'))).map(({ category, children }) => <section className="panel" key={str(category, 'id')}>
       <div className="panel-head"><div><h2><Tags size={17} /> {category.name}</h2><p>Categoria principal · {spending(category)}</p></div><div className="actions"><button onClick={() => onEdit(category)}>Editar</button><button onClick={() => onRemove(category)}>Excluir</button></div></div>
       <div className="list-row"><span>Gastos no período</span><strong>{brl(total(str(category, 'id')))}</strong></div>

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
+import { WealthRegistrationFeedback, type WealthFeedback } from "./wealth-registration-feedback";
 import Link from "next/link";
 import {
   QueryClient,
@@ -195,6 +196,8 @@ function Workspace({
   detail?: string;
 }) {
   const qc = useQueryClient();
+  const [wealthSaving, setWealthSaving] = useState(false);
+  const [wealthFeedback, setWealthFeedback] = useState<WealthFeedback | null>(null);
   const [removal, setRemoval] = useState<{
     kind: RemovalKind;
     row: Row;
@@ -378,6 +381,29 @@ function Workspace({
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["snapshot"] });
   };
+  async function saveWealth() {
+    if (wealthSaving || !snapshot) return;
+    setWealthSaving(true);
+    setWealthFeedback(null);
+    setNotice("");
+    try {
+      const alreadyRegistered = rows(snapshot, "net_worth_snapshots").some(row => str(row, "date") === today);
+      const result = await post("/api/snapshot", {});
+      const position = result.position;
+      const outsidePeriod = position.date < start || position.date > end;
+      if (outsidePeriod) changePeriod("month");
+      setWealthFeedback({
+        kind: "success",
+        message: alreadyRegistered ? "Posição patrimonial de hoje atualizada." : "Posição patrimonial de hoje registrada.",
+        detail: `${pretty(position.date)} · Patrimônio líquido: ${brl(D(position.assets).minus(position.liabilities).toFixed(2))}. ${outsidePeriod ? "O período foi ajustado para o mês atual para mostrar o registro." : "Salvar novamente hoje atualiza este registro, sem duplicar o histórico."}`,
+      });
+      await qc.invalidateQueries({ queryKey: ["snapshot"] });
+    } catch (error) {
+      setWealthFeedback({ kind: "error", message: "Não foi possível registrar a posição.", detail: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setWealthSaving(false);
+    }
+  }
   function changePeriod(value: string) {
     setPeriod(value);
     const today = localDate(),
@@ -897,15 +923,9 @@ function Workspace({
                       },
                     })
                   }
-                  onSaveWealth={async () => {
-                    try {
-                      await post("/api/snapshot", {});
-                      setNotice("Posição patrimonial de hoje registrada.");
-                      refresh();
-                    } catch (e) {
-                      setNotice(String(e));
-                    }
-                  }}
+                  onSaveWealth={saveWealth}
+                  wealthSaving={wealthSaving}
+                  wealthFeedback={wealthFeedback}
                 />
               )}
               {current[0] === "contas" && (
@@ -2010,22 +2030,15 @@ function Workspace({
                     subtitle="Posições registradas por dia, sem fabricar histórico anterior. Preços ausentes usam custo de aquisição identificado."
                     action={
                       <button
-                        onClick={async () => {
-                          try {
-                            await post("/api/snapshot", {});
-                            refresh();
-                            setNotice(
-                              "Posição patrimonial de hoje registrada.",
-                            );
-                          } catch (e) {
-                            setNotice(String(e));
-                          }
-                        }}
+                        onClick={saveWealth}
+                        disabled={wealthSaving}
+                        aria-busy={wealthSaving}
                       >
-                        Registrar posição hoje
+                        {wealthSaving ? "Registrando posição…" : "Registrar posição hoje"}
                       </button>
                     }
                   >
+                    <WealthRegistrationFeedback feedback={wealthFeedback} />
                     <WealthChart
                       data={rows(snapshot, "net_worth_snapshots")
                         .filter(

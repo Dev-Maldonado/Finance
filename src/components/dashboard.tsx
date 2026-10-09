@@ -11,6 +11,7 @@ import { cardColors } from '@/lib/card-color';
 import { FlowChart, palette } from './chart';
 import { CategoryBreakdown } from './category-breakdown';
 import { WealthChart } from './wealth-chart';
+import { WealthRegistrationFeedback, type WealthFeedback } from './wealth-registration-feedback';
 import { CDIStatus, type BenchmarkStatus } from './cdi-status';
 import { FinancialPlanning } from './financial-planning';
 import { DataConfidence } from './data-confidence';
@@ -29,9 +30,10 @@ function Delta({ current, previous, lowerBetter = false }: { current: string; pr
 function Metric({ label, value, display, detail, icon: Icon, current, previous, lowerBetter = false, tone = '' }: { label: string; value: string; display?: string; detail: string; icon: typeof Wallet; current?: string; previous?: string; lowerBetter?: boolean; tone?: string }) {
   return <article className={`dashboard-metric ${tone}`} aria-label={label}><div className="dashboard-metric-head"><span>{label}</span><Icon size={18} /></div><strong>{display ?? brl(value)}</strong><p>{detail}</p>{current !== undefined && previous !== undefined && <Delta current={current} previous={previous} lowerBetter={lowerBetter} />}</article>;
 }
-export function Dashboard({ snapshot, summary, start, end, period, today, onPay, onSaveWealth, benchmarkStatus, updatingCDI, onRefreshCDI }: {
+export function Dashboard({ snapshot, summary, start, end, period, today, onPay, onSaveWealth, wealthSaving, wealthFeedback, benchmarkStatus, updatingCDI, onRefreshCDI }: {
   snapshot: Snapshot; summary: ReturnType<typeof financialSummary>; start: string; end: string; period: string; today: string;
   onPay: (invoice: CardInvoice) => void; onSaveWealth: () => void;
+  wealthSaving: boolean; wealthFeedback: WealthFeedback | null;
   benchmarkStatus?: BenchmarkStatus; updatingCDI: boolean; onRefreshCDI: () => void;
 }) {
   const [flowMode, setFlowMode] = useState<'six-months' | 'period'>('six-months');
@@ -123,8 +125,9 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
         {model.budgets.length ? model.budgets.map(b => <div className="dashboard-budget" key={b.id}><div><strong>{b.name}</strong><span className={D(b.percent).gt(100) ? 'negative' : ''}>{pct(b.percent)}</span></div><div className="progress"><span className={D(b.percent).gt(100) ? 'over-budget' : ''} style={{ width: `${Math.min(100, Number(b.percent))}%` }} /></div><small>{brl(b.spent)} de {brl(b.limit)} · {D(b.remaining).lt(0) ? `${brl(D(b.remaining).abs().toFixed(2))} acima do limite` : `${brl(b.remaining)} restantes`}</small></div>) : <p className="dashboard-empty">Defina limites no Planejamento para acompanhar seus orçamentos aqui.</p>}
       </Block>
       <Block title="Evolução do patrimônio" subtitle="Histórico registrado, sem reconstruções fictícias" wide>
-        <div className="dashboard-wealth-top"><div><span>Variação entre registros do período</span><strong>{growth === null ? 'Histórico em formação' : brl(growth)}</strong></div><button onClick={onSaveWealth}>Registrar posição de hoje</button></div>
-        {wealth.length >= 2 ? <WealthChart data={wealth.map(r => ({ date: str(r, 'date'), assets: Number(r.assets), net: D(str(r, 'assets')).minus(str(r, 'liabilities')).toNumber() }))} /> : <p className="dashboard-empty">Registre posições em dias diferentes para visualizar o crescimento. Aportes também influenciam essa variação.</p>}
+        <div className="dashboard-wealth-top"><div><span>Variação entre registros do período</span><strong>{growth === null ? 'Histórico em formação' : brl(growth)}</strong></div><button onClick={onSaveWealth} disabled={wealthSaving} aria-busy={wealthSaving}>{wealthSaving ? 'Registrando posição…' : 'Registrar posição de hoje'}</button></div>
+        <WealthRegistrationFeedback feedback={wealthFeedback} />
+        <WealthChart data={wealth.map(r => ({ date: str(r, 'date'), assets: Number(r.assets), net: D(str(r, 'assets')).minus(str(r, 'liabilities')).toNumber() }))} />
         <div className="dashboard-allocation">{allocation.map(a => <div key={a.name}><i style={{ background: a.color }} /><span>{a.name}</span><b>{brl(a.value)}</b></div>)}</div>
       </Block>
       <Block title="Minha carteira" subtitle="Posições em BRL e fontes de avaliação" link="/investimentos">

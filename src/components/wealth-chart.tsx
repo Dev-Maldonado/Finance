@@ -8,6 +8,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { CalendarCheck } from "lucide-react";
 export function WealthChart({
   data,
 }: {
@@ -15,11 +16,20 @@ export function WealthChart({
 }) {
   if (!data.length)
     return (
-      <p className="notice" role="status">
+      <p className="notice">
         Nenhuma posição patrimonial registrada no período. Registre posições em
         dias diferentes para acompanhar a evolução.
       </p>
     );
+  if (data.length === 1) {
+    const position = data[0];
+    const brl = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+    return <section className="wealth-single-position" aria-label="Posição patrimonial registrada">
+      <div className="wealth-position-heading"><CalendarCheck size={20} /><div><strong>Posição em {position.date.split("-").reverse().join("/")}</strong><small>Seu histórico patrimonial começou.</small></div></div>
+      <dl><div><dt>Patrimônio bruto</dt><dd>{brl(position.assets)}</dd></div><div><dt>Patrimônio líquido</dt><dd>{brl(position.net)}</dd></div></dl>
+      <p>Registre novamente em outro dia para visualizar a evolução. No mesmo dia, o registro é atualizado sem duplicar o histórico.</p>
+    </section>;
+  }
   return (
     <div
       className="chart"

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { categoryTree, canonicalCategory, rootCategory, categoryLabel } from '@/lib/categories';
 import type { Row } from '@/lib/summary';
 
-export function CategoryPicker({ categories, name = 'category_id', label = 'Categoria', value, defaultValue = '', required = false, onChange }: { categories: Row[]; name?: string; label?: string; value?: string; defaultValue?: string; required?: boolean; onChange?: (value: string) => void }) {
+export function CategoryPicker({ categories, name = 'category_id', label = 'Categoria', value, defaultValue = '', required = false, filterMode = false, onChange }: { categories: Row[]; name?: string; label?: string; value?: string; defaultValue?: string; required?: boolean; filterMode?: boolean; onChange?: (value: string) => void }) {
   const [selected, setSelected] = useState(defaultValue);
   const id = value ?? selected;
   const category = canonicalCategory(categories, id);
@@ -14,12 +14,12 @@ export function CategoryPicker({ categories, name = 'category_id', label = 'Cate
   return <span className="category-picker">
     <input type="hidden" name={name} value={category ? String(category.id) : ''} />
     <select aria-label={label} required={required} value={String(root?.id ?? '')} onChange={event => change(event.target.value)}>
-      <option value="">{required ? 'Selecione a categoria principal' : 'Sem categoria'}</option>
+      <option value="">{filterMode ? 'Todas as categorias' : required ? 'Selecione a categoria principal' : 'Sem categoria'}</option>
       {root?.archived && <option value={String(root.id)}>{root.name} (arquivada)</option>}
       {tree.map(node => <option key={String(node.category.id)} value={String(node.category.id)}>{node.category.name}</option>)}
     </select>
     {!!children.length && <span className="category-child-picker"><span>↳ Subcategoria <small>(opcional)</small></span><select aria-label={`Subcategoria de ${String(root?.name ?? '')}`} value={category?.id === root?.id ? '' : String(category?.id ?? '')} onChange={event => change(event.target.value || String(root?.id ?? ''))}>
-      <option value="">Diretamente em {root?.name}</option>
+      <option value="">{filterMode ? 'Categoria e todas as subcategorias' : `Diretamente em ${root?.name}`}</option>
       {children.map(child => <option key={String(child.id)} value={String(child.id)}>{child.name}</option>)}
     </select></span>}
     {category && category.id !== root?.id && <small className="category-selected-path">{categoryLabel(categories, String(category.id))}</small>}

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       { onConflict: "user_id,date" },
     );
     if (error) throw new Error(error.message);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, position: { date: today, assets: summary.assets, liabilities: summary.liability } });
   } catch (e) {
     return fail(e);
   }
