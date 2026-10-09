@@ -170,3 +170,10 @@
 @media (max-width:1023px), (hover:none) and (pointer:coarse) {
  html[data-keyboard-open=true] .dialog { animation:none; }
 }
+/* Cash projections need room for the complete amount, including sign and cents. */
+@media (max-width:1023px), (hover:none) and (pointer:coarse) {
+ .forecast-horizons { grid-template-columns:minmax(0,1fr);gap:10px; }
+ .forecast-horizons > button { display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:15px 16px;min-width:0; }
+ .forecast-horizons > button > span,.forecast-horizons > button > small { font-size:12px; }
+ .forecast-horizons > button > strong { font-size:21px;line-height:1.4;white-space:nowrap;overflow-wrap:normal;word-break:normal;max-width:100%;overflow-x:auto; }
+}

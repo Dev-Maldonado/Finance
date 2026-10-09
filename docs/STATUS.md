@@ -234,3 +234,9 @@ Validação após o ajuste de teclado: CI `37940608185` aprovado integralmente p
 
 
 Fechamento mobile/PWA: `e44a49f`, CI `37941446277` aprovado e produção READY. Navegação/toque, instalação orientada, cache restrito, fallback offline, atualização protegida e teclado validados; metadados iOS explícitos confirmados em produção. Não há bloqueio técnico conhecido. Conferência da instalação/teclado em Android e iPhone físicos continua fora da validação em navegador.
+
+## Correção dos valores das projeções no mobile — 09/10/2026
+
+Os cards de 30/60/90 dias mantinham três colunas no celular e permitiam quebrar valores monetários em qualquer caractere. `mobile.css` agora utiliza cards de largura inteira nessa seção; valores permanecem em uma linha, inclusive sinal e centavos, com rolagem apenas para números excepcionalmente extensos. Desktop e cálculos preservados.
+
+Validação local: valores da imagem (R$ 520,00, -R$ 164,94 e -R$ 690,76) conferidos em 320, 390, 430, 768 e 1440 px, sem quebra ou overflow da página; três colunas desktop e seleção de horizonte preservadas. 137 unitários, tipos/build, 20 verificações integradas e dois testes de planejamento aprovados. Usuários de teste temporários removidos; nenhum dado real alterado. Publicação deste ajuste em andamento.
