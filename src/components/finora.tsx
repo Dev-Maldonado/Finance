@@ -38,6 +38,7 @@ import {
   MoreHorizontal,
   ChevronDown,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { Dashboard } from "./dashboard";
 import { CDIStatus, type BenchmarkStatus } from "./cdi-status";
@@ -612,6 +613,11 @@ function Workspace({
                         )[str(t, "type")]
                       }
                     </small>
+                    {t.type === "income" && t.status === "pending" && str(t, "date") < today && (
+                      <small className="pending-receipt-warning" title="A data prevista passou. Edite o lançamento para confirmar o recebimento ou corrigir a data.">
+                        <AlertTriangle size={13} aria-hidden="true" /> Recebimento em atraso
+                      </small>
+                    )}
                   </span>
                 </td>
                 <td>

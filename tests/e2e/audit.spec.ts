@@ -114,3 +114,31 @@ test('failed recurrence generation preserves readable data; excluded transaction
     expect(saved.account_balances.find((a: { id: string }) => a.id === bank).balance).toBe('450.00');
   } finally { expect((await admin.auth.admin.deleteUser(id)).error).toBeNull(); }
 });
+
+
+test('past pending income shows a reminder; confirming receipt clears it without automatic payment', async ({ page }) => {
+  const id = await user(page);
+  try {
+    const bank = await resource(page, 'financial_accounts', { name: 'Conta de recebimentos', initial_balance: '100' });
+    const previous = new Date(today + 'T12:00:00Z'); previous.setUTCDate(previous.getUTCDate() - 1);
+    const yesterday = previous.toISOString().slice(0, 10);
+    for (const [description, date, status, type] of [
+      ['Receita atrasada', yesterday, 'pending', 'income'],
+      ['Receita de hoje', today, 'pending', 'income'],
+      ['Receita recebida', yesterday, 'confirmed', 'income'],
+      ['Despesa prevista', yesterday, 'pending', 'expense'],
+    ]) await op(page, 'transaction', { account_id: bank, description, amount: '50', type, status, date });
+    await page.goto('/transacoes'); await page.getByRole('button', { name: '7 dias', exact: true }).click();
+    const row = page.getByRole('row').filter({ hasText: 'Receita atrasada' });
+    await expect(row.getByText('Recebimento em atraso', { exact: true })).toBeVisible();
+    await expect(page.getByText('Recebimento em atraso', { exact: true })).toHaveCount(1);
+    const snapshot = await (await page.request.get('/api/snapshot')).json();
+    expect(snapshot.transactions.find((t: { description: string }) => t.description === 'Receita atrasada').status).toBe('pending');
+    await row.getByRole('button', { name: 'Editar', exact: true }).click();
+    await page.getByRole('dialog').getByLabel('Status', { exact: true }).selectOption('confirmed');
+    await page.getByRole('dialog').getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(row).toContainText('Confirmado');
+    await expect(page.getByText('Recebimento em atraso', { exact: true })).toHaveCount(0);
+  } finally { expect((await admin.auth.admin.deleteUser(id)).error).toBeNull(); }
+});

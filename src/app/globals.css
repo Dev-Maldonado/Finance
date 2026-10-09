@@ -2054,3 +2054,6 @@ td small { font-size: 10px !important; color: #716981 !important; line-height: 1
   .purchase-history td.transaction-actions { position: static; box-shadow: none; background: transparent; }
   .purchase-history td.transaction-actions .actions { justify-content: flex-start; }
 }
+
+.pending-receipt-warning { display: inline-flex !important; align-items: center; gap: 5px; margin-top: 5px; color: #885b15 !important; font-weight: 600; }
+.pending-receipt-warning svg { flex-shrink: 0; }
