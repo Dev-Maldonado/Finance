@@ -146,3 +146,6 @@ Limitações preservadas: sem conexão bancária/Open Finance; resgates de juros
 ### Portabilidade do CI
 
 O primeiro job remoto falhou no startup local porque o runner ubuntu-24.04 não possui ripgrep. As três checagens de resposta PostgreSQL agora usam `grep -Fxq 1`, disponível no runner, mantendo as mesmas verificações de roles, schema Auth e migrations. Logs foram recuperados pela URL assinada sem propagar o header de autenticação ao storage. Banco local reiniciado sem reset ou alteração financeira; nova execução remota acompanhará o commit desta correção.
+
+
+CI remoto 37874119316 passou por instalação, unitários, criptografia, startup, backup/restauro, upgrade legado, tipos/build e 49 verificações integradas. Navegador 15/16: o teste de limpar a instituição da conta consultava o snapshot antes de o POST de salvar concluir. Ele agora aguarda o fechamento real do diálogo antes de conferir a persistência; a asserção do valor vazio foi mantida. Nova rodada remota acompanha essa correção de sincronização do teste.

@@ -161,6 +161,7 @@ test("monthly spending agrees across pages, fields clear, goals and recurrence m
       .click();
     await page.getByLabel("Instituição", { exact: true }).fill("");
     await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     expect(
       (await snapshot(page)).financial_accounts.find(
         (a: { id: string }) => a.id === account,
