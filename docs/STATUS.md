@@ -2,7 +2,7 @@
 
 ## Entrega atual
 
-Última entrega publicada na `main` de `Dev-Maldonado/Finance`: implementação ampla iniciada em `1b8341e` e correções até `29792c4`. Produção https://finance-two-lake.vercel.app verificada no deploy `dpl_8Ni8f9QnAgskih6oFLKdNZQifsPf` (READY). Supabase com 23 migrations; seis incrementais aplicadas em uma transação. Histórico de dez tabelas financeiras comparado antes/depois: idêntico. Todos os cenários financeiros/browser locais passaram. CI remoto iniciado e ainda em execução; ativação dos jobs de mercado/backups e proteção de branch exige administração GitHub, bloqueada por 403 nesta integração. Consulte a seção final deste arquivo e OPERATIONS.md. As seções anteriores registram o histórico da implementação e suas validações na época.
+Entrega financeira publicada e validada na `main` de `Dev-Maldonado/Finance`, com implementação iniciada em `1b8341e` e código/testes validados até `2a5c529`. Produção https://finance-two-lake.vercel.app: deploy `dpl_AuBbaZCtVNDaMvmZhm7t5MLCNcnA` READY. Supabase possui 23 migrations; seis incrementais aplicadas em uma transação, com histórico financeiro idêntico nas dez tabelas comparadas. CI completo passou em https://github.com/Dev-Maldonado/Finance/actions/runs/37874562805: 130 unitários, tipos/build, 49 verificações integradas, 16 testes de navegador, proteção/criptografia e ensaio de backup/upgrade legado. Ativação de mercado/backups e proteção de branch exige administração GitHub, bloqueada por HTTP 403 nesta integração. Consulte a seção final e OPERATIONS.md. As seções anteriores registram o histórico e as validações na época.
 
 ## Cobertura
 
@@ -149,3 +149,10 @@ O primeiro job remoto falhou no startup local porque o runner ubuntu-24.04 não 
 
 
 CI remoto 37874119316 passou por instalação, unitários, criptografia, startup, backup/restauro, upgrade legado, tipos/build e 49 verificações integradas. Navegador 15/16: o teste de limpar a instituição da conta consultava o snapshot antes de o POST de salvar concluir. Ele agora aguarda o fechamento real do diálogo antes de conferir a persistência; a asserção do valor vazio foi mantida. Nova rodada remota acompanha essa correção de sincronização do teste.
+
+
+## Fechamento da validação remota
+
+CI 37874562805 concluiu com **success** para o commit `2a5c529`, executando todas as etapas: instalação limpa, 130 unitários, 15 verificações de proteção/criptografia, startup PostgreSQL/Auth, backup/restauração, upgrade desde baseline 17, TypeScript/build, 21 verificações de integração, 13 de integridade, 7 de importação, 8 de agendamentos e 16 cenários de navegador. Falhas anteriores de portabilidade e sincronização dos testes foram diagnosticadas e corrigidas, sem remover asserções. Deploy de produção correspondente: dpl_AuBbaZCtVNDaMvmZhm7t5MLCNcnA READY.
+
+Este último commit atualiza apenas a documentação dos resultados; `[skip ci]` evita repetir os testes já aprovados para uma anotação operacional. Não altera aplicação, migrations ou testes. Workflows de mercado/CVM e backups continuam publicados e inativos até a configuração administrativa descrita em OPERATIONS.md. Cron Vercel de CDI/Selic e recorrências foi verificado com autorização; histórico financeiro preservado. Checkout limpo, sem credenciais versionadas.
