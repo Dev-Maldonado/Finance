@@ -29,8 +29,9 @@ test('manual fund purchases and monthly prices use exact capital, editable histo
   await fund.getByText('Atualizações mensais · 2',{exact:true}).click();await fund.getByRole('button',{name:`Corrigir atualização de Fundo XPTO em ${second}`}).click();await dialog.getByLabel('Valor atual por unidade ou cota (R$)').fill('90');await save(page);await expect(page.getByRole('article',{name:'Lucro / prejuízo',exact:true})).toContainText('-R$ 200,00');
   const snapshot=await(await page.request.get('/api/snapshot')).json();expect(snapshot.manual_investment_purchases).toHaveLength(3);expect(snapshot.manual_investment_purchases.filter((r:{status:string})=>r.status==='confirmed')).toHaveLength(2);expect(snapshot.manual_investment_updates).toHaveLength(2);expect(snapshot.transactions).toHaveLength(0);expect(snapshot.financial_accounts).toHaveLength(0);
   expect(quoteRequests).toBe(0);
-  await page.setViewportSize({width:820,height:1180});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:test.info().outputPath('manual-investments-tablet.png'),fullPage:true});
-  await page.setViewportSize({width:390,height:844});await expect(fund.getByRole('button',{name:'Atualizar valor'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  // ResizeObserver updates the chart after resizing; measure the settled layout.
+  await page.setViewportSize({width:820,height:1180});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:test.info().outputPath('manual-investments-tablet.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});await expect(fund.getByRole('button',{name:'Atualizar valor'})).toBeVisible();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:test.info().outputPath('manual-investments-mobile.png'),fullPage:true});
  }finally{expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();}
 });
