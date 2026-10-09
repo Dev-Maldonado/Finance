@@ -141,3 +141,8 @@ Produção: página inicial 200; snapshot sem sessão 401; cron sem segredo 401.
 CI remoto: https://github.com/Dev-Maldonado/Finance/actions/runs/37873777324 iniciou automaticamente no push; instalação, unitários e criptografia já passaram, restante ainda em execução no momento deste registro. Workflows de mercado/CVM e backup estão publicados, mas gated e inativos até configurar environments/secrets/variáveis conforme OPERATIONS.md. Administração dessa configuração e proteção de branch retorna 403 pela integração do ambiente, mesmo com credencial inválida substituída pela autenticação da plataforma; novos tokens fornecidos pelo usuário não resolvem isso. Não registrar segredos.
 
 Limitações preservadas: sem conexão bancária/Open Finance; resgates de juros sem alocação por lote deixam a estimativa incompleta identificada; contratos/tributos específicos, câmbio e recuperação completa de produção precisam de validação própria. Recomendar rotação dos segredos realmente compartilhados no chat. Próxima ação operacional: acompanhar o CI, habilitar mercado/backups no painel com acesso administrativo, proteger main e realizar ensaio de recuperação em projeto hospedado separado.
+
+
+### Portabilidade do CI
+
+O primeiro job remoto falhou no startup local porque o runner ubuntu-24.04 não possui ripgrep. As três checagens de resposta PostgreSQL agora usam `grep -Fxq 1`, disponível no runner, mantendo as mesmas verificações de roles, schema Auth e migrations. Logs foram recuperados pela URL assinada sem propagar o header de autenticação ao storage. Banco local reiniciado sem reset ou alteração financeira; nova execução remota acompanhará o commit desta correção.
