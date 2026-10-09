@@ -30,6 +30,7 @@ test('mobile transaction form saves data, shows all fields and keeps chart value
  } finally {expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();}
 });
 test('PWA manifest, installation guidance and offline fallback never cache user pages',async({page,context,request})=>{
+ const landing=await(await request.get('/')).text();expect(landing).toContain('name="apple-mobile-web-app-capable" content="yes"');expect(landing).toContain('name="mobile-web-app-capable" content="yes"');
  await page.setViewportSize({width:390,height:844});const manifest=await (await request.get('/manifest.webmanifest')).json();expect(manifest.display).toBe('standalone');expect(manifest.scope).toBe('/');expect(manifest.icons).toHaveLength(3);for(const icon of manifest.icons){const response=await request.get(icon.src);expect(response.ok()).toBe(true);expect(response.headers()['content-type']).toContain('image/png');}
  const id=await fixture(page);
  try {

@@ -4,6 +4,8 @@ import "./mobile.css";
 import { PwaProvider } from "@/components/pwa";
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
+  // Next emits the standard mobile capability tag; keep the Apple tag for older iOS versions.
+  other: { "apple-mobile-web-app-capable": "yes" },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "FINORA", statusBarStyle: "default", startupImage: [
     { url: "/icons/splash-375-667-2-portrait.png", media: "(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" },
