@@ -78,6 +78,8 @@ try {
     const dependency = await db.rpc("revise_investment", { operation_id: buy.id, replacement: {}, cancel: true });assert.ok(dependency.error);
     assert.equal((await db.rpc("revise_investment", { operation_id: sell.id, replacement: {}, cancel: true })).error, null);
     assert.equal((await db.rpc("revise_investment", { operation_id: buy.id, replacement: {}, cancel: true })).error, null);assert.equal(await balance(db, accountId), before);
+    const history = await db.rpc("read_financial_snapshot");assert.equal(history.error, null);
+    for (const id of [buy.id, sell.id]) assert.equal(history.data.investment_operations.find((operation: {id:string;status:string}) => operation.id === id)?.status, "cancelled");
   });
   await check("Day 31 invoices clamp each month; future payment does not free debt", async () => {
     const card = await db.from("credit_cards").insert({ name: "Month ends", account_id: accountId, closing_day: 15, due_day: 31, credit_limit: "1000", last_four: "1234" }).select("id").single();assert.equal(card.error, null);
