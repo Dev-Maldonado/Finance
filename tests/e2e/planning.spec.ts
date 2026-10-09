@@ -31,7 +31,9 @@ test('financial planning distinguishes future cash, safe spending and essential 
     await page.goto('/');
     await page.getByLabel('E-mail').fill(email);
     await page.getByLabel('Senha', { exact: true }).fill(password);
+    const initialSnapshot = page.waitForResponse(response => new URL(response.url()).pathname === '/api/snapshot' && response.ok());
     await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
+    await initialSnapshot;
     await expect(page.getByText('Saldo disponível', { exact: true })).toBeVisible();
     const op = async (action: string, payload: Record<string, unknown>) => {
       const response = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action, payload, request_id: randomUUID() } });
