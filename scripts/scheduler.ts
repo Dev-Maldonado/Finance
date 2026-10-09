@@ -1,11 +1,11 @@
-import { syncMarket } from "../src/integrations/sync";
+import { syncBenchmarks } from "../src/integrations/benchmark-sync";
 import { syncRecurring } from "../src/integrations/recurring-sync";
 let running = false;
 async function run() {
   if (running) return;
   running = true;
   try {
-    const [results, recurring] = await Promise.all([syncMarket(), syncRecurring()]);
+    const [results, recurring] = await Promise.all([syncBenchmarks(), syncRecurring()]);
     console.log(JSON.stringify({ time: new Date().toISOString(), results, recurring }));
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Sync failed");

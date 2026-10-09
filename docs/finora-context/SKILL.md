@@ -13,6 +13,12 @@ Use o checkout existente /workspace/Finance. Cada tarefa cloud já é isolada; n
 
 Mantenha docs/STATUS.md atualizado com etapa atual, trabalho concluído, evidências de validação, bloqueios e próxima ação. Não registre segredos. Retome pelo status e pelos arquivos, sem reler todo o prompt. Comunique resultados e limitações de forma concisa. Economia de tokens não autoriza omitir funcionalidades ou testes exigidos.
 
+## Requisito atual de investimentos — 09/10/2026
+
+O pedido atual substitui integralmente a seção 17 original e a atualização automática anterior: apenas Fundos e Criptomoedas, cadastro manual de nome/tipo/quantidade/valor total/data, compras adicionais separadas, preço médio, atualização mensal manual de unidade/cota, patrimônio/lucro/retorno e gráfico mensal simples. Nenhuma API, corretora, provento/evento/importação de investimentos na interface. Aportes não são lucro; sem preço informado não inventar retorno. As outras áreas permanecem preservadas.
+
+O usuário respondeu explicitamente **“apagar registros existentes, limpando o código antigo”** à escolha de preservar ou arquivar a carteira anterior. A migration 24 limpa os investimentos existentes uma única vez, preservando contas, valores/statuses de transações e demais módulos. Reexecução não apaga novos registros manuais. Detalhes em [MANUAL-INVESTMENTS.md](../MANUAL-INVESTMENTS.md). Referências antigas abaixo permanecem apenas como histórico e para os módulos não substituídos.
+
 ## Objetivo e prioridades
 
 Aplicação financeira pessoal funcional, persistente e segura: contas, transações, cartões, categorias, caixinhas CDI, investimentos, rendimentos, planejamento, relatórios e patrimônio. Prioridade: precisão financeira; fontes confiáveis e automação; CDI/caixinhas; carteira; dashboard; segurança/persistência; UX; baixo custo. Desenvolver por etapas com código validado e preservar funcionalidades anteriores.
@@ -35,9 +41,9 @@ Preferir Next.js App Router, React, TypeScript, Tailwind, shadcn/ui, Lucide, Rec
 
 ## Integrações e segurança
 
-BCB oficial para CDI; CVM para cadastro/informes de fundos; brapi para mercado conforme documentação, plano, cobertura e licença vigentes. Endpoints do prompt precisam ser verificados antes do uso. Provedores independentes: CDIRateProvider, MarketDataProvider, BCB/Brapi/CVM/manual. Cache persistente, sincronização idempotente, correções versionadas, timeout e retry limitado com backoff. Jobs backend independentes do navegador. Alternativa manual quando necessário; declarar pendências sem afirmar integração funcionando.
+BCB oficial para CDI/Selic. Investimentos usam somente valores manuais; integrações de mercado/CVM foram retiradas. Endpoints do prompt precisam ser verificados antes do uso. Provedores independentes: CDIRateProvider, MarketDataProvider, BCB/Brapi/CVM/manual. Cache persistente, sincronização idempotente, correções versionadas, timeout e retry limitado com backoff. Jobs backend independentes do navegador. Alternativa manual quando necessário; declarar pendências sem afirmar integração funcionando.
 
-CDI não concede acesso a saldos bancários. Open Finance exige consentimento, escopo e revogação. Tokens somente no servidor; RLS e validação backend isolam usuários. Não armazenar credenciais bancárias informais, PAN completo ou CVV. Variáveis previstas: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, BRAPI_API_TOKEN, CRON_SECRET; nunca registrar valores secretos.
+CDI não concede acesso a saldos bancários. Open Finance exige consentimento, escopo e revogação. Tokens somente no servidor; RLS e validação backend isolam usuários. Não armazenar credenciais bancárias informais, PAN completo ou CVV. Variáveis previstas: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET; nunca registrar valores secretos.
 
 ## UX e abrangência
 

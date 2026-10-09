@@ -4,7 +4,7 @@ Os workflows e scripts deste documento são procedimentos versionados. Criá-los
 
 ## Validação no GitHub
 
-`.github/workflows/ci.yml` executa em pull requests, pushes na `main` e acionamento manual. Usa Node 24, `npm ci`, testes unitários, proteções e criptografia dos scripts de backup, ensaio de backup/restauro descartável, PostgreSQL 17/Supabase Auth locais em Docker, typecheck, build, integração, integridade financeira, importações classificadas, agendamentos e Chromium Playwright. O banco e seus usuários são descartados ao final; o workflow não recebe secrets de produção. O ambiente local é gerado por `db:start`, usando as migrations versionadas.
+`.github/workflows/ci.yml` executa em pull requests, pushes na `main` e acionamento manual. Usa Node 24, `npm ci`, testes unitários, proteções e criptografia dos scripts de backup, ensaio de backup/restauro descartável, PostgreSQL 17/Supabase Auth locais em Docker, typecheck, build, integração, integridade financeira, importações classificadas, agendamentos, investimentos manuais e Chromium Playwright. O banco e seus usuários são descartados ao final; o workflow não recebe secrets de produção. O ambiente local é gerado por `db:start`, usando as migrations versionadas.
 
 `npm run test:imports` verifica com usuários temporários locais a preservação de linhas bancárias idênticas, idempotência, transferências e conciliação sem duplicar caixa, rollback completo, concorrência, pagamento de fatura, aportes/resgates e isolamento entre usuários. Os testes unitários também verificam a prévia líquida de investimentos, paginação, datas e centavos, fórmulas de planilha e a reimportação de CSV exportado. Nenhum desses comandos aceita banco hospedado.
 
@@ -14,49 +14,19 @@ O teste de dashboard atualmente consulta o BCB real, exclusivamente para o banco
 
 Em falhas de navegador, `test-results` fica disponível por três dias. Os diagnósticos podem conter a tela e sessão dos usuários temporários locais. Restrinja acesso ao repositório e aos artefatos; o workflow não publica perfis `.env`, dumps, logs de banco ou credenciais.
 
-## Cotações automáticas da carteira
+## Investimentos manuais
 
-O cron Vercel existente em `/api/benchmarks` também consulta cotações de ações, FIIs, ETFs, BDRs e FIAGROs registrados, diariamente às 12:00 UTC / 09:00 de Brasília. Enquanto o usuário está conectado, o frontend verifica `/api/quotes` a cada cinco minutos; a mesma rotina alimenta dashboard e patrimônio. O botão “Verificar cotações” utiliza o mesmo cache de cinco minutos, sem contornar os limites da API. Apenas preços de mercado são atualizados; não cria compras, vendas, receitas ou pagamentos.
+A carteira usa somente compras e atualizações mensais informadas pelo usuário. Não há APIs de mercado, CVM, corretoras, cotações automáticas ou workflow de mercado. O cadastro aceita Fundo de investimento e Criptomoeda, quantidade, valor total pago e data; compras adicionais preservam seu histórico separado. Veja [regras e migração](MANUAL-INVESTMENTS.md).
 
-Sem `BRAPI_API_TOKEN`, a rotina usa o feed público de gráficos do Yahoo Finance, com símbolos B3 `.SA`. Com token, usa cotações da brapi, inclusive para FIIs (não o preço dos indicadores mensais). Ambas as fontes podem ter atraso ou indisponibilidade; o feed público não oferece garantia de serviço ou cobertura permanente. Fonte e data de referência ficam na carteira. Fim de semana/mercado fechado preservam a última publicação, sem fabricar preços.
+`npm run test:manual` verifica idempotência, centavos, correções, isolamento e ausência de movimentação automática do caixa. `scripts/manual-migration-test.sh` ensaia, em banco descartável, a limpeza solicitada dos investimentos antigos, preservação do caixa/transações e reexecução segura depois de cadastrar compras novas. Não executar testes contra produção.
 
-O endpoint exige sessão e mesma origem, busca os ativos do usuário via RLS e ignora listas de tickers enviadas pelo cliente. A chave de serviço permanece no servidor. Preços/identidade/moeda/datas são validados antes da persistência; falhas não apagam preços existentes. Cache de sucesso e de erro evita solicitações repetidas, e prazo global/concurrency limitam a execução. Sem resposta válida, a tela identifica o ativo e orienta conferir o ticker/acesso, mantendo a avaliação anterior ou pelo custo claramente identificada.
+## CDI/Selic e recorrências
 
-Esta atualização de preços via Vercel independe do workflow abaixo. Cadastro de fundos, históricos e proventos continuam dependentes do workflow e suas configurações.
+O cron diário da Vercel continua em `/api/benchmarks`, às 12:00 UTC / 09:00 de Brasília. `scripts/sync.ts` e `scripts/scheduler.ts` atualizam exclusivamente indexadores e recorrências. Investimentos não participam dessas rotinas.
 
-## Atualização diária de mercado e fundos
+Configure `CRON_SECRET` e `SUPABASE_SERVICE_ROLE_KEY` privados em Production para `/api/benchmarks`, seguido de novo deploy. A chave cron é independente da chave Supabase e enviada exclusivamente em `Authorization: Bearer`; nunca em URL ou variável `NEXT_PUBLIC_*`. Ausência de autorização deve retornar 401. Confira a referência oficial e o histórico de execuções no painel Vercel; um acionamento manual não comprova execução futura.
 
-`.github/workflows/market-sync.yml` roda às **00:30 UTC / 21:30 em Brasília**, diariamente, e também permite execução manual. O cron da Vercel para CDI/Selic continua definido em `vercel.json`; o workflow executa `scripts/sync.ts`, incluindo os provedores selecionados por esse script, sem carregar `.env.local`. O runner não precisa permanecer ligado entre execuções.
-
-Para habilitar a tarefa após revisão da configuração:
-
-1. Crie o GitHub Environment **production-sync**, limitado à branch `main`.
-2. Cadastre nesse environment os secrets da tabela abaixo, correspondentes ao mesmo projeto hospedado. Não os envie por issue, chat, commit ou log.
-3. Configure notificações de falha das Actions para o responsável.
-4. Ative a repository variable **FINORA_SYNC_ENABLED=true** e faça uma execução manual. Confira status, registros e referência de cada provedor no banco antes de confiar na rotina. Sem a variável, a tarefa é pulada e nenhum acesso de produção ocorre.
-
-| Secret | Finalidade |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Origin HTTPS do projeto Supabase hospedado |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública correspondente ao projeto |
-| `SUPABASE_SERVICE_ROLE_KEY` | Credencial privada de backend para persistir dados externos |
-| `BRAPI_API_TOKEN` | Opcional; cobertura, histórico e limites dependem do plano contratado |
-
-Secrets só entram nas etapas que precisam deles, após instalar dependências. O workflow rejeita URL de banco local, URL parcial e campos indevidos na URL. O environment pode exigir aprovação humana; nesse caso cada execução agendada ficará aguardando aprovação. Para automação sem intervenção diária, decida conscientemente a política do environment e proteja a `main` com CI.
-
-O job não recebe `CRON_SECRET`: ele chama o script diretamente. Na Vercel, configure `CRON_SECRET` e `SUPABASE_SERVICE_ROLE_KEY` privados em Production para `/api/benchmarks`, seguido de novo deploy. A chave cron deve ser aleatória, independente da chave Supabase e enviada exclusivamente em `Authorization: Bearer`; não aparece em URL ou variável `NEXT_PUBLIC_*`. Verifique ausência de autorização retornando 401, execução autorizada, referência da taxa e o histórico real de Cron Jobs. Um acionamento manual bem-sucedido não comprova a execução futura do agendador.
-
-A consulta de indexadores tem orçamento global de 48 segundos, além do limite de autenticação de 7 segundos na solicitação de usuário. Falhas preservam taxas previamente armazenadas; cache não representa uma nova publicação. Mercado mantém cache por ticker/operação, e CVM por mês e assinatura dos fundos solicitados: cadastrar um ativo novo não deve ser bloqueado por uma sincronização global anterior. `/api/sync` e `/api/benchmarks` devolvem HTTP 503 quando a execução contém erro, inclusive sucesso parcial; examine os resultados individuais para identificar quais fontes precisam repetir a consulta.
-
-Previews da Vercel precisam de URL/chave pública explícitas de um projeto separado. `NEXT_PUBLIC_FINORA_DEPLOYMENT_ENV` recebe o ambiente Vercel no build para aplicar essa restrição; preview sem configuração ou apontando para o projeto padrão de produção é bloqueado. O perfil de produção atual pode continuar usando sua configuração pública padrão. Confira também as variáveis privadas de preview: não reutilize a service role de produção.
-
-Falhas parciais de provedores devem fazer `scripts/sync.ts` encerrar com erro para gerar notificação da Action, preservando sucessos independentes e dados anteriores. O código de saída e as datas dos provedores são mais úteis que apenas contar registros. GitHub pode atrasar/pular agendas em períodos de carga e desabilitar workflows agendados em repositórios públicos inativos; confira a última execução. A concorrência do workflow impede sobreposição entre suas próprias execuções; não impede um segundo runner externo ou uma chamada da API.
-
-### Custo e limites
-
-GitHub Actions consome minutos e armazenamento conforme visibilidade, plano e franquia da conta; runners de repositórios privados podem gerar cobrança. `npm ci`, Chromium e Docker tornam CI mais caro que testes unitários. O job de dados tem limite de 30 minutos, pode baixar arquivos CVM grandes e consome tráfego/gravações no Supabase. Confira tamanho, duração e cotas antes de expandir a carga. Um arquivo CVM maior ou indisponível requer investigação; aumentar timeout não corrige inconsistência de dados.
-
-BCB/CVM têm publicações e dias sem dados. brapi pode exigir plano/token para ativos e histórico. Verifique cobertura/licença e evite ampliar frequência sem necessidade. Confirme custos vigentes nos painéis dos fornecedores; este documento não assume franquia gratuita permanente. Não contrate recursos pagos automaticamente para contornar um erro.
+A consulta de indexadores tem orçamento global de 48 segundos, além do limite de autenticação de 7 segundos na solicitação do usuário. Falhas preservam taxas armazenadas e devolvem HTTP 503 quando apropriado. BCB tem dias sem publicação; taxas não são extrapoladas. Previews precisam de projeto de teste separado. Não contrate serviços pagos automaticamente para contornar falhas.
 
 ## Backup privado
 

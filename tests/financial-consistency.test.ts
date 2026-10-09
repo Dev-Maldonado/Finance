@@ -41,7 +41,7 @@ test('each fractional purchase and sale uses the same rounded consideration post
   expect(position([first,{...second,status:'cancelled'}])).toMatchObject({cost:'10.01',quantity:'1.00000000'});
 });
 
-const portfolio = (): Snapshot => ({user:{id:'u',email:''}, investment_assets:[{id:'a',ticker:'ABC',currency:'BRL',asset_class:'stock'}],investment_opening_positions:[{id:'opening',asset_id:'a',date:'2026-09-30',quantity:'10',cost:'1000'}],asset_price_history:[{id:'q0',ticker:'ABC',date:'2026-09-30',price:'100',currency:'BRL'},{id:'q1',ticker:'ABC',date:'2026-10-01',price:'100.05',currency:'BRL'},{id:'q2',ticker:'ABC',date:'2026-10-02',price:'100.100025',currency:'BRL'}],benchmark_rates:[{series:'12',date:'2026-10-01',value:'0.05',validated:true},{series:'12',date:'2026-10-02',value:'0.05',validated:true}]});
+const portfolio = (): Snapshot => ({user:{id:'u',email:''}, investment_assets:[{id:'a',ticker:'ABC',currency:'BRL',asset_class:'stock'}],manual_investment_purchases:[{id:'opening',asset_id:'a',date:'2026-09-30',quantity:'10',amount:'1000'}],manual_investment_updates:[{id:'q0',asset_id:'a',date:'2026-09-30',price:'100',currency:'BRL'},{id:'q1',asset_id:'a',date:'2026-10-01',price:'100.05',currency:'BRL'},{id:'q2',asset_id:'a',date:'2026-10-02',price:'100.100025',currency:'BRL'}],benchmark_rates:[{series:'12',date:'2026-10-01',value:'0.05',validated:true},{series:'12',date:'2026-10-02',value:'0.05',validated:true}]});
 test('portfolio and CDI both include the first selected day against its prior close', () => {
   expect(portfolioPerformance(portfolio(),'2026-10-01','2026-10-02')).toMatchObject({personal:'0.100025',cdi:'0.100025',relative:'100.00',complete:true});
   expect(portfolioPerformance(portfolio(),'2026-10-01','2026-10-01')).toMatchObject({personal:'0.050000',cdi:'0.050000',relative:'100.00'});
@@ -51,11 +51,11 @@ test('invalid benchmark rates suppress incomplete relative performance instead o
   snapshot.benchmark_rates=[{series:'12',date:'2026-10-01',value:'0.05',validated:true},{series:'12',date:'2026-10-02',value:'1',validated:false}];
   expect(portfolioPerformance(snapshot,'2026-10-01','2026-10-02')).toMatchObject({cdi:null,relative:null,benchmarkComplete:false});
 });
-test('a start-date distribution is included and a cancelled purchase does not create holdings or contributions', () => {
+test('a cancelled manual purchase does not create holdings or contributions', () => {
   const snapshot=portfolio();
   snapshot.investment_income=[{id:'income',asset_id:'a',date:'2026-10-01',amount:'10',status:'received'}];
-  snapshot.investment_operations=[{id:'cancelled',asset_id:'a',type:'buy',date:'2026-10-01',quantity:'100',price:'100',fees:'0',status:'cancelled'}];
-  expect(portfolioPerformance(snapshot,'2026-10-01','2026-10-01').personal).toBe('1.050000');
+  (snapshot.manual_investment_purchases as any[]).push({id:'cancelled',asset_id:'a',date:'2026-10-01',quantity:'100',amount:'10000',status:'cancelled'});
+  expect(portfolioPerformance(snapshot,'2026-10-01','2026-10-01').personal).toBe('0.050000');
 });
 
 test('a savings chart preserves each historical indexer after future contract changes', () => {

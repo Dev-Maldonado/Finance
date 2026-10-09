@@ -261,148 +261,21 @@ test("monthly spending agrees across pages, fields clear, goals and recurrence m
   }
 });
 
-test("investment corrections and income reversal update cash; import preview shows unit price and full net amount", async ({
-  page,
-}) => {
+test("manual investments never move existing cash and old entry endpoints are retired", async ({ page }) => {
   const user = await temporaryUser();
   try {
     await login(page, user.email, user.password);
-    const account = await resource(page, "financial_accounts", {
-      name: "Conta investimentos",
-      kind: "bank",
-      initial_balance: "5000",
-    });
-    const asset = await resource(page, "investment_assets", {
-      ticker: "TEST3",
-      name: "Ativo de teste local",
-      asset_class: "stock",
-      currency: "BRL",
-    });
-    await op(page, "investment", {
-      asset_id: asset,
-      account_id: account,
-      type: "buy",
-      quantity: "10",
-      price: "100",
-      fees: "5",
-      date,
-    });
-    await page.goto("/investimentos");
-    const history = page
-      .locator(".panel")
-      .filter({
-        has: page.getByRole("heading", {
-          name: "Extrato de operações",
-          exact: true,
-        }),
-      });
-    await expect(history).toContainText("R$ 1.005,00");
-    await history.getByRole("button", { name: "Editar", exact: true }).click();
-    await page.getByLabel("Quantidade / cotas").fill("5");
-    await page.getByRole("button", { name: "Salvar", exact: true }).click();
-    await expect(history).toContainText("R$ 505,00");
-    expect(
-      (await snapshot(page)).account_balances.find(
-        (a: { id: string }) => a.id === account,
-      ).balance,
-    ).toBe("4495.00");
-    const income = await resource(page, "investment_income", {
-      asset_id: asset,
-      description: "Provento revisão",
-      amount: "10",
-      date,
-      type: "dividend",
-    });
-    await op(page, "confirm_income", {
-      income_id: income,
-      account_id: account,
-      date,
-    });
-    await page.reload();
-    const incomeRow = page
-      .getByRole("row")
-      .filter({ has: page.getByText("Provento revisão", { exact: true }) });
-    await incomeRow
-      .getByRole("button", { name: "Estornar", exact: true })
-      .click();
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Estornar", exact: true })
-      .click();
-    await expect(incomeRow).toContainText("Estornado");
-    expect(
-      (await snapshot(page)).account_balances.find(
-        (a: { id: string }) => a.id === account,
-      ).balance,
-    ).toBe("4495.00");
-    const imports = page
-      .locator(".panel")
-      .filter({
-        has: page.getByRole("heading", {
-          name: "Importar operações de investimento",
-          exact: true,
-        }),
-      });
-    await imports.getByLabel("Conta do arquivo", { exact: true }).selectOption(account);
-    await imports
-      .getByLabel("Arquivo CSV", { exact: true })
-      .setInputFiles({
-        name: "investments.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.from(
-          `ticker,type,quantity,price,fees,date,broker,source_id\nTEST3,buy,10,100,5,${date},Corretora,upgrade-import`,
-        ),
-      });
-    await imports
-      .getByRole("button", { name: "Pré-visualizar", exact: true })
-      .click();
-    await expect(imports).toContainText("Preço unitário");
-    await expect(imports).toContainText("Taxas");
-    await expect(imports).toContainText("R$ 1.005,00");
-    await imports
-      .getByRole("button", { name: "Confirmar importação", exact: true })
-      .click();
-    await expect(imports).toContainText("1 registros importados");
-    expect(
-      (await snapshot(page)).account_balances.find(
-        (a: { id: string }) => a.id === account,
-      ).balance,
-    ).toBe("3490.00");
-    await history
-      .getByRole("row")
-      .filter({ has: page.getByRole("cell", { name: "5.00000000", exact: true }) })
-      .getByRole("button", { name: "Excluir", exact: true })
-      .click();
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Excluir", exact: true })
-      .click();
-    await expect(page.getByRole("dialog")).toContainText(
-      "Há operações/eventos/recebimentos dependentes",
-    );
-    await page.getByRole("dialog").getByRole("button", { name: "Voltar", exact: true }).click();
-    await history
-      .getByRole("row")
-      .filter({ has: page.getByRole("cell", { name: "10.00000000", exact: true }) })
-      .getByRole("button", { name: "Excluir", exact: true })
-      .click();
-    await page.getByRole("dialog").getByRole("button", { name: "Excluir", exact: true }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await history.getByLabel("Mostrar operações excluídas").check();
-    await expect(history).toContainText("Excluída");
-    const afterCancel = await snapshot(page);
-    expect(
-      afterCancel.investment_operations.filter(
-        (o: { status: string }) => o.status !== "cancelled",
-      ),
-    ).toHaveLength(1);
-    expect(
-      afterCancel.account_balances.find((a: { id: string }) => a.id === account)
-        .balance,
-    ).toBe("4495.00");
-  } finally {
-    expect((await admin.auth.admin.deleteUser(user.id)).error).toBeNull();
-  }
+    const account = await resource(page, "financial_accounts", { name: "Conta investimentos", kind: "bank", initial_balance: "5000" });
+    const headers={Origin:'http://localhost:3000'};
+    const created=await page.request.post('/api/manual-investments/create',{headers,data:{name:'Fundo manual',manual_kind:'fund',quantity:'10',amount:'1000',date,request_id:randomUUID()}});
+    expect(created.ok(),await created.text()).toBe(true);const investment=await created.json();
+    const added=await page.request.post('/api/manual-investments/purchase',{headers,data:{asset_id:investment.asset_id,quantity:'5',amount:'600',date,request_id:randomUUID()}});expect(added.ok()).toBe(true);
+    const priced=await page.request.post('/api/manual-investments/price',{headers,data:{asset_id:investment.asset_id,price:'130',date,request_id:randomUUID()}});expect(priced.ok()).toBe(true);
+    const old=await page.request.post('/api/operations',{headers,data:{action:'investment',payload:{},request_id:randomUUID()}});expect(old.ok()).toBe(false);
+    const importOld=await page.request.post('/api/import',{headers,data:{text:'ticker,type,quantity,price,date',format:'csv',target:'investments',account_id:account}});expect(importOld.ok()).toBe(false);
+    const after=await snapshot(page);expect(after.account_balances.find((a:{id:string})=>a.id===account).balance).toBe('5000.00');expect(after.transactions).toHaveLength(0);expect(after.manual_investment_purchases).toHaveLength(2);
+    await page.goto('/investimentos');await expect(page.getByRole('article',{name:'Patrimônio atual',exact:true})).toContainText('R$ 1.950,00');
+  } finally { expect((await admin.auth.admin.deleteUser(user.id)).error).toBeNull(); }
 });
 
 test("cash import classifies own transfers without inflating spending and avoids reimport duplicates", async ({

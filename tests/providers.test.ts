@@ -5,7 +5,6 @@ import {
   ProviderError,
 } from "../src/integrations/providers";
 import { parseCsv, parseTransactions } from "../src/lib/import";
-import { CVMProvider } from "../src/integrations/cvm";
 it("BCB preserva unidade diária, origem e datas", async () => {
   const fetcher = vi.fn(
     async () =>
@@ -62,13 +61,6 @@ it("importações repetidas têm identificadores estáveis", () => {
   );
   expect(parseTransactions(text, "csv")[0].type).toBe("expense");
 });
-it("CVM converte cotas oficiais por fundo e data", () =>
-  expect(
-    new CVMProvider().parseDailyCsv(
-      "CNPJ_FUNDO_CLASSE;DT_COMPTC;VL_QUOTA\n12.345.678/0001-00;2026-10-01;1.234567",
-    )[0].nav,
-  ).toBe("1.234567"));
-
 it("Excel usa células de texto e escapa XML, sem fórmulas executáveis", async () => {
   const { buildWorkbook } = await import("../src/lib/workbook");
   const { unzipSync, strFromU8 } = await import("fflate");
@@ -102,13 +94,3 @@ it("OFX SGML e XML preservam FITID e data", () => {
       source_id: "abc-123",
     });
 });
-it("CVM preserva subclasses e cotas negativas efetivamente publicadas", () => {
-  const result = new CVMProvider().parseDailyCsv(
-    "CNPJ_FUNDO_CLASSE;ID_SUBCLASSE;DT_COMPTC;VL_QUOTA\n12.345.678/0001-00;1;2026-10-01;-0.12345\n12.345.678/0001-00;2;2026-10-01;0",
-  );
-  expect(result[0].fund_id).toBe("12345678000100:1");
-  expect(result[1].fund_id).toBe("12345678000100:2");
-  expect(result[0].nav).toBe("-0.12345");
-});
-it("CSV da CVM aceita aspas literais em campos não delimitados por aspas", () =>
-  expect(parseCsv('name;value\nFUNDO A "X;1', ";")[0].name).toBe('FUNDO A "X'));

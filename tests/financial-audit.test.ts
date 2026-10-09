@@ -7,13 +7,15 @@ import { savingsHistory } from '../src/financial/savings-history';
 import type { Lot, Movement, Rate } from '../src/financial/engine';
 import { hasUnallocatedYieldWithdrawal } from '../src/financial/savings-estimate';
 
-test('quarantined market values cannot replace the last validated quote in wealth totals', () => {
+test('external market values cannot replace the manually entered value in wealth totals', () => {
   const snapshot: Snapshot = {
     user: { id: 'u', email: '' },
     investment_assets: [{ id: 'a', ticker: 'ABC', currency: 'BRL', asset_class: 'stock' }],
-    investment_opening_positions: [{ id: 'opening', asset_id: 'a', date: '2026-10-01', quantity: '10', cost: '1000' }],
+    manual_investment_purchases: [{ id: 'opening', asset_id: 'a', date: '2026-10-01', quantity: '10', amount: '1000' }],
+    manual_investment_updates: [
+      { asset_id: 'a', date: '2026-10-01', price: '100', currency: 'BRL', validated: true },
+    ],
     asset_price_history: [
-      { ticker: 'ABC', date: '2026-10-01', price: '100', currency: 'BRL', validated: true },
       { ticker: 'ABC', date: '2026-10-02', price: '100000', currency: 'BRL', validated: false },
     ],
   };
@@ -24,10 +26,10 @@ test('CDI comparisons refuse a truncated snapshot that starts after the selected
   const snapshot: Snapshot = {
     user: { id: 'u', email: '' },
     investment_assets: [{ id: 'a', ticker: 'ABC', currency: 'BRL', asset_class: 'stock' }],
-    investment_opening_positions: [{ id: 'opening', asset_id: 'a', date: '2024-01-01', quantity: '10', cost: '1000' }],
-    asset_price_history: [
-      { ticker: 'ABC', date: '2024-12-31', price: '100', currency: 'BRL' },
-      { ticker: 'ABC', date: '2026-10-08', price: '110', currency: 'BRL' },
+    manual_investment_purchases: [{ id: 'opening', asset_id: 'a', date: '2024-01-01', quantity: '10', amount: '1000' }],
+    manual_investment_updates: [
+      { asset_id: 'a', date: '2024-12-31', price: '100', currency: 'BRL' },
+      { asset_id: 'a', date: '2026-10-08', price: '110', currency: 'BRL' },
     ],
     benchmark_rates: [{ series: '12', date: '2026-10-07', value: '0.05', validated: true }],
     provider_sync_states: [{ provider: 'bcb-cdi-history', last_date: '2024-01-01' }],

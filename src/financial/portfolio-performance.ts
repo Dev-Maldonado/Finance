@@ -1,7 +1,7 @@
-import { fundId } from "@/lib/fund-id";
-import { D, money, position, Operation, CorporateEvent } from "./engine";
+import { D, money, position } from "./engine";
 import { benchmarkReturn, modifiedDietz } from "./performance";
 import { Snapshot, Row, rows, str } from "@/lib/summary";
+import { manualOperations, manualUpdates } from '@/lib/manual-investments';
 export function portfolioPerformance(s: Snapshot, start: string, end: string) {
   // Opening is the close before the first selected date; selected-date flows
   // and benchmark factors therefore use the same inclusive financial window.
@@ -15,42 +15,15 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
       complete = false;
       continue;
     }
-    const ops = [
-        ...rows(s, "investment_operations"),
-        ...rows(s, "investment_opening_positions").map((p) => ({
-          ...p,
-          asset_id: p.asset_id,
-          date: p.date,
-          type: "buy",
-          price: "1",
-          fees: "0",
-          cost_override: p.cost,
-        })),
-      ].filter((o) => o.asset_id === asset.id) as unknown as Operation[],
-      events = rows(s, "investment_corporate_actions").filter(
-        (e) => e.asset_id === asset.id,
-      ) as unknown as CorporateEvent[];
-    const prices = [
-      ...rows(s, "asset_price_history").filter(
-        (p) => p.ticker === asset.ticker,
-      ),
-      ...rows(s, "manual_asset_prices").filter((p) => p.asset_id === asset.id),
-      ...rows(s, "fund_nav_history")
-        .filter(
-          (p) =>
-            asset.asset_class === "fund" &&
-            str(p, "fund_id") ===
-            fundId(str(asset, "cnpj"), str(asset, "share_class")),
-        )
-        .map((p) => ({ ...p, price: p.nav, currency: "BRL" })),
-    ].filter(p => p.currency === "BRL" && (p as Row).validated !== false);
+    const ops = manualOperations(s,asset);
+    const prices = manualUpdates(s,str(asset,'id')).map(p=>({...p,currency:'BRL',source:'manual'}));
     for (const [date, isOpening] of [
       [openingDate, true],
       [end, false],
     ] as const) {
       const holdings = position(
         ops.filter((o) => o.date <= date),
-        events.filter((e) => e.date <= date),
+        [],
       );
       if (D(holdings.quantity).isZero()) continue;
       const quote = prices
@@ -73,14 +46,6 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
         ).toFixed(8),
       });
   }
-  const distributions = rows(s, "investment_income")
-    .filter(
-      (i) =>
-        i.status === "received" &&
-        str(i, "date") >= start &&
-        str(i, "date") <= end,
-    )
-    .reduce((a, i) => a.plus(str(i, "amount")), D(0));
   const benchmarkRows = rows(s, "benchmark_rates");
   const coverageStart = str(rows(s, "provider_sync_states").find(r => r.provider === 'bcb-cdi-history') ?? {}, 'last_date');
   // Global provider coverage may precede the rates actually loaded for this
@@ -99,7 +64,7 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
   const personal = complete
     ? modifiedDietz(
         opening.toString(),
-        closing.plus(distributions).toString(),
+        closing.toString(),
         openingDate,
         end,
         flows,

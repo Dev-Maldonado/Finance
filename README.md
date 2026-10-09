@@ -38,9 +38,9 @@ O teste de navegador usa `/usr/bin/chromium`; em outra máquina, configure `CHRO
 - Contas, arquivamento, saldo calculado, transações confirmadas/pendentes, edição/cancelamento auditados, transferências, recorrências pendentes e categorias hierárquicas sem ciclos.
 - Cartões, limites, compras parceladas com conservação de centavos, faturas, compromissos futuros, pagamentos parciais e prevenção de despesa duplicada.
 - Caixinhas, metas, aportes por lote, resgates FIFO de principal, condições históricas preservadas, CDI/Selic diário, prefixado na convenção de 252 datas elegíveis e produto sem rendimento. Gráfico de capital versus juros estimados, tributação por produto/vigência, conciliação explícita e simulador hipotético.
-- Ativos de diferentes classes, posições iniciais sem movimentação fictícia de caixa, compras/vendas, custo médio com taxas, eventos corporativos, preços manuais identificados, cotas de fundos, proventos anunciados e confirmação de recebimento. Amortização é classificada como devolução de capital no caixa.
+- Investimentos manuais: Fundos e Criptomoedas, compras adicionais, quantidade/capital/preço médio, correção e exclusão de compras, valor por unidade informado mensalmente, lucro/prejuízo e histórico mensal sem confundir aportes com ganhos. Nenhuma API de cotação.
 - Orçamentos, metas, dívidas manuais, patrimônio líquido, filtros temporais, gráficos, central de rendimentos, comparação CDI e performance pessoal por Dietz modificado.
-- Importação CSV/OFX de transações e CSV de operações de investimento com prévia, confirmação atômica e deduplicação; exportação CSV, XLSX e PDF. XLSX preserva valores e datas em células tipadas; descrições permanecem texto, com proteção contra execução de fórmulas.
+- Importação CSV/OFX de transações com prévia, confirmação atômica e deduplicação; exportação CSV, XLSX e PDF. XLSX preserva valores e datas em células tipadas; descrições permanecem texto, com proteção contra execução de fórmulas.
 
 ## Regras financeiras
 
@@ -50,26 +50,16 @@ O rendimento SGS 12 usa a unidade diária publicada. O cálculo aplica fatores n
 
 A tributação configurável está em `tax_rules`; regras não cobertas deixam o líquido indisponível. As regras iniciais de renda fixa precisam ser confirmadas para o produto e a vigência antes de uso em produção. Fundos com come-cotas e produtos com carência/metodologia específica exigem implementação contratual adicional, sem estimativas inventadas.
 
-Sem preço disponível, a posição em BRL aparece pelo custo de aquisição com indicação explícita. Ativos em outras moedas podem ser cadastrados, mas operações e conversão cambial/consolidação desses valores ainda não foram implementadas; novas operações são bloqueadas para evitar tratar moeda estrangeira como BRL. Não trate o total BRL como patrimônio completo quando houver esses ativos. A performance é omitida se faltarem preços necessários.
+Na área de investimentos, sem valor manual aparece “Aguardando atualização”, com retorno indisponível. O patrimônio geral conserva o custo registrado enquanto faltar uma avaliação, sem inventar lucro. Valores são em reais; compras dessa área não debitam automaticamente uma conta. Consulte [investimentos manuais](docs/MANUAL-INVESTMENTS.md).
 
 ## Fontes e automação
 
 ```bash
-npm run sync # uma execução; termina com erro se algum provedor falhar
+npm run sync # CDI/Selic e recorrências; não consulta investimentos
 npm run jobs # processo diário independente do navegador
 ```
 
-Alternativa para infraestrutura com cron: `POST /api/sync` com `Authorization: Bearer <CRON_SECRET>`. Proteção por comparação constante e chave de serviço exclusivamente no backend. Registros/sucessos/erros persistem no banco; execuções bem-sucedidas no mesmo dia usam o cache. CDI faz atualização incremental com janela de revisão; CVM processa cadastro e informes compactados; brapi consulta cotações de ativos cadastrados, conforme permissão/plano. Correções do CDI possuem trilha de revisão. A busca histórica é dividida em janelas anuais e contempla a data do aporte mais antigo. O cadastro CVM atual e o anterior são identificados separadamente.
-
-Domínios necessários: `api.bcb.gov.br`, `dados.cvm.gov.br`, `brapi.dev`. Foram salvos no rascunho de rede; a publicação da configuração ainda depende do usuário. Após o bloqueio inicial, as fontes passaram a responder e a validação real confirmou:
-
-- BCB: 501 registros oficiais de CDI/Selic persistidos; CDI disponível até 06/10/2026 e Selic até 07/10/2026.
-- CVM: 86.398 registros únicos de fundos/classes/subclasses importados; informe diário de outubro validado com 73.443 linhas, incluindo cotas zero/negativas publicadas. Três cotas oficiais de referência foram persistidas para verificar a cadeia de importação; atualizações normais de cotas são limitadas aos fundos cadastrados pelo usuário.
-- brapi v2: cotação, 249 preços históricos e 121 eventos de proventos retornados para PETR4 sem token; 249 preços e 114 eventos únicos foram persistidos no cache. Não foram criadas posições ou recebimentos fictícios para o usuário.
-
-Proventos publicados são apresentados com a quantidade elegível na data-com e só geram recebimento confirmado após conciliação. Não confundir dados de mercado do cache com patrimônio do usuário.
-
-O catálogo/OpenAPI atual da brapi foi consultado e os adaptadores usam endpoints v2. PETR4, MGLU3, VALE3 e ITUB4 têm acesso público conforme documentação; outros ativos e funções dependem de cobertura/plano. `BRAPI_API_TOKEN` deve ser configurado de forma segura quando necessário. A cobertura de todos os FIIs/ETFs não foi validada sem esse acesso. O cadastro CVM combina o formato legado e o registro de classes/subclasses RCVM 175; `share_class` representa o ID da subclasse oficial, não a classificação comercial do fundo.
+O cron Vercel usa `/api/benchmarks`, `CRON_SECRET` e chave de serviço privada. BCB é a fonte dos indexadores das caixinhas. O controle de investimentos não necessita de token ou integração. As rotinas antigas de mercado/CVM foram removidas.
 
 ## Contexto e pendências
 
@@ -94,6 +84,6 @@ As caixinhas calculam automaticamente ganhos por dia útil e por mês com taxas 
 
 Compras podem ser cadastradas pelo total ou pelo valor de cada parcela, com prévia de vencimentos, conservação de centavos e edição auditada de parcelas futuras. Recorrências semanais, mensais e anuais geram lançamentos previstos, permitem pausa/cancelamento e respeitam a competência mensal. Categorias possuem dois níveis explícitos, seleção hierárquica, gráficos detalháveis e filtros que incluem subcategorias sem duplicar valores.
 
-O planejamento apresenta projeções de 30/60/90 dias, disponibilidade, despesas essenciais e reserva, metas e conciliação explícita. Correções de investimentos/proventos, importações revisáveis e exportações compartilham os controles de integridade. Despesas previstas, valores pagos, saldo mensal e patrimônio geral continuam separados.
+O planejamento apresenta projeções de 30/60/90 dias, disponibilidade, despesas essenciais e reserva, metas e conciliação explícita. Compras e preços mensais manuais possuem correções auditadas; importações bancárias e exportações mantêm seus controles de integridade. Despesas previstas, valores pagos, saldo mensal e patrimônio geral continuam separados.
 
-Para atualizar uma instalação existente, siga a sequência de migrations em [DEPLOY.md](docs/DEPLOY.md). CI, automação de mercado e backups estão documentados em [OPERATIONS.md](docs/OPERATIONS.md). Resgates de rendimento confirmado sem alocação por lote deixam a estimativa incompleta identificada; o app não afirma equivalência ao saldo bancário.
+Para atualizar uma instalação existente, siga a sequência de migrations em [DEPLOY.md](docs/DEPLOY.md). CI, automação de indexadores/recorrências e backups estão documentados em [OPERATIONS.md](docs/OPERATIONS.md). Resgates de rendimento confirmado sem alocação por lote deixam a estimativa incompleta identificada; o app não afirma equivalência ao saldo bancário.

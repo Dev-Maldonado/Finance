@@ -32,7 +32,9 @@ jobs:
       - name: Verify backup and restore in disposable PostgreSQL
         run: PYTHONDONTWRITEBYTECODE=1 python3 scripts/backups/verify-local.py
       - name: Preserve legacy records through the incremental upgrade
-        run: bash scripts/hierarchy-migration-test.sh
+        run: |
+          bash scripts/hierarchy-migration-test.sh
+          bash scripts/manual-migration-test.sh
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:integration
@@ -41,6 +43,7 @@ jobs:
           npm run test:integrity
           npm run test:imports
           npm run test:scheduling
+          npm run test:manual
       - name: Install browser
         run: |
           npx playwright install --with-deps chromium

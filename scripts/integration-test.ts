@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { investmentImport } from "../src/lib/investment-import";
 import assert from "node:assert/strict";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!,
   anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -393,25 +392,6 @@ try {
       });
     },
   );
-  await check("Importação de operações é idempotente e atômica", async () => {
-    const csv =
-      "ticker,type,quantity,price,fees,date,source_id\nTEST4,buy,1,20,0,2026-10-03,broker-1";
-    const p = await investmentImport(db, csv, account.id, false);
-    assert.equal(p.rows?.length, 1);
-    const first = await investmentImport(db, csv, account.id, true);
-    assert.equal(first.imported, 1);
-    const second = await investmentImport(db, csv, account.id, true);
-    assert.equal(second.imported, 0);
-    assert.equal(second.duplicates, 1);
-    const invalid =
-      "ticker,type,quantity,price,fees,date,source_id\nTEST4,buy,1,20,0,2026-10-04,broker-2\nTEST4,sell,999,20,0,2026-10-04,broker-3";
-    await assert.rejects(() => investmentImport(db, invalid, account.id, true));
-    const result = await db
-      .from("investment_operations")
-      .select("id")
-      .eq("asset_id", asset);
-    assert.equal(result.data?.length, 3);
-  });
   await check("Hierarquia circular de categorias é rejeitada", async () => {
     const parent = await db
       .from("categories")

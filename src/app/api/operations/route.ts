@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     sameOrigin(req);
     const { db } = await authenticatedDb();
     const body = z.object({ action: z.string(), payload: z.unknown(), request_id: z.uuid() }).parse(await req.json());
-    if (!Object.hasOwn(operationSchemas, body.action))
+    if (["investment", "confirm_income"].includes(body.action) || !Object.hasOwn(operationSchemas, body.action))
       throw new Error("Operação inválida");
     const payload = operationSchemas[
       body.action as keyof typeof operationSchemas

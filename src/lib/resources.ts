@@ -118,59 +118,6 @@ export const schemas = {
     tax_exempt: z.boolean().default(false),
     is_emergency_reserve: z.boolean().default(false),
   }),
-  investment_opening_positions: z.object({
-    asset_id: id,
-    quantity: positive,
-    cost: z.string().regex(/^\d{1,12}(\.\d{1,2})?$/),
-    date,
-    notes: optional,
-  }),
-  investment_assets: z.object({
-    ticker: text.transform(value => value.toUpperCase()),
-    name: text,
-    asset_class: z.enum([
-      "stock",
-      "fii",
-      "etf",
-      "bdr",
-      "fiagro",
-      "fund",
-      "cdb",
-      "lci",
-      "lca",
-      "treasury",
-      "international",
-      "custom",
-    ]),
-    currency: z.string().length(3).transform(value => value.toUpperCase()).default("BRL"),
-    cnpj: optional,
-    share_class: optional,
-    maturity: z
-      .union([date, z.literal("")])
-      .optional()
-      .transform((v) => v || null),
-    indexer: optional,
-    percentage: z.string().optional(),
-    annual_rate: z.string().optional(),
-  }),
-  investment_corporate_actions: z.object({
-    asset_id: id,
-    type: z.enum(["split", "reverse_split", "bonus", "ticker_change"]),
-    ratio: positive,
-    date,
-    new_ticker: optional.transform(value => value?.toUpperCase()),
-  }),
-  investment_income: z.object({
-    asset_id: id,
-    description: text,
-    amount,
-    date,
-    status: z.literal("announced").default("announced"),
-    type: z
-      .enum(["dividend", "jcp", "interest", "amortization"])
-      .default("dividend"),
-    source_id: optional,
-  }),
   budgets: z.object({
     name: text,
     category_id: nullableId,
@@ -236,20 +183,7 @@ export const operationSchemas = {
   reconcile_invoice: z.object({ invoice_id: id, date, confirmed_balance: nonnegativeMoney, notes: optional }),
   pay_obligation: z.object({ obligation_id: id, account_id: id, date, principal_reduction: nonnegativeMoney.default("0") }),
   confirm_yield: z.object({ goal_id: id, amount, date }),
-  investment: z.object({
-    asset_id: id,
-    account_id: id,
-    type: z.enum(["buy", "sell"]),
-    quantity: positive,
-    price: positive,
-    fees: z
-      .string()
-      .regex(/^\d{1,12}(\.\d{1,2})?$/)
-      .default("0"),
-    date,
-    broker: optional,
-  }),
-  confirm_income: z.object({ income_id: id, account_id: id, date, received_amount: amount.optional() }),
+
 };
 export const selects: Record<string, string> = {
   manual_asset_prices: "*,price::text",

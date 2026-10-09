@@ -10,7 +10,7 @@ export async function POST(
   try {
     sameOrigin(req);
     const { resource } = await params;
-    if (!Object.hasOwn(schemas, resource)) throw new Error("Recurso não autorizado");
+    if (resource.startsWith("investment_") || !Object.hasOwn(schemas, resource)) throw new Error("Recurso não autorizado");
     const { db, user } = await authenticatedDb();
     const body = await req.json();
     if (resource === "savings_goals" && !body.id)
@@ -30,22 +30,6 @@ export async function POST(
       if (error) throw new Error(error.message);
       return NextResponse.json({ id: result });
     }
-    if (body.id && resource === "investment_income") {
-      const { data: result, error } = await db.rpc("revise_income", {
-        income_id: z.uuid().parse(body.id), replacement: data, cancel: false,
-      });
-      if (error) throw new Error(error.message);
-      return NextResponse.json({ id: result });
-    }
-    if (body.id && resource === "investment_opening_positions") {
-      const { data: result, error } = await db.rpc("revise_opening_position", {
-        position_id: z.uuid().parse(body.id), replacement: data,
-      });
-      if (error) throw new Error(error.message);
-      return NextResponse.json({ id: result });
-    }
-    if (body.id && resource === "investment_corporate_actions")
-      throw new Error("Evento corporativo com efeitos na posição exige conciliação específica; não pode ser sobrescrito");
     const query = body.id
       ? db.from(resource).update(data).eq("id", z.uuid().parse(body.id))
       : db.from(resource).insert(data);
@@ -68,7 +52,6 @@ export async function DELETE(
         "categories",
         "budgets",
         "financial_goals",
-        "investment_income",
       ].includes(resource)
     )
       throw new Error(
@@ -78,11 +61,6 @@ export async function DELETE(
     const id = z.uuid().parse(new URL(req.url).searchParams.get("id"));
     if (resource === "categories") {
       const { error } = await db.rpc("archive_category", { category_id: id });
-      if (error) throw new Error(error.message);
-      return NextResponse.json({ ok: true });
-    }
-    if (resource === "investment_income") {
-      const { error } = await db.rpc("revise_income", { income_id: id, replacement: {}, cancel: true });
       if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true });
     }

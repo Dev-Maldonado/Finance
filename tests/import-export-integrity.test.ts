@@ -1,40 +1,11 @@
 import { describe, expect, test } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { unzipSync, strFromU8 } from "fflate";
 import { buildCsv, exportReportRows } from "../src/components/exports";
 import { decimalInput, parseCsv, prepareImportRows, realDate, scopedSource, forceNewImportSource } from "../src/lib/import";
-import { investmentImport } from "../src/lib/investment-import";
 import { buildWorkbook } from "../src/lib/workbook";
 import type { Snapshot } from "../src/lib/summary";
 
 const account = "10000000-0000-4000-8000-000000000001";
-const asset = "20000000-0000-4000-8000-000000000001";
-
-function previewDb(assets = [{ id: asset, ticker: "TEST4", currency: "BRL" }], existing = new Set<string>()) {
-  const pages: number[] = [], lookupSizes: number[] = [];
-  const db = {
-    from(table: string) {
-      const chain = {
-        select() { return chain; },
-        order() { return chain; },
-        eq() { return chain; },
-        gte() { return chain; },
-        lte() { return chain; },
-        async range(first: number, last: number) {
-          if (table === "investment_assets") pages.push(first);
-          return { data: table === "investment_assets" ? assets.slice(first, last + 1) : [], error: null };
-        },
-        async in(_key: string, ids: string[]) {
-          lookupSizes.push(ids.length);
-          return { data: ids.filter(id => existing.has(id)).map(request_id => ({ request_id })), error: null };
-        },
-      };
-      return chain;
-    },
-  } as unknown as SupabaseClient;
-  return { db, pages, lookupSizes };
-}
-
 describe("import identities and classification", () => {
   test("legitimate identical rows keep separate stable identities and require review", () => {
     const csv = "description,date,amount\nCafé,2026-10-01,-15.20\nCafé,2026-10-01,-15.20";
@@ -128,33 +99,5 @@ describe("exports preserve financial types", () => {
     expect(exported.find(row => row.type === "card_installment")).toMatchObject({ date: "2026-10-10", amount: "-50.00", record_kind: "monthly_competence", category: "Transportes" });
     expect(exported.find(row => row.type === "invoice_payment")).toMatchObject({ record_kind: "cash_ledger", source_id: "export:payment" });
     expect(exported.some(row => row.source_id === "installment:nov-part")).toBe(false);
-  });
-});
-
-describe("investment import preview", () => {
-  test("shows unit price, rounded consideration and actual net movement separately", async () => {
-    const { db } = previewDb();
-    const result = await investmentImport(db, "ticker,type,quantity,price,fees,date,source_id\ntest4,buy,1,10.005,1,2026-10-01,buy\nTEST4,sell,2,10.505,0.11,2026-10-02,sell", account, false);
-    expect(result.rows?.[0]).toMatchObject({ ticker: "TEST4", quantity: "1", price: "10.005", fees: "1", total: "10.01", amount: "-11.01" });
-    expect(result.rows?.[1]).toMatchObject({ total: "21.01", amount: "20.90" });
-  });
-
-  test("retains identical legitimate orders for explicit review instead of collapsing them", async () => {
-    const { db } = previewDb();
-    const result = await investmentImport(db, "ticker,type,quantity,price,date\nTEST4,buy,1,10,2026-10-01\nTEST4,buy,1,10,2026-10-01", account, false);
-    expect(result.rows).toHaveLength(2);
-    expect(new Set(result.rows!.map(row => row.request_id)).size).toBe(2);
-    expect(result.rows?.[1]).toMatchObject({ duplicate: false, possible_duplicate: true, requires_review: true });
-  });
-
-  test("loads later asset pages and bounds the request-ID lookup size", async () => {
-    const assets = Array.from({ length: 1001 }, (_, i) => ({ id: `${String(i + 1).padStart(8, "0")}-0000-4000-8000-000000000001`, ticker: `T${i}`, currency: "BRL" }));
-    const { db, pages, lookupSizes } = previewDb(assets);
-    const csv = "ticker,type,quantity,price,date,source_id\n" + Array.from({ length: 201 }, (_, i) => `T1000,buy,1,10,2026-10-01,order-${i}`).join("\n");
-    const result = await investmentImport(db, csv, account, false);
-    expect(result.rows).toHaveLength(201);
-    expect(pages).toEqual([0, 1000]);
-    expect(lookupSizes.every(size => size <= 200)).toBe(true);
-    expect(lookupSizes.length).toBeGreaterThan(1);
   });
 });

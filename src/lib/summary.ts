@@ -1,16 +1,13 @@
-import { fundId } from "@/lib/fund-id";
+import { manualPosition } from './manual-investments';
 import { periodMetrics } from "./dashboard";
 import { cardInvoices } from "./card-invoices";
 import { hasUnallocatedYieldWithdrawal, unallocatedYieldWithdrawalNotice } from '@/financial/savings-estimate';
 import {
   D,
   money,
-  position,
   accrued,
   estimateTax,
   daysBetween,
-  Operation,
-  CorporateEvent,
   Lot,
   Movement,
   Rate,
@@ -70,63 +67,10 @@ export function financialSummary(
     accounts.filter((a) => a.kind === "savings"),
     "balance",
   );
-  const positions = rows(s, "investment_assets").map((asset) => {
-    const ops = [
-      ...rows(s, "investment_operations"),
-      ...rows(s, "investment_opening_positions").map((p) => ({
-        ...p,
-        asset_id: p.asset_id,
-        date: p.date,
-        type: "buy",
-        price: "1",
-        fees: "0",
-        cost_override: p.cost,
-      })),
-    ].filter(
-      (o) => o.asset_id === asset.id && str(o, "date") <= asOf,
-    ) as unknown as Operation[];
-    const events = rows(s, "investment_corporate_actions").filter(
-      (o) => o.asset_id === asset.id && str(o, "date") <= asOf,
-    ) as unknown as CorporateEvent[];
-    const pos = position(ops, events);
-    const prices = [
-      ...rows(s, "asset_price_history").filter(
-        (q) => q.ticker === asset.ticker,
-      ),
-      ...rows(s, "manual_asset_prices").filter((q) => q.asset_id === asset.id),
-    ]
-      .filter((q) => str(q, "date") <= asOf && q.currency === "BRL" && q.validated !== false)
-      .sort(
-        (a, b) =>
-          str(b, "date").localeCompare(str(a, "date")) ||
-          str(b, "collected_at").localeCompare(str(a, "collected_at")),
-      );
-    const nav = rows(s, "fund_nav_history")
-      .filter(
-        (q) =>
-          str(q, "fund_id") ===
-            fundId(str(asset, "cnpj"), str(asset, "share_class")) &&
-          str(q, "date") <= asOf && q.validated !== false,
-      )
-      .sort((a, b) => str(b, "date").localeCompare(str(a, "date")))[0];
-    const quote =
-      asset.asset_class === "fund" && nav
-        ? { ...nav, price: nav.nav }
-        : prices[0];
-    const supported = asset.currency === "BRL";
-    const value = supported
-      ? quote
-        ? D(pos.quantity).mul(str(quote, "price"))
-        : D(pos.cost)
-      : D(0);
-    return {
-      asset,
-      pos,
-      quote,
-      value: money(value),
-      unrealized: money(value.minus(pos.cost)),
-      supported,
-    };
+  const positions = rows(s, "investment_assets").map(asset => {
+    const manual = manualPosition(s, asset, asOf);
+    const quote = manual.latest ? { ...manual.latest, source: 'manual', currency: asset.currency } : undefined;
+    return { asset, pos: manual.pos, quote, value: manual.supported ? manual.current ?? manual.pos.cost : '0.00', unrealized: manual.supported ? manual.profit ?? '0.00' : '0.00', supported: manual.supported };
   });
   const investments = positions.reduce((a, p) => a.plus(p.value), D(0));
   const cardLiability = cardInvoices(s, asOf).reduce((a, invoice) => a.plus(invoice.balance), D(0));

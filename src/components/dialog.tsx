@@ -76,9 +76,7 @@ export function Dialog({
       categories: "categories",
       cards: "credit_cards",
       goals: "savings_goals",
-      assets: "investment_assets",
       invoices: "credit_card_invoices",
-      income: "investment_income",
       liabilities: "financial_liabilities",
       obligations: "financial_obligations",
     };
@@ -86,8 +84,6 @@ export function Dialog({
       .filter((r) =>
         source === "accounts"
           ? r.kind !== "savings" && !r.archived
-          : source === "income"
-            ? r.status === "announced"
             : source === "obligations"
               ? r.status === "pending"
               : source === "all_accounts"
@@ -145,21 +141,16 @@ export function Dialog({
         [
           "/api/transactions",
           "/api/purchases",
-          "/api/investments",
-          "/api/income",
         ].includes(form.endpoint ?? "")
       )
         await post(form.endpoint!, {
           [form.endpoint === "/api/transactions"
             ? "transaction_id"
-            : form.endpoint === "/api/purchases"
-              ? "purchase_id"
-              : form.endpoint === "/api/income"
-                ? "income_id"
-                : "operation_id"]: initial?.id,
+            : "purchase_id"]: initial?.id,
           replacement: data,
           request_id: key.current,
         });
+      else if (form.endpoint?.startsWith('/api/manual-investments/')) await post(form.endpoint, { ...data, id: initial?.id, request_id: key.current });
       else if (form.endpoint) await post(form.endpoint, data);
       else if (form.action)
         await post("/api/operations", {
@@ -228,22 +219,7 @@ export function Dialog({
                   required={f.required !== false}
                   defaultValue={str(initial ?? {}, f.key) || f.default || (f.key === "type" ? "expense" : "")}
                   onChange={
-                    form.purchaseCalculator && f.key === "card_id" ? event => setPurchaseCard(event.target.value) : f.key === "type" && form.action === "transaction" ? event => { setTransactionType(event.target.value); if (event.target.value !== "expense") setRecurringExpense(false); } : f.source === "income"
-                      ? (event) => {
-                          const income = rows(
-                            snapshot,
-                            "investment_income",
-                          ).find((r) => r.id === event.target.value);
-                          const amountInput =
-                            formElement.current?.querySelector<HTMLInputElement>(
-                              'input[name="received_amount"]',
-                            );
-                          if (amountInput)
-                            amountInput.value = income
-                              ? str(income, "amount")
-                              : "";
-                        }
-                      : undefined
+                    form.purchaseCalculator && f.key === "card_id" ? event => setPurchaseCard(event.target.value) : f.key === "type" && form.action === "transaction" ? event => { setTransactionType(event.target.value); if (event.target.value !== "expense") setRecurringExpense(false); } : undefined
                   }
                 >
                   <option value="">

@@ -1,4 +1,3 @@
-import { investmentImport } from "@/lib/investment-import";
 import { NextResponse } from "next/server";
 import { authenticatedDb } from "@/lib/server";
 import { fail, sameOrigin } from "@/lib/http";
@@ -18,10 +17,7 @@ export async function POST(req: Request) {
     const body = z.object({ text: z.string().max(2_000_000), format: z.enum(["csv", "ofx"]), account_id: z.uuid(), confirm: z.boolean().default(false), target: z.enum(["transactions", "investments"]).default("transactions"), decisions: z.array(decisionSchema).max(5000).optional(), request_id: z.uuid().optional() }).parse(await req.json());
     const { data: account, error: accountError } = await db.from("financial_accounts").select("id,kind,archived").eq("id", body.account_id).eq("user_id", user.id).single();
     if (accountError || !account || account.kind === "savings" || account.archived) throw new Error("Selecione uma conta ativa de sua titularidade");
-    if (body.target === "investments") {
-      if (body.format !== "csv") throw new Error("Operações de investimento exigem CSV");
-      return NextResponse.json(await investmentImport(db, body.text, body.account_id, body.confirm, body.decisions, body.request_id));
-    }
+    if (body.target === "investments") throw new Error("Registre as compras no controle manual de investimentos");
     const parsed = prepareImportRows(body.text, body.format);
     if (parsed.length > 5000) throw new Error("Limite de 5000 linhas por arquivo");
     if (!parsed.length) return NextResponse.json(body.confirm ? { imported: 0, duplicates: 0, matched: 0 } : { rows: [] });

@@ -1,7 +1,6 @@
 "use client";
 import { PurchaseHistory } from "./purchase-history";
-import { QuoteStatus } from "./quote-status";
-import type { QuoteStatus as QuoteStatusData } from "@/integrations/quote-sync";
+import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
 import { useEffect, useState, useMemo } from "react";
 import { WealthRegistrationFeedback, type WealthFeedback } from "./wealth-registration-feedback";
@@ -45,7 +44,6 @@ import {
 import { Dashboard } from "./dashboard";
 import { CDIStatus, type BenchmarkStatus } from "./cdi-status";
 import { savingsMetrics } from "@/lib/savings-metrics";
-import { ProventEvents } from "./provent-events";
 import { Auth } from "./auth";
 import { DeleteDialog, type RemovalKind } from "./delete-dialog";
 import { FinancialPlanning } from "./financial-planning";
@@ -59,7 +57,6 @@ import {
   invoiceTotals,
 } from "@/lib/card-invoices";
 import { InvoiceMonthPicker, MonthlyInvoices } from "./monthly-invoices";
-import { AssetSearch } from "./asset-search";
 import { browserDb } from "@/lib/supabase";
 import { Snapshot, Row, rows, str, financialSummary } from "@/lib/summary";
 import { portfolioPerformance } from "@/financial/portfolio-performance";
@@ -211,7 +208,6 @@ function Workspace({
   const [showExcluded, setShowExcluded] = useState(false);
   const [selectedCard, setSelectedCard] = useState("");
   const [recurrenceWarning, setRecurrenceWarning] = useState("");
-  const [showExcludedInvestments, setShowExcludedInvestments] = useState(false);
   const [txAccount, setTxAccount] = useState(""),
     [txCategory, setTxCategory] = useState(""),
     [txType, setTxType] = useState(""),
@@ -311,23 +307,6 @@ function Workspace({
     },
   });
   const snapshot = query.data;
-  const quoteAssets = (snapshot ? rows(snapshot, "investment_assets") : []).filter(asset => ["stock", "fii", "etf", "bdr", "fiagro"].includes(str(asset, "asset_class")));
-  const quoteKey = quoteAssets.map(asset => `${asset.ticker}:${asset.asset_class}:${asset.currency}`).sort().join("|");
-  const quoteQuery = useQuery<QuoteStatusData>({
-    queryKey: ["quotes", quoteKey],
-    enabled: session === true && !!snapshot && quoteAssets.length > 0,
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
-    retry: false,
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/quotes", { method: "POST" });
-        const data = await response.json() as QuoteStatusData;
-        if (data.results?.some(result => result.status === "success" || result.status === "cached")) void qc.invalidateQueries({ queryKey: ["snapshot"] });
-        return data;
-      } catch { return { checkedAt: new Date().toISOString(), results: [], error: "Não foi possível verificar as cotações. Os preços anteriores foram preservados." }; }
-    },
-  });
   const benchmarkQuery = useQuery<BenchmarkStatus>({
     queryKey: ["benchmarks"],
     enabled:
@@ -503,13 +482,7 @@ function Workspace({
       ["withdrawal", "Resgatar"],
       ["goal", "Nova caixinha"],
     ],
-    investimentos: [
-      ["opening", "Posição inicial"],
-      ["corporate", "Evento"],
-      ["price", "Preço manual"],
-      ["investment", "Registrar operação"],
-      ["asset", "Novo ativo"],
-    ],
+    investimentos: [],
     planejamento: [
       ["obligation", "Agendar compromisso"],
       ["liability", "Dívida / obrigação"],
@@ -868,7 +841,7 @@ function Workspace({
               ))}
             </div>
           </div>
-          {current[0] !== "cartoes" && (
+          {!["cartoes", "investimentos"].includes(current[0]) && (
             <div className="period-bar">
               <div className="period-tabs">
                 {[
@@ -1439,363 +1412,7 @@ function Workspace({
                   </Panel>
                 </>
               )}
-              {current[0] === "investimentos" && (
-                <>
-                  <AssetSearch onSelect={(asset) => open("asset", asset)} />
-                  <div className="stats three">
-                    <Stat
-                      label="Carteira em BRL"
-                      value={summary.investments}
-                      icon={ChartNoAxesCombined}
-                      detail="Mercado quando disponível; custo identificado"
-                    />
-                    <Stat
-                      label="Valorização não realizada"
-                      value={money(
-                        summary.positions
-                          .filter((p) => p.supported)
-                          .reduce((a, p) => a.plus(p.unrealized), D(0)),
-                      )}
-                      icon={TrendingUp}
-                      detail="Não representa renda recebida"
-                    />
-                    <Stat
-                      label="Resultado realizado"
-                      value={money(
-                        summary.positions.reduce(
-                          (a, p) => a.plus(p.pos.realized),
-                          D(0),
-                        ),
-                      )}
-                      icon={Wallet}
-                      detail="Vendas menos custo e taxas"
-                    />
-                  </div>
-                  {quoteAssets.length > 0 && <QuoteStatus data={quoteQuery.data} busy={quoteQuery.isFetching} refresh={() => void quoteQuery.refetch()} />}
-                  <Panel
-                    title="Minha carteira"
-                    subtitle="Fundos usam cotas efetivas; preços manuais são identificados."
-                  >
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Ativo</th>
-                            <th>Classe</th>
-                            <th>Quantidade</th>
-                            <th>Preço médio</th>
-                            <th>Valor da posição</th>
-                            <th>Fonte / data</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {summary.positions.map((p) => (
-                            <tr key={str(p.asset, "id")}>
-                              <td>
-                                <strong>{p.asset.ticker}</strong>
-                                <small>{p.asset.name}</small>
-                              </td>
-                              <td>{fieldOptionLabel(forms.asset, "asset_class", str(p.asset, "asset_class"))}</td>
-                              <td>{p.pos.quantity}</td>
-                              <td>
-                                {p.supported
-                                  ? brl(p.pos.average)
-                                  : `${Number(p.pos.average).toLocaleString("pt-BR")} ${str(p.asset, "currency")}`}
-                              </td>
-                              <td>
-                                {p.supported
-                                  ? brl(p.value)
-                                  : "Conversão cambial pendente"}
-                              </td>
-                              <td>
-                                {p.quote ? (
-                                  <>
-                                    <span className="badge">
-                                      {p.quote.source}
-                                    </span>
-                                    <small>
-                                      {pretty(str(p.quote, "date"))}
-                                    </small>
-                                  </>
-                                ) : (
-                                  <span className="badge">
-                                    Custo de aquisição · sem cotação
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {!summary.positions.length && (
-                      <Empty action={() => open("asset")} />
-                    )}
-                  </Panel>
-                  <Panel
-                    title="Extrato de operações"
-                    subtitle="Compras, vendas e correções registradas. A correção recalcula caixa e posição; operações incompatíveis com eventos posteriores são recusadas."
-                    action={
-                      <label className="excluded-toggle">
-                        <input
-                          type="checkbox"
-                          checked={showExcludedInvestments}
-                          onChange={(e) =>
-                            setShowExcludedInvestments(e.target.checked)
-                          }
-                        />
-                        Mostrar operações excluídas
-                      </label>
-                    }
-                  >
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Ativo</th>
-                            <th>Operação</th>
-                            <th>Data</th>
-                            <th>Quantidade</th>
-                            <th>Preço unitário</th>
-                            <th>Taxas</th>
-                            <th>Fluxo em caixa</th>
-                            <th>Status</th>
-                            <th className="transaction-actions">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows(
-                            snapshot,
-                            "investment_operations",
-                            showExcludedInvestments,
-                          )
-                            .filter(
-                              (o) =>
-                                str(o, "date") >= start &&
-                                str(o, "date") <= end,
-                            )
-                            .sort((a, b) =>
-                              str(b, "date").localeCompare(str(a, "date")),
-                            )
-                            .map((o) => (
-                              <tr key={str(o, "id")}>
-                                <td>
-                                  {rows(snapshot, "investment_assets").find(
-                                    (a) => a.id === o.asset_id,
-                                  )?.ticker || "—"}
-                                </td>
-                                <td>
-                                  {o.type === "buy"
-                                    ? "Compra / aporte"
-                                    : "Venda / resgate"}
-                                </td>
-                                <td>{pretty(str(o, "date"))}</td>
-                                <td>{o.quantity}</td>
-                                <td>{brl(str(o, "price"))}</td>
-                                <td>{brl(str(o, "fees") || "0")}</td>
-                                <td>
-                                  {brl(
-                                    money(
-                                      o.type === "buy"
-                                        ? D(str(o, "quantity"))
-                                            .mul(str(o, "price"))
-                                            .plus(str(o, "fees") || "0")
-                                            .neg()
-                                        : D(str(o, "quantity"))
-                                            .mul(str(o, "price"))
-                                            .minus(str(o, "fees") || "0"),
-                                    ),
-                                  )}
-                                </td>
-                                <td>
-                                  <span className="badge">
-                                    {o.status === "cancelled"
-                                      ? "Excluída"
-                                      : "Confirmada"}
-                                  </span>
-                                </td>
-                                <td className="transaction-actions">
-                                  {o.status !== "cancelled" && (
-                                    <div className="actions">
-                                      <button
-                                        onClick={() =>
-                                          setModal({
-                                            form: {
-                                              ...forms.investment,
-                                              action: undefined,
-                                              endpoint: "/api/investments",
-                                            },
-                                            initial: o,
-                                          })
-                                        }
-                                      >
-                                        Editar
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          setRemoval({
-                                            kind: "investment",
-                                            row: o,
-                                          })
-                                        }
-                                      >
-                                        Excluir
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {!rows(
-                      snapshot,
-                      "investment_operations",
-                      showExcludedInvestments,
-                    ).some(
-                      (o) => str(o, "date") >= start && str(o, "date") <= end,
-                    ) && (
-                      <p className="notice">
-                        Nenhuma operação no período. Posições iniciais
-                        existentes estão listadas abaixo.
-                      </p>
-                    )}
-                    <details className="opening-positions">
-                      <summary>
-                        Posições iniciais cadastradas (
-                        {rows(snapshot, "investment_opening_positions").length})
-                      </summary>
-                      {rows(snapshot, "investment_opening_positions").map(
-                        (o) => (
-                          <div className="list-row" key={str(o, "id")}>
-                            <strong>
-                              {
-                                rows(snapshot, "investment_assets").find(
-                                  (a) => a.id === o.asset_id,
-                                )?.ticker
-                              }
-                            </strong>
-                            <span>
-                              {o.quantity} unidades · custo{" "}
-                              {brl(str(o, "cost"))} · {pretty(str(o, "date"))}
-                            </span>
-                            <button onClick={() => open("opening", o)}>
-                              Conferir / editar
-                            </button>
-                          </div>
-                        ),
-                      )}
-                    </details>
-                  </Panel>
-                  <ImportPanel
-                    snapshot={snapshot}
-                    onSaved={refresh}
-                    target="investments"
-                  />
-                  <ProventEvents snapshot={snapshot} onSaved={refresh} />
-                  <Panel
-                    title="Proventos"
-                    subtitle="Anúncios só viram receita após confirmar o recebimento."
-                    action={
-                      <div className="actions">
-                        <button onClick={() => open("dividend")}>
-                          Novo anúncio
-                        </button>
-                        <button
-                          className="primary"
-                          onClick={() => open("income")}
-                        >
-                          Confirmar recebimento
-                        </button>
-                      </div>
-                    }
-                  >
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Ativo</th>
-                            <th>Descrição</th>
-                            <th>Data</th>
-                            <th>Valor</th>
-                            <th>Status</th>
-                            <th className="transaction-actions">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows(snapshot, "investment_income", true)
-                            .filter(
-                              (p) =>
-                                str(p, "date") >= start &&
-                                str(p, "date") <= end,
-                            )
-                            .sort((a, b) =>
-                              str(b, "date").localeCompare(str(a, "date")),
-                            )
-                            .map((p) => (
-                              <tr key={str(p, "id")}>
-                                <td>
-                                  {
-                                    rows(snapshot, "investment_assets").find(
-                                      (a) => a.id === p.asset_id,
-                                    )?.ticker
-                                  }
-                                </td>
-                                <td>{p.description}</td>
-                                <td>{pretty(str(p, "date"))}</td>
-                                <td>{brl(str(p, "amount"))}</td>
-                                <td>
-                                  <span className="badge">
-                                    {p.status === "received"
-                                      ? "Recebido"
-                                      : p.status === "cancelled"
-                                        ? "Estornado / excluído"
-                                        : p.status === "reversed"
-                                          ? "Estornado"
-                                          : "Anunciado"}
-                                  </span>
-                                </td>
-                                <td className="transaction-actions">
-                                  {!["cancelled", "reversed"].includes(
-                                    str(p, "status"),
-                                  ) && (
-                                    <div className="actions">
-                                      <button
-                                        onClick={() =>
-                                          setModal({
-                                            form: {
-                                              ...forms.dividend,
-                                              action: undefined,
-                                              resource: undefined,
-                                              endpoint: "/api/income",
-                                            },
-                                            initial: p,
-                                          })
-                                        }
-                                      >
-                                        Editar
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          setRemoval({ kind: "income", row: p })
-                                        }
-                                      >
-                                        {p.status === "received"
-                                          ? "Estornar"
-                                          : "Excluir"}
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Panel>
-                </>
-              )}
+              {current[0] === "investimentos" && <ManualInvestments snapshot={snapshot} today={today} onSaved={refresh} />}
               {current[0] === "planejamento" && (
                 <>
                   <FinancialPlanning snapshot={snapshot} today={today} />
