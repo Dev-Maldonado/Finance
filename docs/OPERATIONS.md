@@ -14,6 +14,16 @@ O teste de dashboard atualmente consulta o BCB real, exclusivamente para o banco
 
 Em falhas de navegador, `test-results` fica disponível por três dias. Os diagnósticos podem conter a tela e sessão dos usuários temporários locais. Restrinja acesso ao repositório e aos artefatos; o workflow não publica perfis `.env`, dumps, logs de banco ou credenciais.
 
+## Cotações automáticas da carteira
+
+O cron Vercel existente em `/api/benchmarks` também consulta cotações de ações, FIIs, ETFs, BDRs e FIAGROs registrados, diariamente às 12:00 UTC / 09:00 de Brasília. Enquanto o usuário está conectado, o frontend verifica `/api/quotes` a cada cinco minutos; a mesma rotina alimenta dashboard e patrimônio. O botão “Verificar cotações” utiliza o mesmo cache de cinco minutos, sem contornar os limites da API. Apenas preços de mercado são atualizados; não cria compras, vendas, receitas ou pagamentos.
+
+Sem `BRAPI_API_TOKEN`, a rotina usa o feed público de gráficos do Yahoo Finance, com símbolos B3 `.SA`. Com token, usa cotações da brapi, inclusive para FIIs (não o preço dos indicadores mensais). Ambas as fontes podem ter atraso ou indisponibilidade; o feed público não oferece garantia de serviço ou cobertura permanente. Fonte e data de referência ficam na carteira. Fim de semana/mercado fechado preservam a última publicação, sem fabricar preços.
+
+O endpoint exige sessão e mesma origem, busca os ativos do usuário via RLS e ignora listas de tickers enviadas pelo cliente. A chave de serviço permanece no servidor. Preços/identidade/moeda/datas são validados antes da persistência; falhas não apagam preços existentes. Cache de sucesso e de erro evita solicitações repetidas, e prazo global/concurrency limitam a execução. Sem resposta válida, a tela identifica o ativo e orienta conferir o ticker/acesso, mantendo a avaliação anterior ou pelo custo claramente identificada.
+
+Esta atualização de preços via Vercel independe do workflow abaixo. Cadastro de fundos, históricos e proventos continuam dependentes do workflow e suas configurações.
+
 ## Atualização diária de mercado e fundos
 
 `.github/workflows/market-sync.yml` roda às **00:30 UTC / 21:30 em Brasília**, diariamente, e também permite execução manual. O cron da Vercel para CDI/Selic continua definido em `vercel.json`; o workflow executa `scripts/sync.ts`, incluindo os provedores selecionados por esse script, sem carregar `.env.local`. O runner não precisa permanecer ligado entre execuções.

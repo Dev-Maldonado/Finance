@@ -142,3 +142,38 @@ test('past pending income shows a reminder; confirming receipt clears it without
     await expect(page.getByText('Recebimento em atraso', { exact: true })).toHaveCount(0);
   } finally { expect((await admin.auth.admin.deleteUser(id)).error).toBeNull(); }
 });
+
+
+test('automatic quote refresh updates portfolio values; failures preserve prices and report API access', async ({ page }) => {
+  const anonymous = await page.request.post('/api/quotes', { headers: { Origin: 'http://localhost:3000' } });
+  expect(anonymous.status()).toBe(401);
+  const id = await user(page), ticker = `Q${Date.now().toString().slice(-8)}3`;
+  try {
+    const empty = await page.request.post('/api/quotes', { headers: { Origin: 'http://localhost:3000' }, data: { ticker: 'NOT_OWNED' } });
+    expect(empty.ok()).toBe(true); expect((await empty.json()).results).toEqual([]);
+    const bank = await resource(page, 'financial_accounts', { name: 'Conta da carteira', initial_balance: '1000' });
+    const investment = await resource(page, 'investment_assets', { ticker, name: 'Ativo de teste de cotações', asset_class: 'stock', currency: 'BRL' });
+    await op(page, 'investment', { asset_id: investment, account_id: bank, type: 'buy', quantity: '10', price: '10', fees: '0', date: today });
+    let calls = 0;
+    await page.route('**/api/quotes', async route => {
+      calls++;
+      if (calls === 3) { await route.fulfill({ status: 503, json: { checkedAt: new Date().toISOString(), results: [{ ticker, status: 'error', message: 'Configure BRAPI_API_TOKEN no servidor e confira a cobertura do plano para este ativo.' }] } }); return; }
+      const { error } = await admin.from('asset_price_history').upsert({ ticker, date: today, price: calls === 1 ? '12.34' : '15.67', currency: 'BRL', source: 'brapi', collected_at: new Date().toISOString() }, { onConflict: 'ticker,date,source' }); expect(error).toBeNull();
+      await route.fulfill({ json: { checkedAt: new Date().toISOString(), results: [{ ticker, status: 'success', date: today }] } });
+    });
+    await page.goto('/investimentos');
+    const position = page.getByRole('row').filter({ hasText: 'Ativo de teste de cotações' });
+    const status = page.getByRole('region', { name: 'Atualização das cotações' });
+    await expect(position).toContainText('R$ 123,40'); await expect(position).toContainText('brapi');
+    await status.getByRole('button', { name: 'Verificar cotações' }).click();
+    await expect(position).toContainText('R$ 156,70');
+    await status.getByRole('button', { name: 'Verificar cotações' }).click();
+    await expect(status).toContainText('BRAPI_API_TOKEN'); await expect(position).toContainText('R$ 156,70');
+    await page.setViewportSize({ width: 390, height: 844 }); await expect(status.getByRole('status')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally {
+    await page.unroute('**/api/quotes');
+    expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();
+    expect((await admin.from('asset_price_history').delete().eq('ticker', ticker)).error).toBeNull();
+  }
+});

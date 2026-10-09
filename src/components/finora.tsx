@@ -1,5 +1,7 @@
 "use client";
 import { PurchaseHistory } from "./purchase-history";
+import { QuoteStatus } from "./quote-status";
+import type { QuoteStatus as QuoteStatusData } from "@/integrations/quote-sync";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
 import { useEffect, useState, useMemo } from "react";
 import { WealthRegistrationFeedback, type WealthFeedback } from "./wealth-registration-feedback";
@@ -309,6 +311,23 @@ function Workspace({
     },
   });
   const snapshot = query.data;
+  const quoteAssets = (snapshot ? rows(snapshot, "investment_assets") : []).filter(asset => ["stock", "fii", "etf", "bdr", "fiagro"].includes(str(asset, "asset_class")));
+  const quoteKey = quoteAssets.map(asset => `${asset.ticker}:${asset.asset_class}:${asset.currency}`).sort().join("|");
+  const quoteQuery = useQuery<QuoteStatusData>({
+    queryKey: ["quotes", quoteKey],
+    enabled: session === true && !!snapshot && quoteAssets.length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    retry: false,
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/quotes", { method: "POST" });
+        const data = await response.json() as QuoteStatusData;
+        if (data.results?.some(result => result.status === "success" || result.status === "cached")) void qc.invalidateQueries({ queryKey: ["snapshot"] });
+        return data;
+      } catch { return { checkedAt: new Date().toISOString(), results: [], error: "Não foi possível verificar as cotações. Os preços anteriores foram preservados." }; }
+    },
+  });
   const benchmarkQuery = useQuery<BenchmarkStatus>({
     queryKey: ["benchmarks"],
     enabled:
@@ -1452,6 +1471,7 @@ function Workspace({
                       detail="Vendas menos custo e taxas"
                     />
                   </div>
+                  {quoteAssets.length > 0 && <QuoteStatus data={quoteQuery.data} busy={quoteQuery.isFetching} refresh={() => void quoteQuery.refetch()} />}
                   <Panel
                     title="Minha carteira"
                     subtitle="Fundos usam cotas efetivas; preços manuais são identificados."

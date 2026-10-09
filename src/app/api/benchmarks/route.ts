@@ -5,15 +5,17 @@ import { fail, sameOrigin } from '@/lib/http';
 import { syncBenchmarks, BenchmarkConfigurationError } from '@/integrations/benchmark-sync';
 import { within } from '@/integrations/deadline';
 import { syncRecurring } from '@/integrations/recurring-sync';
+import { syncQuotes } from '@/integrations/quote-sync';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 async function update(daily = false) {
   try {
-    const [benchmarks, scheduled] = await Promise.allSettled([syncBenchmarks(), daily ? syncRecurring() : Promise.resolve(null)]);
+    const [benchmarks, scheduled, prices] = await Promise.allSettled([syncBenchmarks(), daily ? syncRecurring() : Promise.resolve(null), daily ? syncQuotes() : Promise.resolve(null)]);
     if (benchmarks.status === 'rejected') throw benchmarks.reason;
     const results = benchmarks.value;
     const recurring = scheduled.status === 'fulfilled' ? scheduled.value : { error: 'Falha na geração de recorrências previstas; pagamentos preservados.' };
-    return NextResponse.json({ checkedAt: new Date().toISOString(), results, ...(daily ? { recurring } : {}) }, { status: results.some(r => r.status === 'error') || scheduled.status === 'rejected' ? 503 : 200, headers: { 'Cache-Control': 'no-store' } });
+    const quotes = prices.status === 'fulfilled' ? prices.value : { error: 'Falha na atualização de cotações; dados anteriores preservados.' };
+    return NextResponse.json({ checkedAt: new Date().toISOString(), results, ...(daily ? { recurring, quotes } : {}) }, { status: results.some(r => r.status === 'error') || scheduled.status === 'rejected' || prices.status === 'rejected' || (quotes && 'results' in quotes && quotes.results.some(r => r.status === 'error')) ? 503 : 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof BenchmarkConfigurationError ? error.message : 'Falha interna ao verificar os indexadores. O último histórico válido foi preservado.' }, { status: 503 });
   }

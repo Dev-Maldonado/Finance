@@ -84,7 +84,7 @@ test('failed audit persistence is reported as error and never creates a successf
 });
 
 test('brapi rejects responses for another ticker and future dates before publishing them', async () => {
-  const fetcher = (symbol: string, date: string) => async () => new Response(JSON.stringify({ results: [{ symbol, data: { regularMarketPrice: 10, currency: 'BRL', regularMarketTime: date } }] }));
+  const fetcher = (symbol: string, date: string) => async () => new Response(JSON.stringify({ results: [{ symbol, regularMarketPrice: 10, currency: 'BRL', regularMarketTime: date }] }));
   await expect(new BrapiProvider(undefined, fetcher('WRONG3', '2026-10-01')).getQuote('petr4')).rejects.toBeInstanceOf(ProviderValidationError);
   await expect(new BrapiProvider(undefined, fetcher('PETR4', '2099-01-01')).getQuote('PETR4')).rejects.toBeInstanceOf(ProviderValidationError);
   await expect(new BrapiProvider(undefined, fetcher('PETR4', '2026-02-30')).getQuote('PETR4')).rejects.toBeInstanceOf(ProviderValidationError);

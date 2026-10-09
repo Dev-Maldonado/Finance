@@ -2057,3 +2057,7 @@ td small { font-size: 10px !important; color: #716981 !important; line-height: 1
 
 .pending-receipt-warning { display: inline-flex !important; align-items: center; gap: 5px; margin-top: 5px; color: #885b15 !important; font-weight: 600; }
 .pending-receipt-warning svg { flex-shrink: 0; }
+
+.quote-warning { display: flex; gap: 10px; padding: 14px; border-radius: 12px; background: #fffbeb; color: #885b15; font-size: 12px; line-height: 1.6; }
+.quote-warning > svg { flex-shrink: 0; margin-top: 3px; }
+.quote-warning p { margin: 5px 0 0; overflow-wrap: anywhere; }

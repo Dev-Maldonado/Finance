@@ -151,6 +151,25 @@ export type DividendEvent = {
   source: string;
   source_id: string;
 };
+/** Public chart quotes; delayed according to exchange/provider availability. */
+export class YahooQuoteProvider {
+  constructor(private fetcher = fetchData) {}
+  async getQuote(ticker: string, _assetClass = 'stock'): Promise<Quote> {
+    ticker = normalizeTicker(ticker);
+    const symbol = ticker.endsWith('.SA') ? ticker : `${ticker}.SA`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+    const response = await this.fetcher(url, { headers: { 'User-Agent': 'FINORA/2.0' } });
+    const body = z.object({ chart: z.object({ result: z.array(z.object({ meta: z.object({
+      symbol: z.string(), currency: z.string().regex(/^[A-Z]{3}$/),
+      regularMarketPrice: z.number().positive(), regularMarketTime: z.number().int().positive(),
+    }) })).nullable(), error: z.unknown().optional() }) }).parse(await providerJson(response));
+    const meta = body.chart.result?.[0]?.meta;
+    if (!meta || body.chart.error) throw new ProviderError('Ativo não encontrado na API de cotações', 404);
+    validateIdentity(symbol, meta.symbol);
+    return { ticker, currency: meta.currency, price: String(meta.regularMarketPrice),
+      date: validatedDate(new Date(meta.regularMarketTime * 1000).toISOString()), source: 'Yahoo Finance' };
+  }
+}
 export class BrapiProvider implements MarketDataProvider {
   constructor(
     private token = process.env.BRAPI_API_TOKEN,
@@ -166,54 +185,20 @@ export class BrapiProvider implements MarketDataProvider {
   }
   async getQuote(ticker: string, assetClass = "stock"): Promise<Quote> {
     ticker = normalizeTicker(ticker);
-    if (["fii", "fiagro"].includes(assetClass)) {
-      const body = z
-        .object({
-          fiis: z.array(
-            z.object({
-              symbol: z.string(),
-              price: z.number().positive(),
-              asOfDate: z.string(),
-            }),
-          ),
-        })
-        .parse(await this.request("fii/indicators", { symbols: ticker }));
-      const q = body.fiis[0];
-      if (!q) throw new ProviderError("Cotação ausente");
-      validateIdentity(ticker, q.symbol);
-      return {
-        ticker: q.symbol,
-        price: String(q.price),
-        currency: "BRL",
-        date: validatedDate(q.asOfDate),
-        source: "brapi",
-      };
-    }
-    const body = z
-      .object({
-        results: z.array(
-          z.object({
-            symbol: z.string(),
-            data: z.object({
-              regularMarketPrice: z.number().positive(),
-              currency: z.string(),
-              regularMarketTime: z.string(),
-            }),
-          }),
-        ),
-      })
-      .parse(await this.request("stocks/quote", { symbols: ticker }));
+    // Listed FIIs use the same market quote feed as equities, not monthly indicators.
+    const response = await this.fetcher(`https://brapi.dev/api/quote/${encodeURIComponent(ticker)}`, {
+      headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
+    });
+    const body = z.object({ results: z.array(z.object({
+      symbol: z.string(), regularMarketPrice: z.number().positive(),
+      currency: z.string(), regularMarketTime: z.string(),
+    })) }).parse(await providerJson(response));
     const q = body.results[0];
     if (!q) throw new ProviderError("Cotação ausente");
     validateIdentity(ticker, q.symbol);
-    if (!/^[A-Z]{3}$/.test(q.data.currency)) throw new ProviderValidationError("Moeda do provedor inválida");
-    return {
-      ticker: q.symbol,
-      price: String(q.data.regularMarketPrice),
-      currency: q.data.currency,
-      date: validatedDate(q.data.regularMarketTime),
-      source: "brapi",
-    };
+    if (!/^[A-Z]{3}$/.test(q.currency)) throw new ProviderValidationError("Moeda do provedor inválida");
+    return { ticker: q.symbol, price: String(q.regularMarketPrice), currency: q.currency,
+      date: validatedDate(q.regularMarketTime), source: "brapi" };
   }
   async searchAssets(query: string) {
     const body = z
