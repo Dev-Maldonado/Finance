@@ -9,6 +9,7 @@ export function savingsHistory(
   const validRates = rates.filter((r) => r.validated !== false);
   const days = [
     ...new Set([
+      ...lots.filter(l => l.start_date <= end).map(l => l.start_date),
       ...validRates.filter((r) => r.date <= end).map((r) => r.date),
       ...movements.filter((m) => m.date <= end).map((m) => m.date),
     ]),

@@ -628,3 +628,8 @@ forms.goalEdit = {
   title: "Editar caixinha",
   editTitle: "Editar caixinha",
 };
+
+/** Use the same readable labels in forms, cards and reports. */
+export function fieldOptionLabel(form: FormDef, field: string, value: string) {
+  return form.fields.find(item => item.key === field)?.options?.find(([id]) => id === value)?.[1] || 'Não informado';
+}

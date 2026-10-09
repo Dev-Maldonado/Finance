@@ -1,8 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cardInvoices, invoiceMonthLabel, invoiceTotals, shiftInvoiceMonth, type CardInvoice } from "@/lib/card-invoices";
 import { rows, str, type Snapshot, type Row } from "@/lib/summary";
+import { financialTone } from '@/lib/financial-tone';
 import { D } from "@/financial/engine";
 import { categoryLabel } from '@/lib/categories';
 
@@ -20,39 +21,39 @@ export function InvoiceMonthPicker({ month, today, onChange }: { month: string; 
   </div>;
 }
 
-export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay, onEditInstallment }: {
+export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay, onEditInstallment, cardId, onCardChange }: {
   snapshot: Snapshot; month: string; today: string;
+  cardId: string; onCardChange: (id: string) => void;
   onMonthChange: (month: string) => void; onPay: (invoice: CardInvoice) => void;
   onEditInstallment?: (part: Row) => void;
 }) {
-  const [cardId, setCardId] = useState("");
   const invoices = useMemo(() => cardInvoices(snapshot, today), [snapshot, today]);
   const matching = invoices.filter(invoice => !cardId || invoice.cardId === cardId);
   const selected = matching.filter(invoice => invoice.month === month);
   const totals = invoiceTotals(selected);
   return <div className="monthly-invoices">
     <label className="invoice-card-filter">Cartão
-      <select aria-label="Filtrar faturas por cartão" value={cardId} onChange={event => setCardId(event.target.value)}>
+      <select aria-label="Filtrar faturas por cartão" value={cardId} onChange={event => onCardChange(event.target.value)}>
         <option value="">Todos os cartões</option>
         {rows(snapshot, "credit_cards").map(card => <option key={str(card, "id")} value={str(card, "id")}>{str(card, "name")}</option>)}
       </select>
     </label>
     <div className="invoice-totals" aria-label="Resumo mensal das faturas">
-      <div><span>Total das faturas do mês</span><strong>{brl(totals.total)}</strong></div>
-      <div><span>Pago nas faturas do mês</span><strong>{brl(totals.paid)}</strong></div>
-      <div><span>A pagar no mês</span><strong>{brl(totals.pending)}</strong></div>
+      <div className="financial-surface tone-pending"><span>Total das faturas do mês</span><strong>{brl(totals.total)}</strong></div>
+      <div className="financial-surface tone-paid"><span>Pago nas faturas do mês</span><strong>{brl(totals.paid)}</strong></div>
+      <div className={`financial-surface ${D(totals.pending).eq(0) ? "tone-paid" : selected.some(i => i.status === "Atrasada") ? "tone-danger" : "tone-pending"}`}><span>A pagar no mês</span><strong>{brl(totals.pending)}</strong></div>
     </div>
     {D(totals.credit).gt(0) && <p className="notice">Crédito em faturas: {brl(totals.credit)}. Não descontado de outros cartões.</p>}
     {!selected.length && <p className="notice">Nenhuma fatura registrada com vencimento neste mês.</p>}
-    {selected.map(invoice => <article key={invoice.id} className="monthly-invoice" aria-label={`Fatura de ${invoice.cardName}`}>
+    {selected.map(invoice => <article key={invoice.id} className={`monthly-invoice invoice-${invoice.status === "Atrasada" ? "overdue" : invoice.status === "Paga" ? "paid" : "pending"}`} aria-label={`Fatura de ${invoice.cardName}`}>
       <div className="monthly-invoice-heading">
         <div><h3>{invoice.cardName}</h3><p>Vencimento {dateLabel(invoice.due)} · fechamento {dateLabel(invoice.closing)}</p></div>
-        <span className={`badge ${invoice.status === "Paga" ? "green" : ""}`}>{invoice.status}</span>
+        <span className={`badge ${invoice.status === "Paga" ? "green" : invoice.status === "Atrasada" ? "danger" : "amber"}`}>{invoice.status}</span>
       </div>
       <div className="invoice-totals invoice-values">
-        <div><span>Total desta fatura</span><strong>{brl(invoice.total)}</strong></div>
-        <div><span>Pago nesta fatura</span><strong>{brl(invoice.paid)}</strong></div>
-        <div><span>Falta pagar</span><strong>{brl(invoice.pending)}</strong></div>
+        <div className="financial-surface tone-pending"><span>Total desta fatura</span><strong>{brl(invoice.total)}</strong></div>
+        <div className="financial-surface tone-paid"><span>Pago nesta fatura</span><strong>{brl(invoice.paid)}</strong></div>
+        <div className={`financial-surface ${financialTone(invoice.pending, invoice.status === "Atrasada" ? "danger" : D(invoice.pending).eq(0) ? "paid" : "pending")}`}><span>Falta pagar</span><strong>{brl(invoice.pending)}</strong></div>
       </div>
       {D(invoice.credit).gt(0) && <p>Crédito: {brl(invoice.credit)}</p>}
       <div className="monthly-invoice-actions">

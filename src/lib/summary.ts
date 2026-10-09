@@ -45,7 +45,7 @@ export function financialSummary(
   const sum = (items: Row[], key: string) =>
     items.reduce((a, r) => a.plus(str(r, key) || "0"), D(0));
   const purchases = rows(s, "credit_card_purchases").filter(
-    (t) => str(t, "date") >= start && str(t, "date") <= end,
+    (t) => str(t, "date") >= start && str(t, "date") <= end && str(t, "date") <= asOf,
   );
   const income = sum(
     tx.filter((t) => t.type === "income"),
@@ -55,7 +55,7 @@ export function financialSummary(
     tx.filter((t) => t.type === "expense"),
     "amount",
   ).abs();
-  const monthly = periodMetrics(s, start, end, false);
+  const monthly = periodMetrics(s, start, end, false, asOf);
   const cardExpense = D(monthly.cardExpense);
   const yields = sum(
     tx.filter((t) => t.type === "yield"),

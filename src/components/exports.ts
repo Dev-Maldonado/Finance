@@ -19,8 +19,8 @@ export function buildCsv(data: Row[]) {
   const quote = (value: unknown, key = "") => `"${safeExportCell(value, key).replaceAll('"', '""')}"`;
   return "\uFEFF" + [keys.map(k => quote(k)).join(","), ...data.map(row => keys.map(k => quote(row[k], k)).join(","))].join("\r\n");
 }
-export function exportReportRows(snapshot: Snapshot, start: string, end: string, fullInvoiceMonths = false): Row[] {
-  const metrics = periodMetrics(snapshot, start, end, fullInvoiceMonths);
+export function exportReportRows(snapshot: Snapshot, start: string, end: string, fullInvoiceMonths = false, asOf = end): Row[] {
+  const metrics = periodMetrics(snapshot, start, end, fullInvoiceMonths, asOf);
   const category = (id: unknown) => categoryLabel(rows(snapshot, 'categories'), String(id ?? ''), ' / ');
   return [
     ...metrics.tx.map(t => ({ date: str(t, "date"), description: str(t, "description"), amount: str(t, "amount"), type: str(t, "type"), category: category(t.category_id), account: str(rows(snapshot, "financial_accounts").find(a => a.id === t.account_id) ?? {}, "name"), source_id: str(t, "source_id") || `export:${str(t, "id")}`, status: str(t, "status"), record_kind: "cash_ledger" })),

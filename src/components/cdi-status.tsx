@@ -1,4 +1,5 @@
 'use client';
+import { D } from '@/financial/engine';
 import { RefreshCw, ShieldCheck, Radio, CircleAlert } from 'lucide-react';
 import { rows, str, type Snapshot } from '@/lib/summary';
 import { savingsMetrics } from '@/lib/savings-metrics';
@@ -23,13 +24,14 @@ export function benchmarkHealth(snapshot: Snapshot, series: string, today: strin
 export function CDIStatus({ snapshot, today, status, updating, onRefresh }: { snapshot: Snapshot; today: string; status?: BenchmarkStatus; updating?: boolean; onRefresh: () => void }) {
   const metrics = savingsMetrics(snapshot, today);
   const latest = metrics.latestCDI;
+  const automatic = rows(snapshot, "savings_lots").some(lot => ["cdi", "selic", "fixed"].includes(str(lot, "indexer")) && D(str(lot, "remaining")).gt(0));
   const health = ['12', '11'].map(series => ({ series, name: series === '12' ? 'CDI' : 'Selic', ...benchmarkHealth(snapshot, series, today, status) }));
   const cdi = health[0];
   const checkedAt = cdi.lastAttempt || status?.checkedAt;
   const lastSync = cdi.lastSync;
   const failed = cdi.failed || !!status?.error;
   return <section className="cdi-status" aria-label="Atualização automática do CDI">
-    <div className="cdi-status-title"><span className="cdi-mark"><Radio size={19} /></span><div><strong>Seu dinheiro rende a cada dia útil</strong><p>CDI oficial do Banco Central · cálculo automático por aplicação</p></div><button aria-label="Atualizar CDI" disabled={updating} onClick={onRefresh}><RefreshCw size={15} className={updating ? 'spinning' : ''} />{updating ? 'Atualizando' : 'Atualizar CDI'}</button></div>
+    <div className="cdi-status-title"><span className="cdi-mark"><Radio size={19} /></span><div><strong>{automatic ? "Seu dinheiro rende a cada dia útil" : "Taxas oficiais para acompanhar suas caixinhas"}</strong><p>{automatic ? "CDI oficial do Banco Central · cálculo automático por aplicação" : "Taxas disponíveis · cada aplicação segue suas condições"}</p></div><button aria-label="Atualizar CDI" disabled={updating} onClick={onRefresh}><RefreshCw size={15} className={updating ? 'spinning' : ''} />{updating ? 'Atualizando' : 'Atualizar CDI'}</button></div>
     <div className="cdi-metrics">
       <div><span>CDI diário publicado</span><strong>{latest ? `${Number(latest.value).toLocaleString('pt-BR', { maximumFractionDigits: 6 })}%` : 'Indisponível'}</strong><small>Referência: {date(str(latest ?? {}, 'date'))}</small></div>
       <div><span>Ganho no último dia disponível</span><strong>{metrics.unallocatedYieldWithdrawal ? 'Conciliação pendente' : brl(metrics.daily)}</strong><small>Bruto estimado · percentual de cada lote</small></div>

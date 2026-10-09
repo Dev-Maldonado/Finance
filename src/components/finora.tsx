@@ -1,4 +1,6 @@
 "use client";
+import { PurchaseHistory } from "./purchase-history";
+import { financialTone, type FinancialTone } from "@/lib/financial-tone";
 import { useEffect, useState, useMemo } from "react";
 import { WealthRegistrationFeedback, type WealthFeedback } from "./wealth-registration-feedback";
 import Link from "next/link";
@@ -35,6 +37,7 @@ import {
   CalendarDays,
   MoreHorizontal,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { Dashboard } from "./dashboard";
 import { CDIStatus, type BenchmarkStatus } from "./cdi-status";
@@ -58,7 +61,7 @@ import { browserDb } from "@/lib/supabase";
 import { Snapshot, Row, rows, str, financialSummary } from "@/lib/summary";
 import { portfolioPerformance } from "@/financial/portfolio-performance";
 import { D, money, simulate } from "@/financial/engine";
-import { forms, FormDef } from "./forms";
+import { forms, FormDef, fieldOptionLabel } from "./forms";
 import { Dialog, post } from "./dialog";
 import { WealthChart } from "./wealth-chart";
 import { SavingsChart } from "./savings-chart";
@@ -147,17 +150,17 @@ function Stat({
   label,
   value,
   icon: Icon,
-  tone = "purple",
+  tone = "investment",
   detail,
 }: {
   label: string;
   value: string;
   icon: typeof Wallet;
-  tone?: string;
+  tone?: FinancialTone;
   detail: string;
 }) {
   return (
-    <article className="stat">
+    <article className={`stat financial-surface ${financialTone(value, tone)}`}>
       <div>
         <span>{label}</span>
         <i className={tone}>
@@ -203,7 +206,8 @@ function Workspace({
     row: Row;
   } | null>(null);
   const [showExcluded, setShowExcluded] = useState(false);
-  const [showExcludedPurchases, setShowExcludedPurchases] = useState(false);
+  const [selectedCard, setSelectedCard] = useState("");
+  const [recurrenceWarning, setRecurrenceWarning] = useState("");
   const [showExcludedInvestments, setShowExcludedInvestments] = useState(false);
   const [txAccount, setTxAccount] = useState(""),
     [txCategory, setTxCategory] = useState(""),
@@ -291,7 +295,12 @@ function Workspace({
     enabled: session === true,
     queryFn: async () => {
       // Due recurring entries are pending and idempotent; confirmed cash is unchanged.
-      await post("/api/recurring", {});
+      try {
+        await post("/api/recurring", {});
+        setRecurrenceWarning("");
+      } catch {
+        setRecurrenceWarning("Não foi possível gerar as recorrências agora. Seus registros continuam disponíveis; tente novamente em Lançamentos recorrentes.");
+      }
       const res = await fetch("/api/snapshot");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -339,8 +348,8 @@ function Workspace({
     [snapshot, start, end],
   );
   const summary = useMemo(
-    () => (snapshot ? financialSummary(snapshot, start, end) : null),
-    [snapshot, start, end],
+    () => (snapshot ? financialSummary(snapshot, start, end, today) : null),
+    [snapshot, start, end, today],
   );
   const periodSummary = useMemo(
     () =>
@@ -350,9 +359,10 @@ function Workspace({
             start,
             end,
             ["month", "previous"].includes(period),
+            today,
           )
         : null,
-    [snapshot, start, end, period],
+    [snapshot, start, end, period, today],
   );
   const periodExpenses = useMemo<Row[]>(
     () =>
@@ -495,7 +505,7 @@ function Workspace({
           (r) =>
             str(r, "date") >= start &&
             (r.status !== "cancelled" ||
-              (section === "transacoes" && showExcluded)) &&
+              (section === "transacoes" && (showExcluded || txStatus === "cancelled"))) &&
             str(r, "date") <= end &&
             str(r, "description")
               .toLowerCase()
@@ -790,7 +800,9 @@ function Workspace({
             <button
               className="icon-button"
               onClick={refresh}
-              aria-label="Atualizar dados"
+              disabled={query.isFetching}
+              aria-busy={query.isFetching}
+              aria-label={query.isFetching ? "Atualizando dados" : "Atualizar dados"}
             >
               <RefreshCw size={18} />
             </button>
@@ -873,7 +885,7 @@ function Workspace({
                       value={end}
                       min={start}
                       onChange={(e) => {
-                        if (e.target.value) setEnd(e.target.value);
+                        if (e.target.value && e.target.value >= start) setEnd(e.target.value);
                       }}
                     />
                   </>
@@ -886,11 +898,10 @@ function Workspace({
             </div>
           )}
           {notice && (
-            <p role="status" className="notice" onClick={() => setNotice("")}>
-              {notice}
-            </p>
+            <div role="status" className="notice dismissible-notice"><span>{notice}</span><button className="icon-button" aria-label="Fechar aviso" onClick={() => setNotice("")}><X size={16} /></button></div>
           )}
-          {query.isPending && <p className="loading">Carregando seus dados…</p>}
+          {recurrenceWarning && <p className="error" role="alert">{recurrenceWarning}</p>}
+          {query.isPending && <p className="loading" role="status">Carregando seus dados…</p>}
           {query.error && (
             <div className="error" role="alert">
               {query.error.message}
@@ -948,7 +959,7 @@ function Workspace({
                         }
                       >
                         <div
-                          className="account-balance"
+                          className={`account-balance financial-surface ${financialTone(str(a, "balance"), "balance")}`}
                           style={{ borderColor: str(a, "color") }}
                         >
                           <Wallet />
@@ -993,7 +1004,7 @@ function Workspace({
                     <input
                       type="checkbox"
                       checked={showExcluded}
-                      onChange={(e) => setShowExcluded(e.target.checked)}
+                      onChange={(e) => { setShowExcluded(e.target.checked); if (!e.target.checked && txStatus === "cancelled") setTxStatus(""); }}
                     />
                     Mostrar lançamentos excluídos
                   </label>
@@ -1072,7 +1083,7 @@ function Workspace({
                         <select
                           aria-label="Filtrar transações por status"
                           value={txStatus}
-                          onChange={(e) => setTxStatus(e.target.value)}
+                          onChange={(e) => { setTxStatus(e.target.value); if (e.target.value === "cancelled") setShowExcluded(true); }}
                         >
                           <option value="">Todos</option>
                           <option value="confirmed">Confirmado</option>
@@ -1087,6 +1098,7 @@ function Workspace({
                           setTxCategory("");
                           setTxType("");
                           setTxStatus("");
+                          setShowExcluded(false);
                         }}
                       >
                         Limpar filtros
@@ -1216,7 +1228,7 @@ function Workspace({
                     />
                   </div>
                   <div className="cards-grid">
-                    {rows(snapshot, "credit_cards").map((c) => (
+                    {rows(snapshot, "credit_cards").filter(c => !selectedCard || c.id === selectedCard).map((c) => (
                       <Panel
                         key={str(c, "id")}
                         title={str(c, "name")}
@@ -1243,6 +1255,8 @@ function Workspace({
                       month={invoiceMonth}
                       today={today}
                       onMonthChange={setInvoiceMonth}
+                      cardId={selectedCard}
+                      onCardChange={setSelectedCard}
                       onEditInstallment={(part) => setModal({ form: forms.installment, initial: part })}
                       onPay={(invoice) =>
                         setModal({
@@ -1257,81 +1271,9 @@ function Workspace({
                       }
                     />
                   </Panel>
-                  <Panel
-                    title="Compras registradas"
-                    action={
-                      <label className="excluded-toggle">
-                        <input
-                          type="checkbox"
-                          checked={showExcludedPurchases}
-                          onChange={(e) =>
-                            setShowExcludedPurchases(e.target.checked)
-                          }
-                        />
-                        Mostrar compras excluídas
-                      </label>
-                    }
-                  >
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Descrição</th>
-                            <th>Data</th>
-                            <th>Total</th>
-                            <th>Parcelas</th>
-                            <th className="transaction-actions">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows(
-                            snapshot,
-                            "credit_card_purchases",
-                            showExcludedPurchases,
-                          ).map((p) => (
-                            <tr key={str(p, "id")}>
-                              <td>
-                                <span>{p.description}</span><small>{categoryLabel(rows(snapshot, "categories"), str(p, "category_id"), " / ")}</small>
-                                {p.status === "cancelled" && (
-                                  <span className="badge">Excluída</span>
-                                )}
-                              </td>
-                              <td>{pretty(str(p, "date"))}</td>
-                              <td>{brl(str(p, "amount"))}</td>
-                              <td>{p.installments}×</td>
-                              <td className="transaction-actions">
-                                {p.status !== "cancelled" && (
-                                  <div className="actions">
-                                    <button
-                                      onClick={() =>
-                                        setModal({
-                                          form: {
-                                            ...forms.purchase,
-                                            action: undefined,
-                                            endpoint: "/api/purchases",
-                                          },
-                                          initial: p,
-                                        })
-                                      }
-                                    >
-                                      Editar
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        setRemoval({ kind: "purchase", row: p })
-                                      }
-                                    >
-                                      Excluir
-                                    </button>
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Panel>
+                  <PurchaseHistory snapshot={snapshot} month={invoiceMonth} today={today} cardId={selectedCard} onCardChange={setSelectedCard}
+                    onEdit={p => setModal({ form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: p })}
+                    onRemove={p => setRemoval({ kind: "purchase", row: p })} />
                 </>
               )}
               {current[0] === "caixinhas" && (
@@ -1527,7 +1469,7 @@ function Workspace({
                                 <strong>{p.asset.ticker}</strong>
                                 <small>{p.asset.name}</small>
                               </td>
-                              <td>{p.asset.asset_class}</td>
+                              <td>{fieldOptionLabel(forms.asset, "asset_class", str(p.asset, "asset_class"))}</td>
                               <td>{p.pos.quantity}</td>
                               <td>
                                 {p.supported
@@ -1859,7 +1801,7 @@ function Workspace({
                           </div>
                           <strong>{brl(str(o, "amount"))}</strong>
                           <span
-                            className={`badge ${o.status === "paid" ? "green" : ""}`}
+                            className={`badge ${o.status === "paid" ? "green" : o.status === "cancelled" ? "muted" : str(o, "due_date") < today ? "danger" : "amber"}`}
                           >
                             {o.status === "paid"
                               ? "Pago"
@@ -1923,7 +1865,7 @@ function Workspace({
                           str(b, "month").slice(0, 7) <= end.slice(0, 7),
                       )
                       .map((b) => {
-                        const metrics = budgetMetrics(snapshot, b);
+                        const metrics = budgetMetrics(snapshot, b, today);
                         const spent = Number(metrics.spent),
                           progress = Math.min(100, Number(metrics.percent));
                         return (
@@ -2103,6 +2045,7 @@ function Workspace({
                                   start,
                                   end,
                                   ["month", "previous"].includes(period),
+                                  today,
                                 ),
                                 f,
                                 {
@@ -2129,7 +2072,7 @@ function Workspace({
                   >
                     <div className="report-grid">
                       {[
-                        ["Entradas", summary.income],
+                        ["Entradas", periodSummary?.income || "0"],
                         ["Gastos e parcelas", periodSummary?.expenses || "0"],
                         [
                           "Parcelas do cartão",
@@ -2147,12 +2090,12 @@ function Workspace({
                           "Resultado efetivo em caixa",
                           periodSummary?.cashNet || "0",
                         ],
-                        ["Rendimentos recebidos", summary.yields],
+                        ["Rendimentos recebidos", periodSummary?.yields || "0"],
                         ["Patrimônio bruto atual", summary.assets],
                         ["Patrimônio líquido atual", summary.netWorth],
                         ["Investimentos atuais", summary.investments],
                       ].map(([label, value]) => (
-                        <div key={label}>
+                        <div key={label} className={`financial-surface ${financialTone(value, label.startsWith("Patrimônio") ? "wealth" : label.startsWith("Investimentos") ? "investment" : ["Gastos e parcelas", "Parcelas do cartão", "Despesas nas contas"].includes(label) ? "expense" : "income")}`}>
                           <span>{label}</span>
                           <strong>{brl(value)}</strong>
                         </div>
@@ -2380,7 +2323,7 @@ function Workspace({
             <small>
               {g.goal.indexer === "cdi"
                 ? `${str(g.goal, "percentage")}% do CDI`
-                : str(g.goal, "indexer")}
+                : fieldOptionLabel(forms.goal, "indexer", str(g.goal, "indexer"))}
             </small>
           </div>
           <span>{progress.toFixed(0)}%</span>

@@ -27,9 +27,9 @@ export function FlowChart({
           margin={{ left: 0, right: 8, top: 12, bottom: 0 }}
         >
           <defs>
-            <linearGradient id="purple" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#5B35D5" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#5B35D5" stopOpacity={0} />
+            <linearGradient id="flow-income" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#15803d" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#15803d" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -68,16 +68,16 @@ export function FlowChart({
             type="monotone"
             dataKey="income"
             name="Entradas"
-            stroke="#5B35D5"
+            stroke="#15803d"
             strokeWidth={2.5}
-            fill="url(#purple)"
+            fill="url(#flow-income)"
           />
           <Area
             isAnimationActive={false}
             type="monotone"
             dataKey="expense"
             name="Saídas"
-            stroke="#f18c9c"
+            stroke="#c4586e"
             strokeWidth={2}
             fill="transparent"
           />

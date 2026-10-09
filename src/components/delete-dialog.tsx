@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { requestJson } from "@/lib/client-request";
 import { Row, str } from "@/lib/summary";
 
 export type RemovalKind =
@@ -78,7 +79,7 @@ export function DeleteDialog({
                       : kind === "income"
                         ? "/api/income"
                         : "/api/transactions";
-            const response = await fetch(url, {
+            await requestJson(url, {
               method: resource ? "DELETE" : "POST",
               headers: { "Content-Type": "application/json" },
               body: resource
@@ -99,11 +100,6 @@ export function DeleteDialog({
                         },
                   ),
             });
-            const result = await response.json();
-            if (!response.ok)
-              throw new Error(
-                result.error || "Não foi possível concluir a alteração.",
-              );
             onSaved();
             onClose();
           } catch (e) {

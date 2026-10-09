@@ -6,17 +6,15 @@ import { installmentPreview, purchaseTotal, type PurchaseEntryMethod } from "@/l
 import { Snapshot, rows, str, Row } from "@/lib/summary";
 import { cardInvoices } from "@/lib/card-invoices";
 import { D } from "@/financial/engine";
+import { requestJson } from "@/lib/client-request";
 import { CategoryPicker } from './category-picker';
 import { categoryTree } from '@/lib/categories';
 export async function post(url: string, body: unknown) {
-  const response = await fetch(url, {
+  return requestJson(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "Falha ao salvar");
-  return result;
 }
 export function Dialog({
   form,
