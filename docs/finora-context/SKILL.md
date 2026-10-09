@@ -13,6 +13,10 @@ Use o checkout existente /workspace/Finance. Cada tarefa cloud já é isolada; n
 
 Mantenha docs/STATUS.md atualizado com etapa atual, trabalho concluído, evidências de validação, bloqueios e próxima ação. Não registre segredos. Retome pelo status e pelos arquivos, sem reler todo o prompt. Comunique resultados e limitações de forma concisa. Economia de tokens não autoriza omitir funcionalidades ou testes exigidos.
 
+## Requisito mobile/PWA — 09/10/2026
+
+Criar uma experiência própria de aplicativo para celulares/tablets, mantendo integralmente os módulos, dados, backend, autenticação e cálculos. Desktop não recebe mudanças visuais. Navegação inferior e menu completo, formulários/touch charts, safe areas/teclado, Android/iOS standalone e atualização explícita. Cache somente de arquivos públicos/estáticos; nunca snapshots, páginas autenticadas ou mutações. Sem lançamentos offline. Ver [MOBILE-PWA.md](../MOBILE-PWA.md) para instalação e validação.
+
 ## Requisito atual de investimentos — 09/10/2026
 
 O pedido atual substitui integralmente a seção 17 original e a atualização automática anterior: apenas Fundos e Criptomoedas, cadastro manual de nome/tipo/quantidade/valor total/data, compras adicionais separadas, preço médio, atualização mensal manual de unidade/cota, patrimônio/lucro/retorno e gráfico mensal simples. Nenhuma API, corretora, provento/evento/importação de investimentos na interface. Aportes não são lucro; sem preço informado não inventar retorno. As outras áreas permanecem preservadas.

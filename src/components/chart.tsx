@@ -1,4 +1,5 @@
 "use client";
+import { useMobileChart, MobileChartData } from "./mobile-chart";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,7 +17,9 @@ export function FlowChart({
 }: {
   data: { name: string; income: number; expense: number; yield: number }[];
 }) {
+  const mobileChart = useMobileChart();
   return (
+    <>
     <div
       className="chart"
       aria-label="Gráfico de entradas, gastos e rendimentos recebidos"
@@ -56,6 +59,7 @@ export function FlowChart({
             }
           />
           <Tooltip
+            trigger={mobileChart ? "click" : "hover"}
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
                 style: "currency",
@@ -93,6 +97,8 @@ export function FlowChart({
         </AreaChart>
       </ResponsiveContainer>
     </div>
+    <MobileChartData points={data.map(p=>({label:p.name,values:[{label:"Entradas",value:p.income},{label:"Saídas",value:p.expense},{label:"Rendimentos recebidos",value:p.yield}]}))}/>
+    </>
   );
 }
 export const palette = [

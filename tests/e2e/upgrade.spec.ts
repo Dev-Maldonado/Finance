@@ -248,9 +248,9 @@ test("monthly spending agrees across pages, fields clear, goals and recurrence m
     await expect(goalPanel).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
-    await expect(page.locator(".sidebar")).toHaveClass(/visible/);
+    await expect(page.getByRole("dialog", { name: "Todos os recursos" })).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.locator(".sidebar")).not.toHaveClass(/visible/);
+    await expect(page.getByRole("dialog", { name: "Todos os recursos" })).not.toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

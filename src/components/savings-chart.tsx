@@ -1,4 +1,5 @@
 "use client";
+import { useMobileChart, MobileChartData } from "./mobile-chart";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -13,6 +14,7 @@ export function SavingsChart({
 }: {
   data: { date: string; principal: number; yield: number; estimateComplete?: boolean }[];
 }) {
+  const mobileChart = useMobileChart();
   if (!data.length)
     return (
       <p className="notice" role="status">
@@ -38,6 +40,7 @@ export function SavingsChart({
           />
           <YAxis fontSize={10} width={60} />
           <Tooltip
+            trigger={mobileChart ? "click" : "hover"}
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
                 style: "currency",
@@ -65,6 +68,7 @@ export function SavingsChart({
         </AreaChart>
       </ResponsiveContainer>
     </div>
+    <MobileChartData points={chartData.map(p=>({label:p.date.split("-").reverse().join("/"),values:[{label:"Capital aportado",value:p.principal},{label:"Rendimento bruto estimado",value:p.yield}]}))}/>
     </>
   );
 }

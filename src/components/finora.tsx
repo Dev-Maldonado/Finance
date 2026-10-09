@@ -73,6 +73,7 @@ import { CategoryExpensesReport } from "./category-expenses-report";
 import { CategoryPicker } from "./category-picker";
 import { categoryMatches, categoryLabel, categoryOptions } from "@/lib/categories";
 import { exportData, exportReportRows } from "./exports";
+import { MobileNavigation } from "./mobile-navigation";
 const nav = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["contas", "Contas e Saldos", Wallet],
@@ -562,7 +563,7 @@ function Workspace({
     : [];
   function transactionTable(list: Row[]) {
     return list.length ? (
-      <div className="table-wrap">
+      <div className="table-wrap transaction-list">
         <table>
           <thead>
             <tr>
@@ -612,18 +613,18 @@ function Workspace({
                     )}
                   </span>
                 </td>
-                <td>
+                <td data-label="Categoria">
                   {snapshot ? categoryLabel(rows(snapshot, "categories"), str(t, "category_id"), " / ") : "—"}
                 </td>
-                <td>
+                <td data-label="Conta">
                   {(snapshot &&
                     rows(snapshot, "financial_accounts").find(
                       (c) => c.id === t.account_id,
                     )?.name) ||
                     "—"}
                 </td>
-                <td>{pretty(str(t, "date"))}</td>
-                <td>
+                <td data-label="Data">{pretty(str(t, "date"))}</td>
+                <td data-label="Status">
                   <span
                     className={`badge ${t.status === "confirmed" ? "green" : ""}`}
                   >
@@ -634,7 +635,7 @@ function Workspace({
                         : "Pendente"}
                   </span>
                 </td>
-                <td
+                <td data-label="Valor"
                   className={`right amount ${D(str(t, "amount")).lt(0) ? "negative" : "positive"}`}
                 >
                   {brl(str(t, "amount"))}
@@ -694,6 +695,7 @@ function Workspace({
           }}
         />
       )}
+      <MobileNavigation items={nav} current={current[0]} email={snapshot?.user.email} refreshing={query.isFetching} onRefresh={() => { void refresh(); }} onLogout={async () => { await browserDb().auth.signOut(); setSession(false); qc.clear(); }} />
       <aside
         id="main-navigation"
         aria-label="Menu principal"

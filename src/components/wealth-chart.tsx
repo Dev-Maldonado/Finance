@@ -1,4 +1,5 @@
 "use client";
+import { useMobileChart, MobileChartData } from "./mobile-chart";
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,6 +15,7 @@ export function WealthChart({
 }: {
   data: { date: string; net: number; assets: number }[];
 }) {
+  const mobileChart = useMobileChart();
   if (!data.length)
     return (
       <p className="notice">
@@ -31,6 +33,7 @@ export function WealthChart({
     </section>;
   }
   return (
+    <>
     <div
       className="chart"
       aria-label="Evolução do patrimônio bruto e líquido registrado"
@@ -45,6 +48,7 @@ export function WealthChart({
           />
           <YAxis fontSize={10} width={60} />
           <Tooltip
+            trigger={mobileChart ? "click" : "hover"}
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
                 style: "currency",
@@ -69,5 +73,7 @@ export function WealthChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
+    <MobileChartData points={data.map(p=>({label:p.date.split("-").reverse().join("/"),values:[{label:"Patrimônio bruto",value:p.assets},{label:"Patrimônio líquido",value:p.net}]}))}/>
+    </>
   );
 }

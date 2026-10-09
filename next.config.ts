@@ -17,7 +17,7 @@ const csp = [
 const config: NextConfig = {
   poweredByHeader: false,
   experimental: { cpus: 2 },
-  env: { NEXT_PUBLIC_FINORA_DEPLOYMENT_ENV: deployment },
+  env: { NEXT_PUBLIC_FINORA_DEPLOYMENT_ENV: deployment, NEXT_PUBLIC_FINORA_PWA_VERSION: process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "mobile-v1" },
   async headers() {
     return [{ source: '/:path*', headers: [
       { key: 'Content-Security-Policy', value: csp },

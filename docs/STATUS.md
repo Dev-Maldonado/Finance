@@ -2,7 +2,9 @@
 
 ## Entrega atual
 
-Entrega financeira publicada e validada na `main` de `Dev-Maldonado/Finance`, com implementação iniciada em `1b8341e` e código/testes validados até `2a5c529`. Produção https://finance-two-lake.vercel.app: deploy `dpl_AuBbaZCtVNDaMvmZhm7t5MLCNcnA` READY. Supabase possui 23 migrations; seis incrementais aplicadas em uma transação, com histórico financeiro idêntico nas dez tabelas comparadas. CI completo passou em https://github.com/Dev-Maldonado/Finance/actions/runs/37874562805: 130 unitários, tipos/build, 49 verificações integradas, 16 testes de navegador, proteção/criptografia e ensaio de backup/upgrade legado. Ativação de mercado/backups e proteção de branch exige administração GitHub, bloqueada por HTTP 403 nesta integração. Consulte a seção final e OPERATIONS.md. As seções anteriores registram o histórico e as validações na época.
+Última entrega publicada: investimentos manuais (Fundos e Criptomoedas), código `2ca7c48`, fechamento documental `970daec`, Vercel READY e CI `37935671101` aprovado. Supabase possui 24 migrations; o reset de investimentos solicitado foi aplicado preservando os demais registros financeiros. As seções antigas abaixo são histórico; pedidos atuais em `docs/finora-context/SKILL.md` prevalecem.
+
+Em conclusão: experiência mobile exclusiva e PWA, preservando os módulos, backend, cálculos e layout desktop. Navegação inferior/menu, formulários adaptados, gráficos por toque, instalação Android/iOS, ícones/abertura, atualização explícita e cache apenas público/estático. Nenhuma alteração de dados ou migration foi necessária.
 
 ## Cobertura
 
@@ -215,3 +217,12 @@ CI remoto 37934610073 passou por instalação, 127 unitários, proteção/cripto
 CI **37935671101** concluído com **success** para `2ca7c48`: instalação limpa, 127 unitários, 15 proteções/criptografia, migrations, backup/restauro, upgrade histórico 17–23, reset manual 23–24/reexecução, tipos/build, 56 verificações integradas e todos os 22 cenários de navegador passaram. Deploy de produção `dpl_GoXHNtbuHjuMQXpr3BNmEJNaFatV` READY. Cálculos/layout não precisaram mudar para resolver a sincronização do teste de viewport; a condição de ausência de overflow permanece validada em desktop/tablet/celular.
 
 Investimentos antigos limpos conforme solicitado, Supabase na migration 24, nova área disponível no domínio público. Sem integrações de cotação ou tokens extras; CDI/Selic e demais funcionalidades continuam preservados. Este fechamento altera somente a documentação dos resultados e usa `[skip ci]` para não repetir testes aprovados pela anotação. Não há pendência de implantação dessa reformulação; restrições administrativas de workflows de backup já existentes permanecem fora do escopo e descritas em OPERATIONS.md.
+
+
+## Experiência mobile e PWA — 09/10/2026
+
+Implementação em `src/app/mobile.css`, `MobileNavigation`, `PwaProvider`, manifest e `/sw.js`. Estilos limitados a janelas pequenas e dispositivos com ponteiro de toque; `globals.css` e `dashboard.css` preservados. Menu utiliza o mesmo índice de módulos. Transações mobile apresentam todos os campos e ações, filtros/formulários continuam compartilhados. Gráficos temporais consultáveis por toque e listas de valores; seleção hierárquica de categorias preservada.
+
+Safe areas, teclado via VisualViewport, painéis de formulário, acessibilidade de foco, Escape, alvos de toque e movimento reduzido. Ícones próprios e telas de abertura iOS retrato/paisagem. A instalação respeita Chrome/Android e Safari/iOS. Worker não guarda HTML autenticado, APIs, autenticação ou mutações; fallback offline é público e não existe fila financeira offline. Novas versões exigem ação/confirmação e não interrompem formulários.
+
+Validação local: 137 unitários, TypeScript, build e 20 verificações integradas aprovados. A bateria de navegador com 26 testes passou; os seis cenários mobile/PWA ampliados passaram na versão final (28 cenários distintos no conjunto). Testes usam usuários descartáveis e Supabase local. Produção/GitHub ainda aguardam publicação deste commit. Instalação e teclado nos aparelhos físicos não foram testados; emulação não substitui essa conferência. Guia: [MOBILE-PWA.md](MOBILE-PWA.md).
