@@ -40,13 +40,13 @@ O teste de navegador usa `/usr/bin/chromium`; em outra máquina, configure `CHRO
 - Caixinhas, metas, aportes por lote, resgates FIFO de principal, condições históricas preservadas, CDI/Selic diário, prefixado na convenção de 252 datas elegíveis e produto sem rendimento. Gráfico de capital versus juros estimados, tributação por produto/vigência, conciliação explícita e simulador hipotético.
 - Ativos de diferentes classes, posições iniciais sem movimentação fictícia de caixa, compras/vendas, custo médio com taxas, eventos corporativos, preços manuais identificados, cotas de fundos, proventos anunciados e confirmação de recebimento. Amortização é classificada como devolução de capital no caixa.
 - Orçamentos, metas, dívidas manuais, patrimônio líquido, filtros temporais, gráficos, central de rendimentos, comparação CDI e performance pessoal por Dietz modificado.
-- Importação CSV/OFX de transações e CSV de operações de investimento com prévia, confirmação atômica e deduplicação; exportação CSV, XLSX e PDF. XLSX usa células de texto para evitar execução de fórmulas vindas de descrições.
+- Importação CSV/OFX de transações e CSV de operações de investimento com prévia, confirmação atômica e deduplicação; exportação CSV, XLSX e PDF. XLSX preserva valores e datas em células tipadas; descrições permanecem texto, com proteção contra execução de fórmulas.
 
 ## Regras financeiras
 
 Valores monetários entram como strings, são armazenados em `numeric` e retornam como texto; cálculos críticos usam `decimal.js`. `number` é usado somente para visualização. Transferências e aportes não são renda/despesa. Pagamentos não repetem a despesa da compra. Caixinhas estimadas não aumentam o saldo confirmado.
 
-O rendimento SGS 12 usa a unidade diária publicada. O cálculo aplica fatores nas datas disponíveis, respeitando cada lote e seus resgates. Não preenche taxas ausentes. Selic usa SGS 11. Prefixado utiliza 252 datas elegíveis com referência no calendário publicado; contratos com outra convenção exigem estratégia específica. O resgate existente movimenta principal; ganhos recebidos precisam de conciliação própria. Não há conexão bancária/Open Finance implementada.
+O rendimento SGS 12 usa a unidade diária publicada. O cálculo aplica fatores nas datas disponíveis, respeitando cada lote e seus resgates. Não preenche taxas ausentes. Selic usa SGS 11. Prefixado utiliza 252 datas elegíveis com referência no calendário publicado; contratos com outra convenção exigem estratégia específica. Resgates movimentam principal e, quando conciliado explicitamente, rendimento confirmado líquido de impostos. Juros resgatados sem alocação por lote deixam a estimativa incompleta identificada. Não há conexão bancária/Open Finance implementada.
 
 A tributação configurável está em `tax_rules`; regras não cobertas deixam o líquido indisponível. As regras iniciais de renda fixa precisam ser confirmadas para o produto e a vigência antes de uso em produção. Fundos com come-cotas e produtos com carência/metodologia específica exigem implementação contratual adicional, sem estimativas inventadas.
 

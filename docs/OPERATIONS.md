@@ -1,6 +1,6 @@
 # Operação, validação e recuperação
 
-Os workflows e scripts deste documento são procedimentos versionados. Criá-los não configura secrets, proteção de branch, agendadores externos ou backups do projeto hospedado. Nenhum backup/restauro de produção foi executado para implementar este runbook.
+Os workflows e scripts deste documento são procedimentos versionados. Criá-los não configura secrets, proteção de branch, agendadores externos ou backups do projeto hospedado. Não houve backup/restauro PostgreSQL completo de produção nem ensaio de recuperação hospedada. Um snapshot lógico privado financeiro/Auth foi criptografado e verificado antes do upgrade; suas limitações estão registradas em STATUS.md.
 
 ## Validação no GitHub
 
