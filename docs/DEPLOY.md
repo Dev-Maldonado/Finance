@@ -16,7 +16,7 @@ npx supabase db push
 
 As migrations em `supabase/migrations` criam tabelas, funções financeiras e políticas de acesso. Não execute os scripts `scripts/local` no banco hospedado. Não copie usuários, credenciais ou dados de teste do banco local.
 
-Se a conexão PostgreSQL estiver indisponível no ambiente, abra o SQL Editor do projeto e execute o conteúdo de [supabase-bootstrap.sql](supabase-bootstrap.sql). Esse arquivo contém as 17 migrations iniciais em uma transação e registra o histórico do Supabase CLI. Ele bloqueia a execução quando há relações no schema `public` ou histórico de migrations existente; não apague tabelas para contornar esse bloqueio. O bootstrap foi validado em um banco PostgreSQL descartável, incluindo o bloqueio de reexecução. Para novas migrations após a instalação, use o fluxo incremental do CLI.
+Se a conexão PostgreSQL estiver indisponível, use o SQL Editor do projeto. Em um projeto vazio, execute [supabase-bootstrap.sql](supabase-bootstrap.sql), com as 17 migrations iniciais, e depois [supabase-update-financial-upgrade.sql](supabase-update-financial-upgrade.sql), com as migrations 18–23, antes de publicar esta versão. Em uma instalação com as 17 migrations, execute somente o segundo arquivo. Instalações na versão 16 precisam aplicar primeiro [supabase-update-card-corrections.sql](supabase-update-card-corrections.sql). Os scripts registram o histórico do CLI e executam em transações; o incremental 18–23 permite reexecução sem duplicar alterações. O bootstrap bloqueia relações ou histórico existentes: não apague tabelas para contornar esse bloqueio. O upgrade foi validado duas vezes em banco descartável com histórico financeiro preservado. Pelo CLI, `db push` aplica todas as migrations pendentes.
 
 Configure SMTP e confirmação de email no Supabase Auth. Após obter o domínio de produção, configure Site URL e Redirect URLs com esse domínio e a URL exata `/auth/callback`. Cadastros e recuperação de senha devem ser verificados com uma conta de teste própria.
 
@@ -74,3 +74,10 @@ Os recursos avançados pendentes continuam registrados em [STATUS.md](STATUS.md)
 Para um projeto que já recebeu o bootstrap anterior, execute somente [supabase-update-card-corrections.sql](supabase-update-card-corrections.sql) no SQL Editor antes do novo deploy. Ele adiciona cor persistente aos cartões, exclusão de compras com histórico e a função de correção de parcelas. Foi validado em banco descartável, inclusive reexecução sem duplicar a migration. Não execute novamente o bootstrap no banco existente.
 
 Compras em faturas sem pagamento permitem alterar cartão, valor, data, parcelas e categoria, recalculando vencimentos e limite. Em faturas que já têm pagamento, descrição/categoria podem ser corrigidas; mudanças financeiras e exclusão são bloqueadas até conciliação do pagamento. Receitas e despesas independentes da conta permitem edição e exclusão, com saldo recalculado. Exclusão mantém histórico e remove o lançamento dos totais; movimentos vinculados a transferências, caixinhas e investimentos precisam da correção correspondente na origem.
+
+
+## Operação desta versão
+
+O cron diário também gera as despesas recorrentes previstas até o dia atual. Abrir o aplicativo gera as pendências do próprio usuário; previsões futuras são calculadas separadamente e não reduzem o caixa confirmado. Esta atualização requer as migrations 18–23 antes do deploy.
+
+Consulte [OPERATIONS.md](OPERATIONS.md) para CI, sincronização de mercado/CVM, backups criptografados e ensaio de recuperação. Os workflows de mercado e backup exigem secrets e variáveis de ativação; arquivos publicados não significam agendamento ativado.

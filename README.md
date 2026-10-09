@@ -88,3 +88,12 @@ Na página Cartões, selecione o mês de vencimento para consultar a fatura mens
 O dashboard reúne patrimônio atual, resultado líquido, receitas/gastos/rendimentos, faturas mensais de todos os cartões e próximos vencimentos, caixa operacional, disponibilidade após compromissos, evolução de seis meses, comparativo com a mesma janela anterior, categorias, orçamentos, metas, carteira e posições patrimoniais registradas. No dashboard, gastos e saldo mensais usam despesas da conta e somente as parcelas que vencem no mês. O valor integral das compras fica nos gastos gerais do histórico; o comprometimento total soma os saldos de todas as faturas. Saldo mensal é receitas e rendimentos recebidos menos despesas e parcelas; saldo das contas e patrimônio geral aparecem separados. Pagamentos, transferências e aportes não duplicam os gastos.
 
 As caixinhas calculam automaticamente ganhos por dia útil e por mês com taxas oficiais do BCB, condições históricas de cada lote e resgates. O cron diário da Vercel e a verificação ao abrir o app exigem configuração de servidor; siga [CDI automático](docs/DEPLOY.md#cdi-automático-na-vercel). Rendimentos calculados são estimados, separados dos valores conciliados.
+
+
+## Atualização financeira: parcelas, recorrências e categorias
+
+Compras podem ser cadastradas pelo total ou pelo valor de cada parcela, com prévia de vencimentos, conservação de centavos e edição auditada de parcelas futuras. Recorrências semanais, mensais e anuais geram lançamentos previstos, permitem pausa/cancelamento e respeitam a competência mensal. Categorias possuem dois níveis explícitos, seleção hierárquica, gráficos detalháveis e filtros que incluem subcategorias sem duplicar valores.
+
+O planejamento apresenta projeções de 30/60/90 dias, disponibilidade, despesas essenciais e reserva, metas e conciliação explícita. Correções de investimentos/proventos, importações revisáveis e exportações compartilham os controles de integridade. Despesas previstas, valores pagos, saldo mensal e patrimônio geral continuam separados.
+
+Para atualizar uma instalação existente, siga a sequência de migrations em [DEPLOY.md](docs/DEPLOY.md). CI, automação de mercado e backups estão documentados em [OPERATIONS.md](docs/OPERATIONS.md). Resgates de rendimento confirmado sem alocação por lote deixam a estimativa incompleta identificada; o app não afirma equivalência ao saldo bancário.

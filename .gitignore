@@ -9,3 +9,5 @@ playwright-report/
 *.tsbuildinfo
 
 .local-db.env
+__pycache__/
+*.py[cod]

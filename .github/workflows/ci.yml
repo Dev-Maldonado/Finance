@@ -1,0 +1,73 @@
+name: Validate FINORA
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finora-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Unit, types, build, integration and browser
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+      - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/backups -p 'test_*.py'
+      - name: Start isolated local Supabase and apply migrations
+        run: npm run db:start
+      - name: Verify backup and restore in disposable PostgreSQL
+        run: PYTHONDONTWRITEBYTECODE=1 python3 scripts/backups/verify-local.py
+      - name: Preserve legacy records through the incremental upgrade
+        run: bash scripts/hierarchy-migration-test.sh
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test:integration
+      - name: Verify financial integrity and classified imports locally
+        run: |
+          npm run test:integrity
+          npm run test:imports
+          npm run test:scheduling
+      - name: Install browser
+        run: |
+          npx playwright install --with-deps chromium
+          node --input-type=module -e 'import { chromium } from "@playwright/test"; console.log(`CHROMIUM_PATH=${chromium.executablePath()}`)' >> "$GITHUB_ENV"
+      - name: Start local application
+        run: |
+          npm start > /tmp/finora-ci-app.log 2>&1 &
+          echo "$!" > /tmp/finora-ci-app.pid
+          for finora_attempt in $(seq 1 60); do
+            if curl --silent --fail http://localhost:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo 'Local application did not become ready.' >&2
+          exit 1
+      - run: npm run test:e2e
+      - name: Keep failed browser diagnostics briefly
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: local-browser-diagnostics
+          path: test-results/
+          retention-days: 3
+          if-no-files-found: ignore
+      - name: Stop isolated test services
+        if: always()
+        run: |
+          if [ -f /tmp/finora-ci-app.pid ]; then kill "$(cat /tmp/finora-ci-app.pid)" || true; fi
+          if [ -f .local-db.env ]; then
+            docker compose -p finora-local --env-file .local-db.env -f scripts/local/compose.yml down --volumes
+          fi
