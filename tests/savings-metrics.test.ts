@@ -1,40 +1,37 @@
-import { expect, test } from 'vitest';
-import { savingsMetrics } from '../src/lib/savings-metrics';
-import { financialSummary, type Snapshot } from '../src/lib/summary';
-const sample = (): Snapshot => ({ user: { id: 'u', email: '' },
-  savings_goals: [{ id: 'g', name: 'Reserva', target: '20000' }],
-  savings_lots: [{ id: 'a', goal_id: 'g', principal: '5000', remaining: '2500', start_date: '2026-10-01', percentage: '100', indexer: 'cdi', product: 'cdb', tax_exempt: false }, { id: 'b', goal_id: 'g', principal: '1000', remaining: '1000', start_date: '2026-10-05', percentage: '120', indexer: 'cdi', product: 'cdb', tax_exempt: false }, { id: 'future', goal_id: 'g', principal: '9000', remaining: '9000', start_date: '2026-11-01', percentage: '100', indexer: 'cdi', product: 'cdb', tax_exempt: false }],
-  savings_movements: [{ id: 'm', lot_id: 'a', date: '2026-10-05', type: 'withdrawal', amount: '2500', goal_id: 'g' }],
-  benchmark_rates: ['2026-10-01', '2026-10-02', '2026-10-05'].map(date => ({ id: date, series: '12', date, value: '0.05', validated: true })),
+import { expect,test } from 'vitest';
+import { savingsMetrics,savingsPeriodMetrics } from '../src/lib/savings-metrics';
+import { manualSavingsPosition,manualSavingsHistory } from '../src/lib/manual-savings';
+import { financialSummary,type Snapshot } from '../src/lib/summary';
+const sample=():Snapshot=>({user:{id:'u',email:''},savings_goals:[{id:'g',account_id:'s',target:'2000'}],financial_accounts:[{id:'s',kind:'savings',initial_balance:'1000'}],account_balances:[{id:'s',kind:'savings',balance:'1300'}],savings_movements:[{goal_id:'g',type:'deposit',amount:'1000',date:'2026-09-01'},{goal_id:'g',type:'deposit',amount:'500',date:'2026-10-01',transaction_group:'d'},{goal_id:'g',type:'manual_withdrawal',amount:'300',date:'2026-10-03',transaction_group:'w'}],transactions:[{account_id:'s',status:'confirmed',date:'2026-09-30',amount:'100',type:'adjustment',source_id:'manual-savings:first'},{account_id:'s',status:'confirmed',date:'2026-10-01',amount:'500',type:'transfer',group_id:'d'},{account_id:'s',status:'confirmed',date:'2026-10-03',amount:'-300',type:'transfer',group_id:'w'}],manual_savings_updates:[{goal_id:'g',date:'2026-09-30',balance:'1100',adjustment:'100'}],benchmark_rates:[{series:'12',date:'2026-10-01',value:'99',validated:true}]});
+test('deposits and withdrawals never become gains or losses, nor do benchmark rates change manual balances',()=>{
+ const s=sample(),g=(s.savings_goals as never[])[0];
+ expect(manualSavingsPosition(s,g,'2026-10-08')).toMatchObject({deposits:'1500.00',withdrawals:'300.00',balance:'1300.00',profit:'100.00',percent:'6.67'});
+ expect(savingsMetrics(s,'2026-10-08')).toMatchObject({daily:'0.00',monthly:'0.00'});
+ expect(financialSummary(s,'2026-10-01','2026-10-08','2026-10-08').goals[0].manual.profit).toBe('100.00');
 });
-test('daily and monthly earnings respect each contract, new deposits, withdrawal and unpublished days', () => {
-  const weekday = savingsMetrics(sample(), '2026-10-05');
-  expect(weekday).toMatchObject({ daily: '1.85', monthly: '6.85' });
-  expect(weekday.details[0]).toMatchObject({ complete: true, cumulative: '6.85', asOf: '2026-10-05' });
-  expect(savingsMetrics(sample(), '2026-10-06')).toEqual(weekday);
-  expect(financialSummary(sample(), '2026-10-01', '2026-10-06', '2026-10-06').goals[0]).toMatchObject({ principal: '3500.00', gross: '4.35' });
+test('a jar awaits manual observation even if official CDI history exists',()=>{
+ const s=sample();s.manual_savings_updates=[];s.transactions=(s.transactions as import('../src/lib/summary').Row[]).filter(t=>t.type!=='adjustment');
+ const p=manualSavingsPosition(s,(s.savings_goals as never[])[0],'2026-10-08');
+ expect(p).toMatchObject({balance:'1200.00',known:false,profit:null,percent:null});
 });
-test('missing and invalid rates never become fabricated daily yield', () => {
-  const snapshot = sample(); snapshot.benchmark_rates = [{ id: 'invalid', series: '12', date: '2026-10-05', value: '0.05', validated: false }];
-  expect(savingsMetrics(snapshot, '2026-10-06')).toMatchObject({ daily: '0.00', monthly: '0.00' });
-  expect(savingsMetrics(snapshot, '2026-10-06').details[0].complete).toBe(false);
-  expect(financialSummary(snapshot, '2026-10-01', '2026-10-06', '2026-10-06').goals[0].gross).toBe('0.00');
+test('manual changes respect period boundaries and losses, without projecting future observations',()=>{
+ const s=sample();(s.transactions as import('../src/lib/summary').Row[]).push({account_id:'s',status:'confirmed',date:'2026-10-05',amount:'-50',type:'adjustment'}, {account_id:'s',status:'confirmed',date:'2026-11-01',amount:'999',type:'adjustment'});
+ expect(savingsPeriodMetrics(s,'2026-09-01','2026-09-30','2026-10-08').value).toBe('100.00');
+ expect(savingsPeriodMetrics(s,'2026-10-01','2026-10-31','2026-10-08').value).toBe('-50.00');
+ expect(savingsPeriodMetrics(s,'2026-11-01','2026-11-30','2026-10-08').value).toBe('0.00');
 });
-test('historical coverage of non-publishing days is recorded independently of the first business-day rate', () => {
-  const snapshot = sample(); snapshot.savings_lots = [{ id: 'a', goal_id: 'g', principal: '1000', remaining: '1000', start_date: '2026-10-03', percentage: '100', indexer: 'cdi', product: 'cdb', tax_exempt: false }];
-  snapshot.benchmark_rates = [{ id: 'r', series: '12', date: '2026-10-05', value: '0.05', validated: true }];
-  snapshot.savings_movements = [];
-  snapshot.provider_sync_states = [{ provider: 'bcb-cdi-history', last_date: '2026-10-03' }];
-  expect(savingsMetrics(snapshot, '2026-10-06').details[0]).toMatchObject({ complete: true, daily: '0.50', monthly: '0.50' });
+test('monthly history freezes an observation before a later same-day deposit',()=>{
+ const s=sample();s.savings_movements=[{goal_id:'g',type:'deposit',amount:'1000',date:'2026-09-01'},{goal_id:'g',type:'deposit',amount:'500',date:'2026-09-30',created_at:'2026-09-30T16:00:00Z',transaction_group:'later'}];s.transactions=[{account_id:'s',status:'confirmed',date:'2026-09-30',amount:'100',type:'adjustment'},{account_id:'s',status:'confirmed',date:'2026-09-30',amount:'500',type:'transfer',group_id:'later'}];s.manual_savings_updates=[{goal_id:'g',date:'2026-09-30',balance:'1100',adjustment:'100',cutoff:'2026-09-30T12:00:00Z'}];
+ expect(manualSavingsHistory(s,(s.savings_goals as never[])[0],'2026-10-08')[0]).toMatchObject({balance:'1100',invested:'1000.00',profit:'100.00',percent:'10.00'});
 });
 
-test('a deposit newer than the last published rate waits without claiming incomplete history or inventing gains', () => {
-  const snapshot = sample();
-  snapshot.savings_lots = [{ id: 'a', goal_id: 'g', principal: '1708.15', remaining: '1708.15', start_date: '2026-10-08', percentage: '100', indexer: 'cdi', product: 'rdb', tax_exempt: false }];
-  snapshot.savings_movements = [];
-  snapshot.benchmark_rates = [{ id: 'r', series: '12', date: '2026-10-07', value: '0.050788', validated: true }];
-  snapshot.provider_sync_states = [{ provider: 'bcb-cdi-history', last_date: '2025-10-08' }];
-  expect(savingsMetrics(snapshot, '2026-10-08').details[0]).toMatchObject({ complete: true, waitingForRate: true, waitingSince: '2026-10-08', asOf: null, daily: '0.00', monthly: '0.00' });
-  snapshot.benchmark_rates = [...snapshot.benchmark_rates, { id: 'r2', series: '12', date: '2026-10-08', value: '0.050788', validated: true }];
-  expect(savingsMetrics(snapshot, '2026-10-09').details[0]).toMatchObject({ complete: true, waitingForRate: false, waitingSince: null, asOf: '2026-10-08', daily: '0.87', monthly: '0.87' });
+test('actual withholding tax lowers cumulative returns once, and a gross withdrawal is not earnings',()=>{
+ const s=sample();s.savings_movements=[{goal_id:'g',type:'deposit',amount:'1000',date:'2026-09-01'},{goal_id:'g',type:'manual_withdrawal',amount:'100',date:'2026-10-01'},{goal_id:'g',type:'tax',amount:'10',date:'2026-10-01'}];s.transactions=[{account_id:'s',status:'confirmed',date:'2026-09-30',amount:'100',type:'adjustment'},{account_id:'s',status:'confirmed',date:'2026-10-01',amount:'-90',type:'transfer'},{account_id:'s',status:'confirmed',date:'2026-10-01',amount:'-10',type:'expense'}];
+ expect(manualSavingsPosition(s,(s.savings_goals as never[])[0],'2026-10-08')).toMatchObject({balance:'1000.00',profit:'90.00',percent:'9.00'});
+ expect(savingsPeriodMetrics(s,'2026-10-01','2026-10-08','2026-10-08').value).toBe('-10.00');
+});
+
+test('an empty jar observation before the first same-day deposit has no fabricated capital or percent',()=>{
+ const s=sample();s.financial_accounts=[{id:'s',kind:'savings',initial_balance:'0'}];s.savings_lots=[{goal_id:'g',principal:'500',remaining:'500',start_date:'2026-09-30'}];s.savings_movements=[{goal_id:'g',type:'deposit',amount:'500',date:'2026-09-30',created_at:'2026-09-30T16:00:00Z',transaction_group:'later'}];s.transactions=[{account_id:'s',status:'confirmed',date:'2026-09-30',amount:'100',type:'adjustment'},{account_id:'s',status:'confirmed',date:'2026-09-30',amount:'500',type:'transfer',group_id:'later'}];s.manual_savings_updates=[{goal_id:'g',date:'2026-09-30',balance:'100',adjustment:'100',cutoff:'2026-09-30T12:00:00Z'}];
+ expect(manualSavingsHistory(s,(s.savings_goals as never[])[0],'2026-10-08')[0]).toMatchObject({invested:'0.00',balance:'100',profit:'100.00',percent:null});
 });

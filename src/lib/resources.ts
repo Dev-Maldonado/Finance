@@ -103,7 +103,7 @@ export const schemas = {
       .optional()
       .transform((v) => v || null),
     institution: optional,
-    indexer: z.enum(["cdi", "none", "fixed", "selic", "manual"]).default("cdi"),
+    indexer: z.enum(["cdi", "none", "fixed", "selic", "manual"]).default("manual"),
     percentage: z
       .string()
       .regex(/^\d{1,4}(\.\d{1,4})?$/)

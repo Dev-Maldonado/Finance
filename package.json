@@ -17,7 +17,8 @@
     "test:imports": "node --env-file=.env.local --import tsx scripts/import-test.ts",
     "test:scheduling": "node --env-file=.env.local --import tsx scripts/scheduling-test.ts",
     "sync:benchmarks": "node --env-file=.env.local --import tsx scripts/sync-benchmarks.ts",
-    "test:manual": "node --env-file=.env.local --import tsx scripts/manual-investment-test.ts"
+    "test:manual": "node --env-file=.env.local --import tsx scripts/manual-investment-test.ts",
+    "test:savings": "node --env-file=.env.local --import tsx scripts/manual-savings-test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.0",

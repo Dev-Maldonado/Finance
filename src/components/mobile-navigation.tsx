@@ -33,7 +33,7 @@ export function MobileNavigation({ items, current, email, refreshing, onRefresh,
     <dialog ref={dialog} className="mobile-menu-sheet" aria-labelledby="mobile-menu-title" onCancel={() => setOpen(false)} onClick={event => { if (event.target === dialog.current) setOpen(false); }}>
       <div className="mobile-sheet-grip" />
       <div className="mobile-sheet-heading"><div><small>SEU ESPAÇO FINANCEIRO</small><h2 id="mobile-menu-title">Todos os recursos</h2></div><button aria-label="Fechar menu" onClick={() => setOpen(false)}><X size={22} /></button></div>
-      <nav aria-label="Todos os módulos" className="mobile-module-grid">{items.map(([path, label, Icon]) => <Link href={href(path)} key={path} aria-current={current === path ? "page" : undefined} onClick={() => setOpen(false)}><Icon size={23} /><span>{label}{path === "caixinhas" && <small> CDI</small>}</span></Link>)}</nav>
+      <nav aria-label="Todos os módulos" className="mobile-module-grid">{items.map(([path, label, Icon]) => <Link href={href(path)} key={path} aria-current={current === path ? "page" : undefined} onClick={() => setOpen(false)}><Icon size={23} /><span>{label}{path === "caixinhas" && <small> Manual</small>}</span></Link>)}</nav>
       <div className="mobile-menu-account"><span>{email || "Minha conta"}</span><button onClick={() => { setOpen(false); void onLogout(); }}><LogOut size={18} /> Sair</button></div>
       {!installed && <button className="mobile-install-button" onClick={() => { setOpen(false); void install(); }}><Download size={20} /><span>Instalar aplicativo<small>FINORA na sua tela inicial</small></span></button>}
     </dialog>

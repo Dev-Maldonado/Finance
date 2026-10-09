@@ -38,7 +38,7 @@ test('CDI comparisons refuse a truncated snapshot that starts after the selected
   expect(portfolioPerformance(snapshot, '2025-01-01', '2026-10-08')).toMatchObject({ cdi: null, benchmarkComplete: false, relative: null });
 });
 
-test('a Selic-only savings contract uses the freshness of Selic rather than an unrelated CDI record', () => {
+test('legacy indexer contracts do not generate returns after switching to manual control', () => {
   const snapshot: Snapshot = {
     user: { id: 'u', email: '' },
     savings_goals: [{ id: 'g', name: 'Selic', target: '2000' }],
@@ -46,11 +46,11 @@ test('a Selic-only savings contract uses the freshness of Selic rather than an u
     benchmark_rates: [{ series: '11', date: '2026-10-07', value: '0.05', validated: true }],
     provider_sync_states: [{ provider: 'bcb-selic-history', last_date: '2026-10-01' }],
   };
-  expect(savingsMetrics(snapshot, '2026-10-08').details[0]).toMatchObject({ complete: true, daily: '0.50', asOf: '2026-10-07' });
-  expect(financialPlan(snapshot, '2026-10-08').confidence.checks.find(check => check.id === 'cdi')).toMatchObject({ status: 'ok', referenceDate: '2026-10-07' });
+  expect(savingsMetrics(snapshot, '2026-10-08').details[0]).toMatchObject({ complete: false, daily: '0.00', asOf: null });
+  expect(financialPlan(snapshot, '2026-10-08').confidence.checks.find(check => check.id === 'savings')).toMatchObject({ status: 'attention' });
 });
 
-test('a cash-confirmed interest withdrawal without a lot allocation makes compound estimates partial', () => {
+test('legacy confirmed withdrawals preserve cash without needing compound estimates', () => {
   const snapshot: Snapshot = {
     user: { id: 'u', email: '' },
     savings_goals: [{ id: 'g', name: 'Reserva', account_id: 's', target: '2000' }],
@@ -64,11 +64,11 @@ test('a cash-confirmed interest withdrawal without a lot allocation makes compou
     provider_sync_states: [{ provider: 'bcb-cdi-history', last_date: '2026-10-01' }],
   };
   const summary = financialSummary(snapshot, '2026-10-01', '2026-10-08', '2026-10-08');
-  expect(summary.goals[0]).toMatchObject({ estimateComplete: false, confirmed: '3.00', registeredBalance: '1003' });
+  expect(summary.goals[0]).toMatchObject({ estimateComplete: true, confirmed: '3.00', registeredBalance: '1003.00' });
   expect(summary.assets).toBe('1003.00');
-  expect(savingsMetrics(snapshot, '2026-10-08').details[0]).toMatchObject({ complete: false, unallocatedYieldWithdrawal: true });
-  expect(financialPlan(snapshot, '2026-10-08').confidence.checks.find(check => check.id === 'cdi')).toMatchObject({ status: 'attention' });
-  expect(summary.goals[0].estimateLimitation).toContain('resgate de rendimento');
+  expect(savingsMetrics(snapshot, '2026-10-08').details[0]).toMatchObject({ complete: true, unallocatedYieldWithdrawal: false });
+  expect(financialPlan(snapshot, '2026-10-08').confidence.checks.find(check => check.id === 'savings')).toMatchObject({ status: 'attention' });
+  expect(summary.goals[0].manual.profit).toBe('5.00');
   const history = savingsHistory(snapshot.savings_lots as unknown as Lot[], snapshot.benchmark_rates as unknown as Rate[], snapshot.savings_movements as unknown as Movement[], '2026-10-08');
   expect(history[0].estimateComplete).toBeUndefined();
   expect(history.filter(point => point.date >= '2026-10-02').every(point => point.estimateComplete === false)).toBe(true);

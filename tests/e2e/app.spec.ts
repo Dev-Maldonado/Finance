@@ -259,7 +259,7 @@ test("login, conta, transação, persistência e layout móvel", async ({
     ).toBe(true);
     await page.getByRole("button", { name: "Abrir menu" }).click();
     await page
-      .getByRole("link", { name: "Caixinhas CDI", exact: true })
+      .getByRole("link", { name: "Caixinhas Manual", exact: true })
       .click();
     await expect(
       page.getByRole("heading", { name: "Caixinhas", exact: true }),
@@ -316,8 +316,6 @@ test("caixinha, cartão e relatório usam dados persistidos e mantêm proteçõe
       .getByLabel("Nome", { exact: true })
       .fill("Reserva de emergência");
     await page.getByLabel("Meta (R$)").fill("2000");
-    await page.getByLabel("Remuneração").selectOption("cdi");
-    await page.getByLabel("Produto tributário").selectOption("cdb");
     await page.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Reserva de emergência", exact: true }),
@@ -338,7 +336,7 @@ test("caixinha, cartão e relatório usam dados persistidos e mantêm proteçõe
       page.getByText("R$ 500,00", { exact: true }).first(),
     ).toBeVisible();
     await expect(
-      page.getByText(/Data-base CDI:|Sem taxas históricas disponíveis|Aguardando primeira taxa publicada desde/),
+      page.getByText("Aguardando atualização", {exact:true}).first(),
     ).toBeVisible();
     await page.goto("/cartoes");
     await page

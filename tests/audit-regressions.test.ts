@@ -31,10 +31,10 @@ test('a recorded savings lot starts its chart even without published rates, with
   expect(savingsHistory([lot], [], [], '2026-10-07')).toEqual([]);
 });
 
-test('savings yield follows the selected historical/custom period and never projects a future publication', () => {
+test('manual savings yield follows the selected period and never uses benchmark publications', () => {
   const snapshot: Snapshot = { user: { id: 'u', email: '' }, savings_goals: [{ id: 'g' }], savings_lots: [{ id: 'l', goal_id: 'g', principal: '1000', remaining: '1000', indexer: 'cdi', percentage: '100', start_date: '2026-09-01', yield_start_date: '2026-09-02', product: 'rdb', tax_exempt: false }], benchmark_rates: [{ series: '12', date: '2026-09-02', value: '0.1', validated: true }, { series: '12', date: '2026-10-02', value: '0.1', validated: true }, { series: '12', date: '2026-10-20', value: '0.5', validated: true }], provider_sync_states: [{ provider: 'bcb-cdi-history', last_date: '2026-09-01' }] };
-  expect(savingsPeriodMetrics(snapshot, '2026-09-01', '2026-09-30', '2026-10-08').value).toBe('1.00');
-  expect(savingsPeriodMetrics(snapshot, '2026-10-01', '2026-10-31', '2026-10-08').value).toBe('1.00');
+  expect(savingsPeriodMetrics(snapshot, '2026-09-01', '2026-09-30', '2026-10-08').value).toBe('0.00');
+  expect(savingsPeriodMetrics(snapshot, '2026-10-01', '2026-10-31', '2026-10-08').value).toBe('0.00');
   expect(savingsPeriodMetrics(snapshot, '2026-10-03', '2026-10-08', '2026-10-08').value).toBe('0.00');
   expect(savingsPeriodMetrics(snapshot, '2026-11-01', '2026-11-30', '2026-10-08').value).toBe('0.00');
 });

@@ -102,25 +102,3 @@ test('financial planning distinguishes future cash, safe spending and essential 
     await page.screenshot({ path: 'test-results/planning-mobile.png', fullPage: true });
   } finally { expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull(); }
 });
-
-test('indexer diagnostics show a cron failure independently of the healthy provider', async ({ page }) => {
-  const email = `provider-health-${randomUUID()}@example.test`, password = randomUUID() + 'Aa1!';
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true }); expect(created.error).toBeNull();
-  const userId = created.data.user!.id;
-  try {
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-    await page.route('**/api/snapshot', async route => {
-      const response = await route.fetch(), snapshot = await response.json();
-      snapshot.provider_sync_states = [{ provider: 'bcb-cdi', last_success: `${today}T09:00:00Z` }, { provider: 'bcb-selic', last_success: `${today}T12:00:00Z` }];
-      snapshot.provider_sync_logs = [{ id: 'cdi-failure-fixture', provider: 'bcb-cdi', started_at: `${today}T10:00:00Z`, status: 'error' }, { id: 'selic-success-fixture', provider: 'bcb-selic', started_at: `${today}T12:00:01Z`, status: 'success' }];
-      snapshot.benchmark_rates = ['12', '11'].map(series => ({ id: `fixture-${series}`, series, date: shift(today, -1), value: '0.05', source: 'BCB fixture local', validated: true, collected_at: `${today}T09:00:00Z` }));
-      await route.fulfill({ response, json: snapshot });
-    });
-    await page.goto('/'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
-    const cdi = page.getByLabel('Saúde do CDI');
-    await expect(cdi).toContainText('Consulta com falha');
-    await expect(cdi).toContainText('taxas armazenadas continuam disponíveis');
-    await expect(page.getByLabel('Saúde do Selic')).toContainText('Histórico disponível');
-    await expect(page.getByLabel('Saúde do Selic')).not.toContainText('Consulta com falha');
-  } finally { expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull(); }
-});

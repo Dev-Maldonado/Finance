@@ -1,5 +1,6 @@
 "use client";
 import { PurchaseHistory } from "./purchase-history";
+import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
 import { useEffect, useState, useMemo } from "react";
@@ -42,8 +43,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Dashboard } from "./dashboard";
-import { CDIStatus, type BenchmarkStatus } from "./cdi-status";
-import { savingsMetrics } from "@/lib/savings-metrics";
 import { Auth } from "./auth";
 import { DeleteDialog, type RemovalKind } from "./delete-dialog";
 import { FinancialPlanning } from "./financial-planning";
@@ -59,13 +58,12 @@ import {
 import { InvoiceMonthPicker, MonthlyInvoices } from "./monthly-invoices";
 import { browserDb } from "@/lib/supabase";
 import { Snapshot, Row, rows, str, financialSummary } from "@/lib/summary";
+import { savingsPeriodMetrics } from "@/lib/savings-metrics";
 import { portfolioPerformance } from "@/financial/portfolio-performance";
 import { D, money, simulate } from "@/financial/engine";
 import { forms, FormDef, fieldOptionLabel } from "./forms";
 import { Dialog, post } from "./dialog";
 import { WealthChart } from "./wealth-chart";
-import { SavingsChart } from "./savings-chart";
-import { savingsHistory } from "@/financial/savings-history";
 import type { Lot, Movement, Rate } from "@/financial/engine";
 import { FlowChart } from "./chart";
 import { CategoryManagement } from "./category-management";
@@ -308,37 +306,7 @@ function Workspace({
     },
   });
   const snapshot = query.data;
-  const benchmarkQuery = useQuery<BenchmarkStatus>({
-    queryKey: ["benchmarks"],
-    enabled:
-      session === true &&
-      !!snapshot &&
-      rows(snapshot, "savings_lots").some((l) =>
-        ["cdi", "selic", "fixed"].includes(str(l, "indexer")),
-      ),
-    staleTime: 4 * 60 * 60 * 1000,
-    refetchInterval: 4 * 60 * 60 * 1000,
-    retry: false,
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/benchmarks", { method: "POST" });
-        const data = (await response.json()) as BenchmarkStatus;
-        if (data.results?.some((r) => r.status === "success"))
-          void qc.invalidateQueries({ queryKey: ["snapshot"] });
-        return data;
-      } catch {
-        return {
-          error:
-            "Não foi possível verificar o CDI. Último histórico preservado.",
-        };
-      }
-    },
-  });
   const today = localDate();
-  const goalYieldMetrics = useMemo(
-    () => (snapshot ? savingsMetrics(snapshot, today) : null),
-    [snapshot, today],
-  );
   const allInvoices = useMemo(
     () => (snapshot ? cardInvoices(snapshot, today) : []),
     [snapshot, today],
@@ -723,7 +691,7 @@ function Workspace({
               <Icon size={20} />
               {!collapsed && <span>{label}</span>}
               {!collapsed && path === "caixinhas" && (
-                <small className="new">CDI</small>
+                <small className="new">Manual</small>
               )}
             </Link>
           ))}
@@ -918,11 +886,6 @@ function Workspace({
                   end={end}
                   period={period}
                   today={today}
-                  benchmarkStatus={benchmarkQuery.data}
-                  updatingCDI={benchmarkQuery.isFetching}
-                  onRefreshCDI={() => {
-                    void benchmarkQuery.refetch();
-                  }}
                   onPay={(invoice) =>
                     setModal({
                       form: forms.invoice,
@@ -1276,144 +1239,7 @@ function Workspace({
                     onRemove={p => setRemoval({ kind: "purchase", row: p })} />
                 </>
               )}
-              {current[0] === "caixinhas" && (
-                <>
-                  <div className="banner">
-                    <PiggyBank size={34} />
-                    <div>
-                      <h2>Um lugar para cada sonho.</h2>
-                      <p>
-                        CDI histórico oficial, aportes por lote e estimativas
-                        identificadas.
-                      </p>
-                    </div>
-                    <button onClick={() => open("reconciliation")}>
-                      Saldo oficial
-                    </button>
-                    <button onClick={() => open("confirmedYield")}>
-                      Conciliar rendimento
-                    </button>
-                  </div>
-                  <CDIStatus
-                    snapshot={snapshot}
-                    today={today}
-                    status={benchmarkQuery.data}
-                    updating={benchmarkQuery.isFetching}
-                    onRefresh={() => {
-                      void benchmarkQuery.refetch();
-                    }}
-                  />
-                  <div className="cards-grid">
-                    {summary.goals
-                      .filter((g) => !detail || g.goal.id === detail)
-                      .map((g) => (
-                        <Panel
-                          key={str(g.goal, "id")}
-                          title={str(g.goal, "name")}
-                          subtitle={
-                            str(g.goal, "institution") || "Reserva pessoal"
-                          }
-                          action={
-                            <button onClick={() => open("goalEdit", g.goal)}>
-                              Editar condições futuras
-                            </button>
-                          }
-                        >
-                          {renderGoal(g, true)}
-                          <Link
-                            className="text-link"
-                            href={
-                              detail ? "/caixinhas" : `/caixinhas/${g.goal.id}`
-                            }
-                          >
-                            {detail
-                              ? "Voltar para todas"
-                              : "Ver evolução e aplicações"}{" "}
-                            <ArrowRight size={14} />
-                          </Link>
-                          {detail && (
-                            <SavingsChart
-                              data={savingsHistory(
-                                rows(snapshot, "savings_lots").filter(
-                                  (l) => l.goal_id === g.goal.id,
-                                ) as unknown as Lot[],
-                                rows(snapshot, "benchmark_rates").filter(
-                                  (r) => r.validated !== false,
-                                ) as unknown as Rate[],
-                                rows(snapshot, "savings_movements").filter(
-                                  (m) => m.goal_id === g.goal.id,
-                                ) as unknown as Movement[],
-                                end,
-                              ).map((r) => ({
-                                ...r,
-                                principal: Number(r.principal),
-                                yield: Number(r.yield),
-                              }))}
-                            />
-                          )}
-                        </Panel>
-                      ))}
-                    {!summary.goals.length && (
-                      <Empty action={() => open("goal")} />
-                    )}
-                  </div>
-                  <Simulator />
-                  <Panel
-                    title="Aportes e resgates"
-                    subtitle="Histórico preservado por aplicação"
-                  >
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Caixinha</th>
-                            <th>Movimento</th>
-                            <th>Data</th>
-                            <th>Valor</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows(snapshot, "savings_movements")
-                            .filter(
-                              (m) =>
-                                (!detail || m.goal_id === detail) &&
-                                str(m, "date") >= start &&
-                                str(m, "date") <= end,
-                            )
-                            .sort((a, b) =>
-                              str(b, "date").localeCompare(str(a, "date")),
-                            )
-                            .map((m) => (
-                              <tr key={str(m, "id")}>
-                                <td>
-                                  {
-                                    rows(snapshot, "savings_goals").find(
-                                      (g) => g.id === m.goal_id,
-                                    )?.name
-                                  }
-                                </td>
-                                <td>
-                                  {(
-                                    {
-                                      deposit: "Aporte",
-                                      withdrawal: "Resgate de principal",
-                                      withdrawn_yield: "Rendimento resgatado",
-                                      withholding_tax: "Imposto retido",
-                                      confirmed_yield: "Rendimento conciliado",
-                                      adjustment: "Ajuste conciliado",
-                                    } as Record<string, string>
-                                  )[str(m, "type")] || str(m, "type")}
-                                </td>
-                                <td>{pretty(str(m, "date"))}</td>
-                                <td>{brl(str(m, "amount"))}</td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Panel>
-                </>
-              )}
+              {current[0] === "caixinhas" && <ManualSavings snapshot={snapshot} today={today} start={start} end={end} detail={detail} onOpen={open} onSaved={refresh} />}
               {current[0] === "investimentos" && <ManualInvestments snapshot={snapshot} today={today} onSaved={refresh} />}
               {current[0] === "planejamento" && (
                 <>
@@ -1764,7 +1590,7 @@ function Workspace({
                   </Panel>
                   <Panel
                     title="Central de rendimentos"
-                    subtitle="Recebido, estimado e valorização permanecem separados."
+                    subtitle="Recebimentos, saldos informados e valorização permanecem separados."
                   >
                     <div className="report-grid">
                       <div>
@@ -1772,11 +1598,11 @@ function Workspace({
                         <strong>{brl(summary.yields)}</strong>
                       </div>
                       <div>
-                        <span>Caixinhas · bruto estimado</span>
+                        <span>Caixinhas · rendimento manual no período</span>
                         <strong>
-                          {summary.goals.some(g => g.estimateComplete === false)
-                            ? "Conciliação por lote pendente"
-                            : brl(money(summary.goals.reduce((a, g) => a.plus(g.gross), D(0))))}
+                          {summary.goals.length && summary.goals.every(g=>!g.manual.known)
+                            ? "Aguardando atualização"
+                            : brl(savingsPeriodMetrics(snapshot,start,end,today).value)}
                         </strong>
                       </div>
                       <div>
@@ -1944,101 +1770,7 @@ function Workspace({
       </>
     );
   }
-  function renderGoal(
-    g: NonNullable<typeof summary>["goals"][number],
-    detail: boolean,
-  ) {
-    const yieldMetrics = goalYieldMetrics?.details.find(
-      (m) => m.goalId === g.goal.id,
-    );
-    const pendingLotReconciliation = g.estimateComplete === false;
-    const estimateValue = (value: string) => pendingLotReconciliation ? "Conciliação por lote pendente" : brl(value);
-    const progress = Math.min(
-      100,
-      D(g.principal).div(str(g.goal, "target")).mul(100).toNumber(),
-    );
-    return (
-      <div className="goal">
-        <div className="goal-heading">
-          <span className="goal-icon">
-            <PiggyBank size={21} />
-          </span>
-          <div>
-            <strong>{str(g.goal, "name")}</strong>
-            <small>
-              {g.goal.indexer === "cdi"
-                ? `${str(g.goal, "percentage")}% do CDI`
-                : fieldOptionLabel(forms.goal, "indexer", str(g.goal, "indexer"))}
-            </small>
-          </div>
-          <span>{progress.toFixed(0)}%</span>
-        </div>
-        <div className="goal-values">
-          <strong>{brl(g.principal)}</strong>
-          <span>de {brl(str(g.goal, "target"))}</span>
-        </div>
-        <div className="progress">
-          <span style={{ width: progress + "%" }} />
-        </div>
-        {detail && (
-          <>
-            <div className="list-row">
-              <span>Saldo estimado</span>
-              <strong>{estimateValue(g.estimated)}</strong>
-            </div>
-            <div className="list-row">
-              <span>Rendimento bruto estimado</span>
-              <strong>{estimateValue(g.gross)}</strong>
-            </div>
-            <div className="list-row">
-              <span>Último dia útil disponível · bruto estimado</span>
-              <strong>{estimateValue(yieldMetrics?.daily ?? "0")}</strong>
-            </div>
-            <div className="list-row">
-              <span>Rendimento do mês atual · bruto estimado</span>
-              <strong>{estimateValue(yieldMetrics?.monthly ?? "0")}</strong>
-            </div>
-            <div className="list-row">
-              <span>Rendimento líquido estimado</span>
-              <strong>
-                {pendingLotReconciliation ? "Conciliação por lote pendente" : g.net === null ? "Produto tributário pendente" : brl(g.net)}
-              </strong>
-            </div>
-            <div className="list-row">
-              <span>Rendimento confirmado ainda na caixinha</span>
-              <strong>{brl(g.confirmed)}</strong>
-            </div>
-            <div className="list-row">
-              <span>Saldo registrado · principal e valores confirmados</span>
-              <strong>{brl(g.registeredBalance)}</strong>
-            </div>
-            {snapshot &&
-              rows(snapshot, "savings_reconciliations")
-                .filter((r) => r.goal_id === g.goal.id)
-                .sort((a, b) => str(b, "date").localeCompare(str(a, "date")))
-                .slice(0, 1)
-                .map((r) => (
-                  <div className="list-row" key={str(r, "id")}>
-                    <span>
-                      Saldo oficial informado · {pretty(str(r, "date"))}
-                    </span>
-                    <strong>{brl(str(r, "confirmed_balance"))}</strong>
-                  </div>
-                ))}
-            <p className="notice">
-              {pendingLotReconciliation ? g.estimateLimitation : !g.supported
-                ? "Metodologia contratual pendente; rendimento automático indisponível."
-                : yieldMetrics?.waitingForRate
-                  ? `Aguardando primeira taxa publicada desde ${pretty(yieldMetrics.waitingSince ?? "")}. A taxa anterior ao aporte não gera rendimento.`
-                  : g.asOf
-                    ? `Data-base do rendimento: ${pretty(g.asOf)}. Estimativa não é saldo confirmado pelo banco.`
-                    : "Sem taxas históricas disponíveis. Nenhuma taxa foi inventada."}
-            </p>
-          </>
-        )}
-      </div>
-    );
-  }
+
 }
 function Simulator() {
   const [initial, setInitial] = useState("1000"),

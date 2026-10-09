@@ -13,6 +13,12 @@ Use o checkout existente /workspace/Finance. Cada tarefa cloud já é isolada; n
 
 Mantenha docs/STATUS.md atualizado com etapa atual, trabalho concluído, evidências de validação, bloqueios e próxima ação. Não registre segredos. Retome pelo status e pelos arquivos, sem reler todo o prompt. Comunique resultados e limitações de forma concisa. Economia de tokens não autoriza omitir funcionalidades ou testes exigidos.
 
+## Requisito atual de caixinhas e indicadores — 09/10/2026
+
+Caixinhas passam a ser exclusivamente manuais: saldo inicial, depósitos e retiradas reais, saldo total informado mensalmente, correções auditadas e histórico. Nenhum CDI/Selic/estimativa calcula retornos. Resultado = saldo atual + retiradas brutas − impostos efetivos − depósitos; percentual sobre depósitos totais. Sem observação/valor confirmado, mostrar aguardando atualização. Não alterar saldos antigos na migração 25; preservar lotes/reconciliações e demais áreas. Ver [MANUAL-SAVINGS.md](../MANUAL-SAVINGS.md). Os requisitos antigos de CDI automático abaixo são históricos e foram substituídos.
+
+Dashboard exibe meta Selic SGS 432 do BCB (% a.a.) e IPCA 12 meses tabela 1737/variável 2265 do IBGE/Brasil, com referência, timeout, cache e falhas independentes sem números fictícios. Indicadores são informativos, separados dos rendimentos do usuário. Preservar desktop/mobile/PWA e demais módulos.
+
 ## Requisito mobile/PWA — 09/10/2026
 
 Criar uma experiência própria de aplicativo para celulares/tablets, mantendo integralmente os módulos, dados, backend, autenticação e cálculos. Desktop não recebe mudanças visuais. Navegação inferior e menu completo, formulários/touch charts, safe areas/teclado, Android/iOS standalone e atualização explícita. Cache somente de arquivos públicos/estáticos; nunca snapshots, páginas autenticadas ou mutações. Sem lançamentos offline. Ver [MOBILE-PWA.md](../MOBILE-PWA.md) para instalação e validação.
@@ -25,7 +31,7 @@ O usuário respondeu explicitamente **“apagar registros existentes, limpando o
 
 ## Objetivo e prioridades
 
-Aplicação financeira pessoal funcional, persistente e segura: contas, transações, cartões, categorias, caixinhas CDI, investimentos, rendimentos, planejamento, relatórios e patrimônio. Prioridade: precisão financeira; fontes confiáveis e automação; CDI/caixinhas; carteira; dashboard; segurança/persistência; UX; baixo custo. Desenvolver por etapas com código validado e preservar funcionalidades anteriores.
+Aplicação financeira pessoal funcional, persistente e segura: contas, transações, cartões, categorias, caixinhas manuais, investimentos, rendimentos, planejamento, relatórios e patrimônio. Prioridade: precisão financeira; fontes confiáveis e automação; CDI/caixinhas; carteira; dashboard; segurança/persistência; UX; baixo custo. Desenvolver por etapas com código validado e preservar funcionalidades anteriores.
 
 ## Stack e arquitetura
 

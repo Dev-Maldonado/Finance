@@ -35,6 +35,7 @@ jobs:
         run: |
           bash scripts/hierarchy-migration-test.sh
           bash scripts/manual-migration-test.sh
+          bash scripts/savings-migration-test.sh
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:integration
@@ -44,6 +45,7 @@ jobs:
           npm run test:imports
           npm run test:scheduling
           npm run test:manual
+          npm run test:savings
       - name: Install browser
         run: |
           npx playwright install --with-deps chromium

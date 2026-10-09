@@ -353,3 +353,14 @@
   .reconciliation-history article > div:last-child { text-align: left; }
   .benchmark-health article > div:first-child { gap: 9px; flex-wrap: wrap; }
 }
+
+/* Official macro indicators: informational only, independent of user returns. */
+.economic-indicators{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:center;margin-bottom:20px}
+.economic-indicator{min-width:0;background:#faf9ff;border:1px solid #e9e4f4;border-radius:18px;padding:18px 20px;display:grid;gap:7px}
+.economic-indicator>div{display:flex;align-items:center;gap:9px;color:#665384;font-size:12px}
+.economic-indicator strong{font-size:23px;color:#392763;font-variant-numeric:tabular-nums}
+.economic-indicator small{color:#6b6578;font-size:11px;line-height:1.5}
+.economic-indicator a{font-size:10px;color:#665384;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:600px){.economic-indicators{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.economic-indicator{padding:15px 12px;gap:9px}.economic-indicator>div{align-items:flex-start;line-height:1.5}.economic-indicator>div svg{flex-shrink:0}.economic-indicator strong{font-size:20px;white-space:nowrap}.economic-refresh{grid-column:1/-1;justify-self:end}}
+
+.economic-indicator strong span{font-size:11px;font-weight:500;margin-left:4px;white-space:nowrap}

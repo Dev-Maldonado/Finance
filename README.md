@@ -37,7 +37,7 @@ O teste de navegador usa `/usr/bin/chromium`; em outra máquina, configure `CHRO
 - Cadastro/login/logout/recuperação e troca de senha; APIs privadas, validação Zod, controle de origem e RLS com referências compostas por usuário.
 - Contas, arquivamento, saldo calculado, transações confirmadas/pendentes, edição/cancelamento auditados, transferências, recorrências pendentes e categorias hierárquicas sem ciclos.
 - Cartões, limites, compras parceladas com conservação de centavos, faturas, compromissos futuros, pagamentos parciais e prevenção de despesa duplicada.
-- Caixinhas, metas, aportes por lote, resgates FIFO de principal, condições históricas preservadas, CDI/Selic diário, prefixado na convenção de 252 datas elegíveis e produto sem rendimento. Gráfico de capital versus juros estimados, tributação por produto/vigência, conciliação explícita e simulador hipotético.
+- Caixinhas manuais: saldo inicial, depósitos, retiradas, saldo atualizado mensalmente, rendimento em reais/percentual e histórico auditado. Sem rendimentos automáticos ou estimativas. IR/IOF efetivos preservados.
 - Investimentos manuais: Fundos e Criptomoedas, compras adicionais, quantidade/capital/preço médio, correção e exclusão de compras, valor por unidade informado mensalmente, lucro/prejuízo e histórico mensal sem confundir aportes com ganhos. Nenhuma API de cotação.
 - Orçamentos, metas, dívidas manuais, patrimônio líquido, filtros temporais, gráficos, central de rendimentos, comparação CDI e performance pessoal por Dietz modificado.
 - Importação CSV/OFX de transações com prévia, confirmação atômica e deduplicação; exportação CSV, XLSX e PDF. XLSX preserva valores e datas em células tipadas; descrições permanecem texto, com proteção contra execução de fórmulas.
@@ -46,7 +46,7 @@ O teste de navegador usa `/usr/bin/chromium`; em outra máquina, configure `CHRO
 
 Valores monetários entram como strings, são armazenados em `numeric` e retornam como texto; cálculos críticos usam `decimal.js`. `number` é usado somente para visualização. Transferências e aportes não são renda/despesa. Pagamentos não repetem a despesa da compra. Caixinhas estimadas não aumentam o saldo confirmado.
 
-O rendimento SGS 12 usa a unidade diária publicada. O cálculo aplica fatores nas datas disponíveis, respeitando cada lote e seus resgates. Não preenche taxas ausentes. Selic usa SGS 11. Prefixado utiliza 252 datas elegíveis com referência no calendário publicado; contratos com outra convenção exigem estratégia específica. Resgates movimentam principal e, quando conciliado explicitamente, rendimento confirmado líquido de impostos. Juros resgatados sem alocação por lote deixam a estimativa incompleta identificada. Não há conexão bancária/Open Finance implementada.
+As caixinhas calculam o rendimento exclusivamente a partir dos saldos informados, depósitos e retiradas. Os registros existentes são preservados. Veja [caixinhas manuais e indicadores oficiais](docs/MANUAL-SAVINGS.md). Não há conexão bancária/Open Finance implementada.
 
 A tributação configurável está em `tax_rules`; regras não cobertas deixam o líquido indisponível. As regras iniciais de renda fixa precisam ser confirmadas para o produto e a vigência antes de uso em produção. Fundos com come-cotas e produtos com carência/metodologia específica exigem implementação contratual adicional, sem estimativas inventadas.
 
@@ -59,7 +59,7 @@ npm run sync # CDI/Selic e recorrências; não consulta investimentos
 npm run jobs # processo diário independente do navegador
 ```
 
-O cron Vercel usa `/api/benchmarks`, `CRON_SECRET` e chave de serviço privada. BCB é a fonte dos indexadores das caixinhas. O controle de investimentos não necessita de token ou integração. As rotinas antigas de mercado/CVM foram removidas.
+O cron Vercel usa `/api/benchmarks`, `CRON_SECRET` e chave de serviço privada. O histórico BCB permanece disponível para relatórios anteriores; não calcula rendimentos das caixinhas. Selic e IPCA do dashboard usam APIs oficiais e não precisam de chave de serviço nem cron. O controle de investimentos não necessita de token ou integração. As rotinas antigas de mercado/CVM foram removidas.
 
 ## Contexto e pendências
 
@@ -77,7 +77,7 @@ Na página Cartões, selecione o mês de vencimento para consultar a fatura mens
 
 O dashboard reúne patrimônio atual, resultado líquido, receitas/gastos/rendimentos, faturas mensais de todos os cartões e próximos vencimentos, caixa operacional, disponibilidade após compromissos, evolução de seis meses, comparativo com a mesma janela anterior, categorias, orçamentos, metas, carteira e posições patrimoniais registradas. No dashboard, gastos e saldo mensais usam despesas da conta e somente as parcelas que vencem no mês. O valor integral das compras fica nos gastos gerais do histórico; o comprometimento total soma os saldos de todas as faturas. Saldo mensal é receitas e rendimentos recebidos menos despesas e parcelas; saldo das contas e patrimônio geral aparecem separados. Pagamentos, transferências e aportes não duplicam os gastos.
 
-As caixinhas calculam automaticamente ganhos por dia útil e por mês com taxas oficiais do BCB, condições históricas de cada lote e resgates. O cron diário da Vercel e a verificação ao abrir o app exigem configuração de servidor; siga [CDI automático](docs/DEPLOY.md#cdi-automático-na-vercel). Rendimentos calculados são estimados, separados dos valores conciliados.
+As caixinhas usam **Informar rendimento** para receber o saldo total atualizado. Depósitos e retiradas ficam separados dos ganhos; o histórico mensal permite corrigir observações anteriores. O dashboard mostra também Selic e IPCA de 12 meses com fontes oficiais e datas de referência. A atualização incremental está em [migration 25](docs/supabase-update-manual-savings.sql).
 
 
 ## Atualização financeira: parcelas, recorrências e categorias

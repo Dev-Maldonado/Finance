@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { D } from '../../src/financial/engine';
 if (!['localhost', '127.0.0.1'].includes(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname)) throw new Error('Dashboard tests require local development database');
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
-test('complete dashboard distinguishes results, bills and cash; savings update automatically and mobile navigation works', async ({ page }) => {
+test('complete dashboard distinguishes results, bills and cash; savings stay manual and mobile navigation works', async ({ page }) => {
   test.setTimeout(90000);
   const email = `dashboard-${randomUUID()}@example.test`, password = randomUUID() + 'Aa1!';
   const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
@@ -54,19 +54,13 @@ test('complete dashboard distinguishes results, bills and cash; savings update a
     await expect(page.getByRole('table', { name: 'Comparativo financeiro' })).toContainText('Sem base percentual');
     await expect(page.getByRole('heading', { name: 'Onde você mais gasta' })).toBeVisible();
     await expect(page.locator('.donut .recharts-sector')).toHaveCount(2);
-    const cdi = page.getByLabel('Atualização automática do CDI');
-    await expect(cdi).toContainText('Banco Central');
+    await expect(page.getByLabel('Indicadores econômicos oficiais')).toContainText('Banco Central');
     await expect(page.getByRole('heading', { name: 'Orçamentos do mês' })).toBeVisible();
     await page.getByRole('button', { name: 'Registrar posição de hoje' }).click();
     await expect(page.getByRole('status')).toContainText('Posição patrimonial de hoje registrada.');
-    const syncResponse = await page.request.post('/api/benchmarks', { headers: { Origin: 'http://localhost:3000' } });
-    expect(syncResponse.ok(), await syncResponse.text()).toBe(true);
-    const syncData = await syncResponse.json();
-    expect(Math.abs(Date.now() - Date.parse(syncData.checkedAt))).toBeLessThan(10000);
-    expect(syncData.results.find((r: { series: string }) => r.series === '12').lastDate).toBeTruthy();
     const balanceBefore = await admin.from('account_balances').select('balance').eq('id', account.data!.id).single();
-    await page.getByRole('button', { name: 'Atualizar CDI', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Atualizar CDI', exact: true })).toBeEnabled({ timeout: 50000 });
+    await page.getByRole('button', { name: 'Atualizar indicadores econômicos' }).click();
+    await expect(page.getByRole('button', { name: 'Atualizar indicadores econômicos' })).toBeEnabled({ timeout: 50000 });
     const balanceAfter = await admin.from('account_balances').select('balance').eq('id', account.data!.id).single();
     expect(D(balanceBefore.data!.balance).eq(balanceAfter.data!.balance)).toBe(true);
     const inventedYield = await admin.from('savings_movements').select('id').eq('user_id', userId).eq('type', 'confirmed_yield'); expect(inventedYield.data).toEqual([]);
@@ -92,65 +86,9 @@ test('complete dashboard distinguishes results, bills and cash; savings update a
     const nextBill = page.locator('.dashboard-next-bills a').first(); const nextMonth = new URL((await nextBill.getAttribute('href'))!, 'http://localhost:3000').searchParams.get('month')!;
     await nextBill.click(); await expect(page.getByLabel('Mês das faturas')).toHaveValue(nextMonth);
     await page.goto(`/caixinhas/${goal.id}`);
-    await expect(page.getByText('Último dia útil disponível · bruto estimado')).toBeVisible();
-    await expect(page.getByText('Rendimento do mês atual · bruto estimado')).toBeVisible();
+    await expect(page.getByText('Rendimento acumulado', {exact:true})).toBeVisible();
+    await expect(page.getByText('Aguardando atualização', {exact:true}).first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: 'test-results/savings-daily-mobile.png', fullPage: true });
-  } finally { expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull(); }
-});
-
-test('new deposits wait for an eligible publication and recalculate when it arrives', async ({ page }) => {
-  const email = `cdi-waiting-${randomUUID()}@example.test`, password = randomUUID() + 'Aa1!';
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
-  expect(created.error).toBeNull();
-  const userId = created.data.user!.id;
-  try {
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-    const prior = new Date(`${today}T12:00:00Z`); prior.setUTCDate(prior.getUTCDate() - 1);
-    const priorDate = prior.toISOString().slice(0, 10);
-    const checkedAt = new Date().toISOString();
-    let published = false;
-    await page.route('**/api/snapshot', async route => {
-      const response = await route.fetch();
-      const snapshot = await response.json();
-      snapshot.benchmark_rates = [{ series: '12', date: published ? today : priorDate, value: '0.050788', source: 'Browser test fixture', validated: true }];
-      snapshot.provider_sync_states = [
-        { provider: 'bcb-cdi', last_success: `${priorDate}T12:00:00Z`, last_date: priorDate },
-        { provider: 'bcb-cdi-history', last_date: priorDate },
-      ];
-      await route.fulfill({ response, json: snapshot });
-    });
-    await page.route('**/api/benchmarks', route => route.fulfill({ json: { checkedAt, results: [{ series: '12', status: 'cached', lastDate: priorDate }] } }));
-    await page.goto('/');
-    await page.getByLabel('E-mail').fill(email);
-    await page.getByLabel('Senha', { exact: true }).fill(password);
-    await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
-    await expect(page.getByText('Saldo disponível', { exact: true })).toBeVisible();
-    const account = await admin.from('financial_accounts').insert({ user_id: userId, name: 'Conta CDI', kind: 'bank', initial_balance: '2000' }).select('id').single();
-    expect(account.error).toBeNull();
-    const op = async (action: string, payload: Record<string, unknown>) => {
-      const response = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action, payload, request_id: randomUUID() } });
-      expect(response.ok(), await response.text()).toBe(true);
-      return response.json();
-    };
-    const goal = await op('create_goal', { name: 'Aporte novo', target: '5000', indexer: 'cdi', percentage: '100', product: 'rdb' });
-    await op('savings_deposit', { goal_id: goal.id, account_id: account.data!.id, amount: '1708.15', date: today });
-    await page.goto('/caixinhas');
-    const cdi = page.getByLabel('Atualização automática do CDI');
-    await expect(cdi).toContainText('Aguardando primeira taxa publicada');
-    await expect(cdi).not.toContainText('histórico parcial');
-    await expect(cdi).toContainText('Verificação no servidor:');
-    await expect(cdi).toContainText('Histórico válido reutilizado');
-    await expect(cdi.locator('.cdi-metrics')).toContainText('R$ 0,00');
-    await page.screenshot({ path: 'test-results/cdi-waiting-desktop.png', fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: 'test-results/cdi-waiting-mobile.png', fullPage: true });
-    published = true;
-    await page.reload();
-    await expect(cdi).not.toContainText('Aguardando primeira taxa publicada');
-    await expect(cdi.locator('.cdi-metrics')).toContainText('R$ 0,87');
-    const inventedYield = await admin.from('savings_movements').select('id').eq('user_id', userId).eq('type', 'confirmed_yield');
-    expect(inventedYield.data).toEqual([]);
   } finally { expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull(); }
 });

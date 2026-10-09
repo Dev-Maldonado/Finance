@@ -3,9 +3,7 @@ import { D, daysBetween, money } from '@/financial/engine';
 import { cardInvoices, shiftInvoiceMonth } from './card-invoices';
 import { dateShift, monthEnd, periodMetrics } from './dashboard';
 import { financialSummary, rows, str, type Row, type Snapshot } from './summary';
-import { savingsMetrics } from './savings-metrics';
 import { categorySpendingKind } from './categories';
-import { unallocatedYieldWithdrawalNotice } from '@/financial/savings-estimate';
 
 export type ForecastItem = { id: string; date: string; description: string; amount: string; kind: 'income' | 'expense' | 'invoice' | 'obligation'; source: string; status: 'projected' };
 export type ConfidenceCheck = { id: string; label: string; status: 'ok' | 'attention' | 'unknown'; detail: string; referenceDate?: string; collectedAt?: string };
@@ -151,23 +149,13 @@ export function financialPlan(snapshot: Snapshot, today: string) {
     });
     checks.push({id:'invoices',label:'Conciliação das faturas',status:matched.length === currentInvoices.length ? 'ok' : 'attention',detail:`${matched.length} de ${currentInvoices.length} faturas atuais/anteriores têm conferência recente sem diferença. Conferir valores não cria um pagamento.`});
   }
-  const savings = savingsMetrics(snapshot,today);
-  const automaticLots = rows(snapshot,'savings_lots').some(l => ['cdi','selic','fixed'].includes(str(l,'indexer')) && str(l,'start_date') <= today);
-  if (automaticLots) {
-    const requiredSeries = new Set(rows(snapshot,'savings_lots')
-      .filter(l => ['cdi','selic','fixed'].includes(str(l,'indexer')) && str(l,'start_date') <= today)
-      .map(l => l.indexer === 'selic' ? '11' : '12'));
-    const references = [...requiredSeries].map(series => rows(snapshot,'benchmark_rates')
-      .filter(rate => rate.series === series && rate.validated !== false && str(rate,'date') <= today)
-      .sort((a,b) => str(b,'date').localeCompare(str(a,'date')))[0]);
-    const oldestReference = references.filter((rate): rate is Row => !!rate)
-      .sort((a,b) => str(a,'date').localeCompare(str(b,'date')))[0];
-    const sourcesCurrent = references.every(rate => !!rate && businessDaysBetween(str(rate,'date'),today) <= 3);
-    checks.push({id:'cdi',label:'Histórico dos indexadores',status:savings.details.every(d => d.complete) && sourcesCurrent ? 'ok' : 'attention',detail:savings.unallocatedYieldWithdrawal ? unallocatedYieldWithdrawalNotice : savings.details.some(d => d.waitingForRate) ? 'Há aporte aguardando sua primeira taxa elegível; isso não é rendimento confirmado.' : savings.details.some(d => !d.complete) ? 'Histórico parcial ou contrato sem cálculo automático.' : 'Cada contrato usa seu próprio indexador publicado; fins de semana não geram expectativa de taxa. Referências antigas pedem conferência, sem extrapolação.',referenceDate:oldestReference ? str(oldestReference,'date') : undefined,collectedAt:oldestReference ? str(oldestReference,'collected_at') : undefined});
+  if (summary.goals.length) {
+    const pending=summary.goals.filter(g=>!g.manual.known || !g.asOf || daysBetween(g.asOf,today)>31);
+    checks.push({id:'savings',label:'Atualização manual das caixinhas',status:pending.length?'attention':'ok',detail:pending.length?`${pending.length} caixinha(s) precisam de um saldo mensal informado. Não há rendimento automático.`:'Saldos informados recentemente. Depósitos e retiradas não são rendimento.'});
   }
   const holdings = summary.positions.filter(p => D(p.pos.quantity).gt(0));
   if (holdings.length) checks.push({id:'portfolio',label:'Avaliação da carteira',status:holdings.every(p => p.supported && p.quote && daysBetween(str(p.quote,'date'),today) <= 31) ? 'ok' : 'attention',detail:holdings.some(p => !p.supported) ? 'Posições estrangeiras não são convertidas para BRL.' : holdings.some(p => !p.quote) ? 'Parte da carteira está avaliada pelo custo, sem atualização manual.' : 'Confira as datas dos valores informados; valorização não é recebimento.'});
-  const providerLogs = [...rows(snapshot,'provider_sync_logs')].sort((a,b) => str(b,'started_at').localeCompare(str(a,'started_at')));
+  const providerLogs = [...rows(snapshot,'provider_sync_logs').filter(log=>!str(log,'provider').startsWith('bcb-'))].sort((a,b) => str(b,'started_at').localeCompare(str(a,'started_at')));
   const latestByProvider = providerLogs.filter((log,index) => !providerLogs.slice(0,index).some(previous => previous.provider === log.provider));
   const lastFailure = latestByProvider.find(l => l.status === 'error');
   if (lastFailure && daysBetween(str(lastFailure,'started_at').slice(0,10),today) <= 1) checks.push({id:'providers',label:'Integrações',status:'attention',detail:'Existe falha recente registrada. Últimos valores válidos foram preservados.',referenceDate:str(lastFailure,'started_at').slice(0,10)});

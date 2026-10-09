@@ -150,7 +150,7 @@ export function Dialog({
           replacement: data,
           request_id: key.current,
         });
-      else if (form.endpoint?.startsWith('/api/manual-investments/')) await post(form.endpoint, { ...data, id: initial?.id, request_id: key.current });
+      else if ((form.endpoint?.startsWith('/api/manual-investments/') || form.endpoint?.startsWith('/api/manual-savings/'))) await post(form.endpoint, { ...data, id: initial?.id, request_id: key.current });
       else if (form.endpoint) await post(form.endpoint, data);
       else if (form.action)
         await post("/api/operations", {
