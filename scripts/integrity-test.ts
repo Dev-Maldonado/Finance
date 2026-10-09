@@ -74,7 +74,7 @@ try {
     const before = await balance(db, accountId);
     const buy = await rpc(db, "investment", { asset_id: assetId, account_id: accountId, type: "buy", quantity: "10", price: "10", fees: "1", date: "2026-09-01" });
     const edit = await db.rpc("revise_investment", { operation_id: buy.id, replacement: { asset_id: assetId, account_id: accountId, type: "buy", quantity: "20", price: "5", fees: "2", date: "2026-09-01" }, cancel: false });assert.equal(edit.error, null);assert.equal(await balance(db, accountId), D(before).minus(102).toFixed(2));
-    const sell = await rpc(db, "investment", { asset_id: assetId, account_id: accountId, type: "sell", quantity: "5", price: "6", fees: "1", date: "2026-09-02" });
+    const sell = await rpc(db, "investment", { asset_id: assetId, account_id: accountId, type: "sell", quantity: "5", price: "6", fees: "1", date: "2026-09-01" });
     const dependency = await db.rpc("revise_investment", { operation_id: buy.id, replacement: {}, cancel: true });assert.ok(dependency.error);
     assert.equal((await db.rpc("revise_investment", { operation_id: sell.id, replacement: {}, cancel: true })).error, null);
     assert.equal((await db.rpc("revise_investment", { operation_id: buy.id, replacement: {}, cancel: true })).error, null);assert.equal(await balance(db, accountId), before);

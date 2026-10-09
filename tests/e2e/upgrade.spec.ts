@@ -369,13 +369,24 @@ test("investment corrections and income reversal update cash; import preview sho
     ).toBe("3490.00");
     await history
       .getByRole("row")
-      .filter({ has: page.getByRole("cell", { name: "5", exact: true }) })
+      .filter({ has: page.getByRole("cell", { name: "5.00000000", exact: true }) })
       .getByRole("button", { name: "Excluir", exact: true })
       .click();
     await page
       .getByRole("dialog")
       .getByRole("button", { name: "Excluir", exact: true })
       .click();
+    await expect(page.getByRole("dialog")).toContainText(
+      "Há operações/eventos/recebimentos dependentes",
+    );
+    await page.getByRole("dialog").getByRole("button", { name: "Voltar", exact: true }).click();
+    await history
+      .getByRole("row")
+      .filter({ has: page.getByRole("cell", { name: "10.00000000", exact: true }) })
+      .getByRole("button", { name: "Excluir", exact: true })
+      .click();
+    await page.getByRole("dialog").getByRole("button", { name: "Excluir", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await history.getByLabel("Mostrar operações excluídas").check();
     await expect(history).toContainText("Excluída");
     const afterCancel = await snapshot(page);
@@ -387,7 +398,7 @@ test("investment corrections and income reversal update cash; import preview sho
     expect(
       afterCancel.account_balances.find((a: { id: string }) => a.id === account)
         .balance,
-    ).toBe("3995.00");
+    ).toBe("4495.00");
   } finally {
     expect((await admin.auth.admin.deleteUser(user.id)).error).toBeNull();
   }
