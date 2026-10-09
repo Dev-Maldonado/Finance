@@ -121,7 +121,8 @@ export function CategoryChart({
             innerRadius={58}
             outerRadius={84}
             paddingAngle={4}
-            onClick={(_, index) => onSelect?.(data[index]?.id || '')}
+            onClick={onSelect ? (_, index) => onSelect(data[index]?.id || '') : undefined}
+            cursor={onSelect ? 'pointer' : 'default'}
           >
             {data.map((r, i) => (
               <Cell key={r.name} fill={palette[i % palette.length]} />

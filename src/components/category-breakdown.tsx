@@ -12,7 +12,12 @@ export function CategoryBreakdown({ categories, expenses }: { categories: Row[];
   const totals = aggregateCategories(categories, expenses, selected ? parent : undefined);
   const select = (id: string) => { if (!selected && id !== 'uncategorized') setParent(id); };
   return <div className="category-breakdown">
-    {selected && <div className="category-breadcrumb"><button className="text-link" onClick={() => setParent('')}><ChevronLeft size={14} /> Todas as categorias</button><strong>{selected.name}</strong><small>Composição do total da categoria</small></div>}
-    {totals.length ? <><CategoryChart data={totals.map(total => ({ id: total.id, name: total.name, value: Number(total.value) }))} onSelect={select} /><div className="dashboard-category-list">{totals.map((total, index) => <button type="button" className="category-chart-item" key={total.id} onClick={() => select(total.id)} disabled={!!selected || total.id === 'uncategorized'} aria-label={!selected && total.id !== 'uncategorized' ? `Detalhar ${total.name}` : undefined}><span><i style={{ background: palette[index % palette.length] }} />{total.name}</span><span><b>{brl(total.value)}</b><small>{Number(total.percent).toLocaleString('pt-BR')}% {selected ? `de ${String(selected.name)}` : 'dos gastos'}</small></span>{!selected && total.id !== 'uncategorized' && <ChevronRight size={14} />}</button>)}</div></> : <p className="dashboard-empty">Nenhum gasto nesta seleção.</p>}
+    {selected && <div className="category-breadcrumb"><button className="text-link" onClick={() => setParent('')}><ChevronLeft size={14} /> Todas as categorias</button><div><strong>{selected.name}</strong><small>Composição do total da categoria</small></div></div>}
+    {totals.length ? <><CategoryChart data={totals.map(total => ({ id: total.id, name: total.name, value: Number(total.value) }))} onSelect={selected ? undefined : select} /><div className="dashboard-category-list">{totals.map((total, index) => {
+      const detail = <><span className="category-chart-name"><i style={{ background: palette[index % palette.length] }} />{total.name}</span><span className="category-chart-value"><b>{brl(total.value)}</b><small>{Number(total.percent).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% {selected ? `de ${String(selected.name)}` : 'dos gastos'}</small></span></>;
+      return !selected && total.id !== 'uncategorized'
+        ? <button type="button" className="category-chart-item" key={total.id} onClick={() => select(total.id)} aria-label={`Detalhar ${total.name}`}>{detail}<ChevronRight size={14} /></button>
+        : <div className="category-chart-item" key={total.id}>{detail}</div>;
+    })}</div></> : <p className="dashboard-empty">Nenhum gasto nesta seleção.</p>}
   </div>;
 }

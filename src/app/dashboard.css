@@ -51,11 +51,7 @@
 .dashboard-chart-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 16px; border-top: 1px solid var(--dash-border); }
 .dashboard-chart-foot > span { display: flex; flex-direction: column; gap: 8px; font-size: 10px; color: var(--dash-muted); }
 .dashboard-chart-foot strong { color: var(--ink); font-size: 15px; }
-.dashboard-category-list > div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f3f8; font-size: 11px; }
-.dashboard-category-list > div > span { display: flex; gap: 8px; align-items: center; }
 .dashboard-category-list i, .dashboard-allocation i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.dashboard-category-list > div > div { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; white-space: nowrap; }
-.dashboard-category-list small { font-size: 9px; color: var(--dash-muted); }
 .dashboard-empty { display: flex; align-items: center; justify-content: center; min-height: 120px; padding: 26px 12px; text-align: center; color: var(--dash-muted); font-size: 12px; line-height: 1.9; }
 .dashboard-comparison > div { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.15fr; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f4f1f8; font-size: 12px; }
 .dashboard-comparison > div.comparison-header { font-size: 10px; color: var(--dash-muted); padding-top: 0; }

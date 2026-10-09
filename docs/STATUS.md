@@ -156,3 +156,10 @@ CI remoto 37874119316 passou por instalação, unitários, criptografia, startup
 CI 37874562805 concluiu com **success** para o commit `2a5c529`, executando todas as etapas: instalação limpa, 130 unitários, 15 verificações de proteção/criptografia, startup PostgreSQL/Auth, backup/restauração, upgrade desde baseline 17, TypeScript/build, 21 verificações de integração, 13 de integridade, 7 de importação, 8 de agendamentos e 16 cenários de navegador. Falhas anteriores de portabilidade e sincronização dos testes foram diagnosticadas e corrigidas, sem remover asserções. Deploy de produção correspondente: dpl_AuBbaZCtVNDaMvmZhm7t5MLCNcnA READY.
 
 Este último commit atualiza apenas a documentação dos resultados; `[skip ci]` evita repetir os testes já aprovados para uma anotação operacional. Não altera aplicação, migrations ou testes. Workflows de mercado/CVM e backups continuam publicados e inativos até a configuração administrativa descrita em OPERATIONS.md. Cron Vercel de CDI/Selic e recorrências foi verificado com autorização; histórico financeiro preservado. Checkout limpo, sem credenciais versionadas.
+
+
+## Ajuste visual do detalhamento de categorias
+
+Subcategorias do gráfico agora aparecem como linhas estáticas legíveis, sem a opacidade e o cursor de botões desabilitados. Nomes, valores e percentuais têm colunas/linhas próprias; título e retorno ganharam espaçamento. O foco preto retangular nas fatias foi removido de forma restrita ao gráfico de categorias; teclado mantém indicação roxa visível e os botões continuam acessíveis. Tooltip com cantos arredondados acompanha os cards. Cálculos e banco não foram alterados.
+
+130 unitários, TypeScript e build passaram. O teste existente de hierarquia no navegador passou, incluindo categorias/relatórios/mobile. Conferência visual com usuário temporário local e fixtures equivalentes à captura: linhas com opacidade 1, contorno de clique inexistente e foco visível por teclado; celular 390 px com conteúdo 390 px, sem overflow. Capturas desktop/mobile inspecionadas. Nova publicação na main e deploy Vercel seguem o fluxo existente; CI completo executa automaticamente.
