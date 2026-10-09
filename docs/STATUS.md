@@ -2,9 +2,11 @@
 
 ## Entrega atual
 
-Última entrega publicada: investimentos manuais (Fundos e Criptomoedas), código `2ca7c48`, fechamento documental `970daec`, Vercel READY e CI `37935671101` aprovado. Supabase possui 24 migrations; o reset de investimentos solicitado foi aplicado preservando os demais registros financeiros. As seções antigas abaixo são histórico; pedidos atuais em `docs/finora-context/SKILL.md` prevalecem.
+Experiência mobile exclusiva e PWA publicada na `main`, código final `e44a49f`. Produção https://finance-two-lake.vercel.app/, deploy `dpl_DuRroS4Juzn1XouSRBCWaDVGm5uX` READY. CI completo aprovado em https://github.com/Dev-Maldonado/Finance/actions/runs/37941446277: 137 unitários, tipos/build, 56 verificações integradas, 28 cenários de navegador, backups e upgrades. Seis cenários específicos de mobile/PWA passaram adicionalmente no motor WebKit; teclado e metadados foram reconferidos após os ajustes.
 
-Em conclusão: experiência mobile exclusiva e PWA, preservando os módulos, backend, cálculos e layout desktop. Navegação inferior/menu, formulários adaptados, gráficos por toque, instalação Android/iOS, ícones/abertura, atualização explícita e cache apenas público/estático. Nenhuma alteração de dados ou migration foi necessária.
+Navegação inferior/menu completo, formulários adaptados, gráficos por toque, instalação Android/iOS, ícones/abertura, safe areas, tratamento de teclado e atualização explícita. Desktop, módulos, backend, cálculos e histórico preservados. Cache apenas público/estático; dados financeiros exigem internet. Em perfil comum do Chromium, manifest e critérios de instalação não apresentaram erros. Em produção, manifest/worker/ícones/offline responderam HTTP 200, API privada sem sessão HTTP 401; metadados padrão e Apple standalone e worker do commit final confirmados.
+
+Nenhuma migration ou alteração de dados foi necessária nesta entrega. Carteira manual (Fundos e Criptomoedas) da entrega anterior preservada; Supabase mantém 24 migrations. Testes somente em banco local com usuários temporários removidos. Instalação e teclado em aparelhos físicos permanecem sem validação direta. Guia [MOBILE-PWA.md](MOBILE-PWA.md). As seções antigas abaixo registram histórico; requisitos atuais de `docs/finora-context/SKILL.md` prevalecem.
 
 ## Cobertura
 
@@ -229,3 +231,6 @@ Validação local: 137 unitários, TypeScript, build e 20 verificações integra
 
 
 Validação após o ajuste de teclado: CI `37940608185` aprovado integralmente para `fc84560`, incluindo 137 unitários, tipos/build, 56 verificações integradas, 28 testes de navegador, backups e upgrades. O cenário de teclado foi reconferido em Chromium e WebKit. Chromium em perfil comum confirmou manifesto sem erros e nenhum impedimento de instalação. Conferência final acrescenta explicitamente a meta Apple de modo standalone, além da meta padrão gerada pelo Next, com regressão de ambas no teste de PWA. Publicação dessa compatibilidade iOS em conclusão.
+
+
+Fechamento mobile/PWA: `e44a49f`, CI `37941446277` aprovado e produção READY. Navegação/toque, instalação orientada, cache restrito, fallback offline, atualização protegida e teclado validados; metadados iOS explícitos confirmados em produção. Não há bloqueio técnico conhecido. Conferência da instalação/teclado em Android e iPhone físicos continua fora da validação em navegador.
