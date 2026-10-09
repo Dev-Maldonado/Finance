@@ -1,4 +1,7 @@
 import { fundId } from "@/lib/fund-id";
+import { periodMetrics } from "./dashboard";
+import { cardInvoices } from "./card-invoices";
+import { hasUnallocatedYieldWithdrawal, unallocatedYieldWithdrawalNotice } from '@/financial/savings-estimate';
 import {
   D,
   money,
@@ -20,7 +23,7 @@ export type Snapshot = {
 };
 export const rows = (s: Snapshot, key: string, includeExcluded = false) => {
   const records = (s[key] as Row[]) ?? [];
-  return key === "credit_card_purchases" && !includeExcluded
+  return ["credit_card_purchases", "investment_operations"].includes(key) && !includeExcluded
     ? records.filter(r => r.status !== "cancelled") : records;
 };
 export const str = (r: Row, k: string) => String(r[k] ?? "");
@@ -36,6 +39,7 @@ export function financialSummary(
     (t) =>
       str(t, "date") >= start &&
       str(t, "date") <= end &&
+      str(t, "date") <= asOf &&
       t.status === "confirmed",
   );
   const sum = (items: Row[], key: string) =>
@@ -51,7 +55,8 @@ export function financialSummary(
     tx.filter((t) => t.type === "expense"),
     "amount",
   ).abs();
-  const cardExpense = sum(purchases, "amount");
+  const monthly = periodMetrics(s, start, end, false);
+  const cardExpense = D(monthly.cardExpense);
   const yields = sum(
     tx.filter((t) => t.type === "yield"),
     "amount",
@@ -90,7 +95,7 @@ export function financialSummary(
       ),
       ...rows(s, "manual_asset_prices").filter((q) => q.asset_id === asset.id),
     ]
-      .filter((q) => str(q, "date") <= asOf && q.currency === "BRL")
+      .filter((q) => str(q, "date") <= asOf && q.currency === "BRL" && q.validated !== false)
       .sort(
         (a, b) =>
           str(b, "date").localeCompare(str(a, "date")) ||
@@ -101,7 +106,7 @@ export function financialSummary(
         (q) =>
           str(q, "fund_id") ===
             fundId(str(asset, "cnpj"), str(asset, "share_class")) &&
-          str(q, "date") <= asOf,
+          str(q, "date") <= asOf && q.validated !== false,
       )
       .sort((a, b) => str(b, "date").localeCompare(str(a, "date")))[0];
     const quote =
@@ -124,10 +129,7 @@ export function financialSummary(
     };
   });
   const investments = positions.reduce((a, p) => a.plus(p.value), D(0));
-  const cardLiability = sum(
-    rows(s, "credit_card_installments"),
-    "amount",
-  ).minus(sum(rows(s, "credit_card_payments"), "amount"));
+  const cardLiability = cardInvoices(s, asOf).reduce((a, invoice) => a.plus(invoice.balance), D(0));
   const liability = cardLiability.plus(
     sum(rows(s, "financial_liabilities"), "amount"),
   );
@@ -175,18 +177,25 @@ export function financialSummary(
     });
     const principal = results.reduce((a, r) => a.plus(r.principal), D(0));
     const gross = results.reduce((a, r) => a.plus(r.gross), D(0));
-    const confirmed = sum(
+    const confirmedTotal = sum(
       rows(s, "savings_movements").filter(
-        (m) => m.goal_id === goal.id && m.type === "confirmed_yield",
+        (m) => m.goal_id === goal.id && m.type === "confirmed_yield" && str(m, "date") <= asOf,
       ),
       "amount",
     );
+    const confirmedRemoved = sum(rows(s, "savings_movements").filter(m => m.goal_id === goal.id && ['withdrawn_yield', 'yield_reversal'].includes(str(m, 'type')) && str(m, 'date') <= asOf), 'amount');
+    const confirmed = confirmedTotal.minus(confirmedRemoved);
+    const estimateComplete = !hasUnallocatedYieldWithdrawal(movements, asOf);
     return {
       goal,
+      estimateComplete,
+      estimateLimitation: estimateComplete ? null : unallocatedYieldWithdrawalNotice,
       principal: money(principal),
       gross: money(gross),
       estimated: money(principal.plus(gross)),
       confirmed: money(confirmed),
+      confirmedTotal: money(confirmedTotal),
+      registeredBalance: str(accounts.find(a => a.id === goal.account_id) ?? {}, "balance") || "0.00",
       asOf: results
         .map((r) => r.asOf)
         .filter(Boolean)
@@ -203,6 +212,8 @@ export function financialSummary(
     income: money(income),
     cashExpense: money(cashExpense),
     cardExpense: money(cardExpense),
+    purchaseTotal: money(sum(purchases, "amount")),
+    installments: monthly.installments,
     expense: money(cashExpense.plus(cardExpense)),
     yields: money(yields),
     cash: money(cash),

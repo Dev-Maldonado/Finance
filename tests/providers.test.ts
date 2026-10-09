@@ -79,7 +79,7 @@ it("Excel usa células de texto e escapa XML, sem fórmulas executáveis", async
   expect(sheet).toContain("inlineStr");
   expect(sheet).toContain("A&amp;B");
   expect(sheet).not.toContain("<f>");
-  expect(Object.keys(files)).toHaveLength(5);
+  expect(Object.keys(files)).toHaveLength(6);
 });
 it("OFX SGML e XML preservam FITID e data", () => {
   const sgml =

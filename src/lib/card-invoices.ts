@@ -13,6 +13,12 @@ export function invoiceMonthLabel(month: string) {
   }).format(new Date(`${month}-01T12:00:00Z`));
 }
 
+export function invoiceDate(month: string, day: number) {
+  const last = new Date(`${shiftInvoiceMonth(month, 1)}-01T12:00:00Z`);
+  last.setUTCDate(0);
+  return `${month}-${String(Math.min(day, last.getUTCDate())).padStart(2, "0")}`;
+}
+
 export function cardInvoices(snapshot: Snapshot, today: string) {
   const cards = new Map(rows(snapshot, "credit_cards").map(card => [card.id, card]));
   const purchases = new Map(rows(snapshot, "credit_card_purchases", true).map(purchase => [purchase.id, purchase]));
@@ -22,9 +28,9 @@ export function cardInvoices(snapshot: Snapshot, today: string) {
     const month = due.slice(0, 7);
     const closingMonth = Number(card?.due_day) <= Number(card?.closing_day)
       ? shiftInvoiceMonth(month, -1) : month;
-    const closing = `${closingMonth}-${String(card?.closing_day || "1").padStart(2, "0")}`;
+    const closing = invoiceDate(closingMonth, Number(card?.closing_day || "1"));
     const installments = rows(snapshot, "credit_card_installments")
-      .filter(part => part.invoice_id === invoice.id && purchases.get(part.purchase_id)?.status !== "cancelled")
+      .filter(part => part.invoice_id === invoice.id && purchases.has(part.purchase_id) && purchases.get(part.purchase_id)?.status !== "cancelled" && str(purchases.get(part.purchase_id)!, "date") <= today)
       .map(part => {
         const purchase = purchases.get(part.purchase_id);
         return {
@@ -32,11 +38,12 @@ export function cardInvoices(snapshot: Snapshot, today: string) {
           description: str(purchase || {}, "description") || "Compra registrada",
           number: str(part, "number"), count: str(purchase || {}, "installments"),
           purchaseDate: str(purchase || {}, "date"),
+          categoryId: str(purchase || {}, 'category_id'),
         };
       });
     const total = installments.reduce((sum, part) => sum.plus(part.amount), D(0));
     const paid = rows(snapshot, "credit_card_payments")
-      .filter(payment => payment.invoice_id === invoice.id)
+      .filter(payment => payment.invoice_id === invoice.id && str(payment, "date") <= today)
       .reduce((sum, payment) => sum.plus(str(payment, "amount")), D(0));
     const balance = total.minus(paid);
     const status = balance.lt(0) ? "Crédito"

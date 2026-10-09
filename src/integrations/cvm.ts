@@ -1,5 +1,6 @@
 import { fundId } from "@/lib/fund-id";
 import { parseCsv } from "@/lib/import";
+import { validatedDate, ProviderValidationError } from './providers';
 export class CVMProvider {
   // Feed rows are validated against the official layout; class/subclass is kept, never inferred from a ticker.
   parseDailyCsv(text: string) {
@@ -8,14 +9,14 @@ export class CVMProvider {
       const date = row.DT_COMPTC;
       const nav = row.VL_QUOTA;
       if (
-        !fund ||
+        !fund || fund.replace(/\D/g, '').length !== 14 ||
         !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
         !/^-?\d+(\.\d+)?$/.test(nav)
       )
-        throw new Error("Informe CVM inválido ou layout não suportado");
+        throw new ProviderValidationError("Informe CVM inválido ou layout não suportado");
       return {
         fund_id: fundId(fund, row.ID_SUBCLASSE || ""),
-        date,
+        date: validatedDate(date),
         nav,
         source: "CVM informe diário",
       };

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-export function AssetSearch() {
+import type { Row } from "@/lib/summary";
+export function AssetSearch({ onSelect }: { onSelect: (asset: Row) => void }) {
   const [query, setQuery] = useState(""),
     [kind, setKind] = useState("fund"),
     [result, setResult] = useState<Record<string, string>[]>([]),
@@ -23,6 +24,7 @@ export function AssetSearch() {
           e.preventDefault();
           setBusy(true);
           setMessage("");
+          setResult([]);
           try {
             const r = await fetch(
               `/api/assets?query=${encodeURIComponent(query)}&kind=${kind}`,
@@ -71,6 +73,29 @@ export function AssetSearch() {
           <strong>{r.name || r.longName}</strong>
           <span>{r.cnpj || r.stock || r.symbol}</span>
           <small>{r.share_class || r.sector}</small>
+          <button
+            type="button"
+            onClick={() =>
+              onSelect({
+                ticker: String(
+                  r.stock || r.symbol || r.cnpj || "",
+                ).toUpperCase(),
+                name:
+                  r.name ||
+                  r.longName ||
+                  r.shortName ||
+                  r.stock ||
+                  r.symbol ||
+                  "",
+                asset_class: kind === "fund" ? "fund" : "stock",
+                currency: "BRL",
+                cnpj: kind === "fund" ? r.cnpj || "" : "",
+                share_class: r.share_class || "",
+              })
+            }
+          >
+            Cadastrar este ativo
+          </button>
         </div>
       ))}
     </section>

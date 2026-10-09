@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const { error: e } = await db
       .from("manual_asset_prices")
       .upsert(
-        { ...quote, asset_id: body.asset_id },
+        { ...quote, asset_id: body.asset_id, collected_at: new Date().toISOString() },
         { onConflict: "asset_id,date" },
       );
     if (e) throw new Error(e.message);

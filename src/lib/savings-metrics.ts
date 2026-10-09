@@ -1,6 +1,7 @@
 import { accrued, D, money, type Lot, type Movement, type Rate } from '@/financial/engine';
 import { rows, str, type Snapshot } from './summary';
 import { dateShift } from './dashboard';
+import { hasUnallocatedYieldWithdrawal } from '@/financial/savings-estimate';
 
 export function savingsMetrics(snapshot: Snapshot, today: string) {
   const lots = rows(snapshot, 'savings_lots') as unknown as (Lot & { goal_id: string })[];
@@ -10,7 +11,8 @@ export function savingsMetrics(snapshot: Snapshot, today: string) {
   const details = rows(snapshot, 'savings_goals').map(goal => {
     let day = D(0), month = D(0), cumulative = D(0);
     const baseDates: string[] = [];
-    let complete = true;
+    const unallocatedYieldWithdrawal = hasUnallocatedYieldWithdrawal(movements.filter(movement => movement.goal_id === goal.id), today);
+    let complete = !unallocatedYieldWithdrawal;
     let waitingForRate = false;
     const waitingDates: string[] = [];
     for (const lot of lots.filter(l => l.goal_id === goal.id && l.start_date <= today)) {
@@ -39,8 +41,8 @@ export function savingsMetrics(snapshot: Snapshot, today: string) {
       month = month.plus(current.minus(totalAt(dateShift(`${today.slice(0, 7)}-01`, -1))));
       if (latest) day = day.plus(totalAt(latest).minus(totalAt(dateShift(latest, -1))));
     }
-    return { goalId: str(goal, 'id'), daily: money(day), monthly: money(month), cumulative: money(cumulative), asOf: baseDates.sort().at(0) ?? null, complete, waitingForRate, waitingSince: waitingDates.sort()[0] ?? null };
+    return { goalId: str(goal, 'id'), daily: money(day), monthly: money(month), cumulative: money(cumulative), asOf: baseDates.sort().at(0) ?? null, complete, unallocatedYieldWithdrawal, waitingForRate, waitingSince: waitingDates.sort()[0] ?? null };
   });
   const sum = (key: 'daily' | 'monthly') => money(details.reduce((a, d) => a.plus(d[key]), D(0)));
-  return { latestCDI, details, daily: sum('daily'), monthly: sum('monthly') };
+  return { latestCDI, details, daily: sum('daily'), monthly: sum('monthly'), unallocatedYieldWithdrawal: details.some(detail => detail.unallocatedYieldWithdrawal) };
 }

@@ -17,7 +17,10 @@ export function FlowChart({
   data: { name: string; income: number; expense: number; yield: number }[];
 }) {
   return (
-    <div className="chart">
+    <div
+      className="chart"
+      aria-label="Gráfico de entradas, gastos e rendimentos recebidos"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}
@@ -40,7 +43,18 @@ export function FlowChart({
             tickLine={false}
             fontSize={11}
           />
-          <YAxis axisLine={false} tickLine={false} fontSize={11} width={55} />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            fontSize={11}
+            width={60}
+            tickFormatter={(value) =>
+              new Intl.NumberFormat("pt-BR", {
+                notation: "compact",
+                maximumFractionDigits: 1,
+              }).format(Number(value))
+            }
+          />
           <Tooltip
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
@@ -91,11 +105,13 @@ export const palette = [
 ];
 export function CategoryChart({
   data,
+  onSelect,
 }: {
-  data: { name: string; value: number }[];
+  data: { id?: string; name: string; value: number }[];
+  onSelect?: (id: string) => void;
 }) {
   return (
-    <div className="donut">
+    <div className="donut" aria-label="Distribuição dos gastos por categoria">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -105,6 +121,7 @@ export function CategoryChart({
             innerRadius={58}
             outerRadius={84}
             paddingAngle={4}
+            onClick={(_, index) => onSelect?.(data[index]?.id || '')}
           >
             {data.map((r, i) => (
               <Cell key={r.name} fill={palette[i % palette.length]} />

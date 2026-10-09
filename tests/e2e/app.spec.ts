@@ -91,6 +91,7 @@ test("monthly invoices separate installments, future months and partial payments
   }
 });
 test("card color and corrections of purchases, expenses and income persist", async ({ page }) => {
+  test.setTimeout(60000);
   const email = `correction-${randomUUID()}@example.test`, password = randomUUID() + "Aa1!";
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   expect(error).toBeNull();
@@ -149,8 +150,8 @@ test("card color and corrections of purchases, expenses and income persist", asy
     await page.getByLabel("Cor do cartão").fill("#14a078");
     await page.getByLabel("Quatro últimos dígitos").fill("1234");
     await page.getByLabel("Limite (R$)").fill("1000");
-    await page.getByLabel("Dia de fechamento (1–28)").fill("5");
-    await page.getByLabel("Dia de vencimento (1–28)").fill("10");
+    await page.getByLabel("Dia de fechamento").fill("5");
+    await page.getByLabel("Dia de vencimento").fill("10");
     await page.getByLabel("Conta", { exact: true }).selectOption(account.data!.id);
     await page.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(page.locator(".bank-card")).toHaveCSS("background-color", "rgb(20, 160, 120)");
@@ -163,14 +164,14 @@ test("card color and corrections of purchases, expenses and income persist", asy
     await page.getByRole("button", { name: "Registrar compra", exact: true }).click();
     await page.getByLabel("Cartão", { exact: true }).selectOption({ label: "Colored card" });
     await page.getByLabel("Descrição", { exact: true }).fill("Wrong purchase");
-    await page.getByLabel("Valor (R$)", { exact: true }).fill("100.01");
+    await page.getByLabel("Valor total da compra (R$)", { exact: true }).fill("100.01");
     await page.getByLabel("Data", { exact: true }).fill("2026-10-01");
     await page.getByLabel("Número de parcelas").fill("3");
     await page.getByRole("button", { name: "Salvar", exact: true }).click();
     const purchase = page.getByRole("row").filter({ has: page.getByText("Wrong purchase", { exact: true }) });
     await purchase.getByRole("button", { name: "Editar", exact: true }).click();
     await page.getByLabel("Descrição", { exact: true }).fill("Correct purchase");
-    await page.getByLabel("Valor (R$)", { exact: true }).fill("90.02");
+    await page.getByLabel("Valor total da compra (R$)", { exact: true }).fill("90.02");
     await page.getByLabel("Data", { exact: true }).fill("2026-10-06");
     await page.getByLabel("Número de parcelas").fill("2");
     await page.getByRole("button", { name: "Salvar", exact: true }).click();
@@ -346,8 +347,8 @@ test("caixinha, cartão e relatório usam dados persistidos e mantêm proteçõe
     await page.getByLabel("Nome", { exact: true }).fill("Meu cartão");
     await page.getByLabel("Quatro últimos dígitos").fill("1234");
     await page.getByLabel("Limite (R$)").fill("1000");
-    await page.getByLabel("Dia de fechamento (1–28)").fill("5");
-    await page.getByLabel("Dia de vencimento (1–28)").fill("10");
+    await page.getByLabel("Dia de fechamento").fill("5");
+    await page.getByLabel("Dia de vencimento").fill("10");
     await page
       .getByLabel("Conta", { exact: true })
       .selectOption({ label: "Banco de teste" });

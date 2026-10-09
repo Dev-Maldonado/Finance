@@ -8,9 +8,12 @@ import { dashboardModel, changeMetric } from '@/lib/dashboard';
 import { invoiceMonthLabel, invoiceTotals, type CardInvoice } from '@/lib/card-invoices';
 import { savingsMetrics } from '@/lib/savings-metrics';
 import { cardColors } from '@/lib/card-color';
-import { CategoryChart, FlowChart, palette } from './chart';
+import { FlowChart, palette } from './chart';
+import { CategoryBreakdown } from './category-breakdown';
 import { WealthChart } from './wealth-chart';
 import { CDIStatus, type BenchmarkStatus } from './cdi-status';
+import { FinancialPlanning } from './financial-planning';
+import { DataConfidence } from './data-confidence';
 const brl = (value: string | number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
 const pretty = (value: string) => value.split('-').reverse().join('/');
 const pct = (value: string) => `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
@@ -23,8 +26,8 @@ function Delta({ current, previous, lowerBetter = false }: { current: string; pr
   const improved = lowerBetter ? D(change.difference).lt(0) : positive;
   return <div className={`dashboard-delta ${D(change.difference).eq(0) ? 'neutral' : improved ? 'positive' : 'negative'}`}><span>{change.percent === null ? 'Sem base percentual' : `${positive ? '+' : ''}${pct(change.percent)}`}</span><small>{D(change.difference).gt(0) ? '+' : ''}{brl(change.difference)} vs. anterior</small></div>;
 }
-function Metric({ label, value, detail, icon: Icon, current, previous, lowerBetter = false, tone = '' }: { label: string; value: string; detail: string; icon: typeof Wallet; current?: string; previous?: string; lowerBetter?: boolean; tone?: string }) {
-  return <article className={`dashboard-metric ${tone}`} aria-label={label}><div className="dashboard-metric-head"><span>{label}</span><Icon size={18} /></div><strong>{brl(value)}</strong><p>{detail}</p>{current !== undefined && previous !== undefined && <Delta current={current} previous={previous} lowerBetter={lowerBetter} />}</article>;
+function Metric({ label, value, display, detail, icon: Icon, current, previous, lowerBetter = false, tone = '' }: { label: string; value: string; display?: string; detail: string; icon: typeof Wallet; current?: string; previous?: string; lowerBetter?: boolean; tone?: string }) {
+  return <article className={`dashboard-metric ${tone}`} aria-label={label}><div className="dashboard-metric-head"><span>{label}</span><Icon size={18} /></div><strong>{display ?? brl(value)}</strong><p>{detail}</p>{current !== undefined && previous !== undefined && <Delta current={current} previous={previous} lowerBetter={lowerBetter} />}</article>;
 }
 export function Dashboard({ snapshot, summary, start, end, period, today, onPay, onSaveWealth, benchmarkStatus, updatingCDI, onRefreshCDI }: {
   snapshot: Snapshot; summary: ReturnType<typeof financialSummary>; start: string; end: string; period: string; today: string;
@@ -34,6 +37,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   const [flowMode, setFlowMode] = useState<'six-months' | 'period'>('six-months');
   const model = useMemo(() => dashboardModel(snapshot, start, end, period, today), [snapshot, start, end, period, today]);
   const savings = useMemo(() => savingsMetrics(snapshot, today), [snapshot, today]);
+  const incompleteSavingsEstimate = summary.goals.some(goal => goal.estimateComplete === false);
   const { current, previous } = model;
   const monthly = ['month', 'previous'].includes(period);
   const spendingLabel = monthly ? 'Gastos do mês' : 'Gastos do período';
@@ -52,8 +56,6 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     }
     return [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, r]) => ({ name: r.name, income: r.income.toNumber(), expense: r.expense.toNumber(), yield: r.yield.toNumber() }));
   })());
-  const categoryChart = model.categories.slice(0, 5).map(c => ({ name: c.name, value: Number(c.value) }));
-  if (model.categories.length > 5) categoryChart.push({ name: 'Outras categorias', value: model.categories.slice(5).reduce((a, c) => a.plus(c.value), D(0)).toNumber() });
   const dueTotals = invoiceTotals(model.due);
   const wealth = rows(snapshot, 'net_worth_snapshots').filter(r => str(r, 'date') >= start && str(r, 'date') <= end).sort((a, b) => str(a, 'date').localeCompare(str(b, 'date')));
   const growth = wealth.length >= 2 ? money(D(str(wealth.at(-1)!, 'assets')).minus(str(wealth.at(-1)!, 'liabilities')).minus(D(str(wealth[0], 'assets')).minus(str(wealth[0], 'liabilities')))) : null;
@@ -64,7 +66,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   ];
   return <div className="premium-dashboard">
     <section className="dashboard-hero" aria-label="Panorama patrimonial">
-      <div className="dashboard-hero-main"><span className="dashboard-overline"><ShieldCheck size={14} /> PATRIMÔNIO GERAL · HOJE</span><p>Uma visão completa do seu dinheiro.</p><span className="dashboard-hero-label">Patrimônio líquido geral</span><strong>{brl(summary.netWorth)}</strong><div className="dashboard-hero-breakdown"><div><span>Patrimônio bruto geral</span><b>{brl(summary.assets)}</b></div><div><span>Dívidas totais · todos os meses</span><b>{brl(summary.liability)}</b></div><div><span>Rendimento estimado das caixinhas</span><b>+ {brl(summary.goals.reduce((a, g) => a.plus(g.gross), D(0)).toFixed(2))}</b></div></div><small>Contas e posições atuais. Estimativas de rendimento exibidas à parte.</small></div>
+      <div className="dashboard-hero-main"><span className="dashboard-overline"><ShieldCheck size={14} /> PATRIMÔNIO GERAL · HOJE</span><p>Uma visão completa do seu dinheiro.</p><span className="dashboard-hero-label">Patrimônio líquido geral</span><strong>{brl(summary.netWorth)}</strong><div className="dashboard-hero-breakdown"><div><span>Patrimônio bruto geral</span><b>{brl(summary.assets)}</b></div><div><span>Dívidas totais · todos os meses</span><b>{brl(summary.liability)}</b></div><div><span>Rendimento estimado das caixinhas</span><b>{incompleteSavingsEstimate ? 'Conciliação por lote pendente' : `+ ${brl(summary.goals.reduce((a, g) => a.plus(g.gross), D(0)).toFixed(2))}`}</b></div></div><small>Contas e posições atuais. Estimativas de rendimento exibidas à parte.</small></div>
       <div className="dashboard-hero-result" aria-label="Resultado líquido do período"><span><CalendarDays size={15} /> {pretty(start)} — {pretty(end)}</span><p>{balanceLabel} · resultado líquido</p><strong className={D(current.net).lt(0) ? 'result-negative' : ''}>{brl(current.net)}</strong><small>Receitas + rendimentos recebidos − despesas e parcelas do período</small><div className="dashboard-saving-rate"><span>Taxa de economia</span><b>{current.savingRate === null ? 'Sem receitas' : pct(current.savingRate)}</b></div><Delta current={current.net} previous={previous.net} /><Link href="/relatorios">Explorar meus resultados <ArrowRight size={15} /></Link></div>
     </section>
     <div className="dashboard-period-note"><span><span className="live-dot" /> Dados reais dos seus registros</span><span>Comparativo: {pretty(model.previousRange.start)} a {pretty(model.previousRange.end)} · receitas/despesas na mesma janela; parcelas no mês de vencimento</span></div>
@@ -76,8 +78,9 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <Metric label="Faturas a pagar no mês" value={model.invoiceTotals.pending} detail={`${brl(model.invoiceTotals.paid)} já pagos nessas faturas`} icon={CalendarDays} tone="expense" />
       <Metric label="Rendimentos recebidos" value={current.yields} detail="Valores confirmados · sem valorização de ativos" icon={TrendingUp} current={current.yields} previous={previous.yields} tone="income" />
       <Metric label="Investido em BRL" value={summary.investments} detail="Posições atuais · cotação ou custo identificado" icon={ChartNoAxesCombined} />
-      <Metric label="Rendimento das caixinhas no mês" value={savings.monthly} detail="Bruto estimado neste mês corrente · CDI por lote" icon={PiggyBank} tone="income" />
+      <Metric label="Rendimento das caixinhas no mês" value={savings.monthly} display={savings.unallocatedYieldWithdrawal ? 'Conciliação pendente' : undefined} detail={savings.unallocatedYieldWithdrawal ? 'Resgate de juros exige detalhamento por lote para retomar a estimativa.' : 'Bruto estimado neste mês corrente · CDI por lote'} icon={PiggyBank} tone="income" />
     </div>
+    <FinancialPlanning snapshot={snapshot} today={today} variant="compact" />
     <section className="dashboard-overall" aria-label="Gastos gerais e compromissos totais">
       <div className="dashboard-overall-title"><h2>Visão geral · todos os meses</h2><p>Histórico de gastos e dívida total, separados do saldo mensal.</p></div>
       <div><span>Gastos gerais registrados</span><strong>{brl(model.overall.expenses)}</strong><small>Despesas + compras integrais até hoje · histórico</small></div>
@@ -91,7 +94,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
         <div className="dashboard-chart-foot"><span>Média diária de gastos <strong>{brl(model.dailyAverage)}</strong></span><span>Parcelas do cartão <strong>{brl(current.cardExpense)}</strong></span><span>Despesas nas contas <strong>{brl(current.cashExpense)}</strong></span></div>
       </Block>
       <Block title="Onde você mais gasta" subtitle="Despesas e parcelas do período, inclusive sem categoria" link="/categorias">
-        {model.categories.length ? <><CategoryChart data={categoryChart} /><div className="dashboard-category-list">{model.categories.slice(0, 5).map((c, i) => <div key={c.id}><span><i style={{ background: palette[i % palette.length] }} />{c.name}</span><div><b>{brl(c.value)}</b><small>{pct(c.percent)} dos gastos</small></div></div>)}</div></> : <p className="dashboard-empty">Seus gastos por categoria aparecerão aqui.</p>}
+        <CategoryBreakdown categories={rows(snapshot, 'categories')} expenses={[...current.tx.filter(t => t.type === 'expense'), ...current.installments]} />
       </Block>
       <Block title="Comparativo do período" subtitle={`${pretty(start)} a ${pretty(end)} vs. ${pretty(model.previousRange.start)} a ${pretty(model.previousRange.end)}`} wide>
         <div className="dashboard-comparison" role="table" aria-label="Comparativo financeiro"><div role="row" className="comparison-header"><span>Indicador</span><span>Anterior</span><span>Atual</span><span>Variação</span></div>{[
@@ -114,7 +117,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
         <div className="dashboard-liquidity"><span>Resultado em caixa</span><strong>{brl(current.cashNet)}</strong></div><div className="dashboard-key-values"><div><span>Receitas + rendimentos recebidos</span><b>{brl(current.receipts)}</b></div><div><span>Despesas pagas nas contas</span><b>− {brl(current.cashExpense)}</b></div><div><span>Pagamentos de fatura</span><b>− {brl(current.invoicePayments)}</b></div></div><p className="dashboard-note">Transferências próprias, aportes, resgates e operações de investimento ficam fora deste resultado.</p>
       </Block>
       <Block title="Minhas caixinhas" subtitle="Capital guardado, metas e rendimentos automáticos" link="/caixinhas" wide>
-        <div className="dashboard-goals-grid">{summary.goals.length ? summary.goals.map(g => { const metric = savings.details.find(d => d.goalId === g.goal.id); const progress = D(g.principal).div(str(g.goal, 'target')).mul(100); return <Link key={str(g.goal, 'id')} href={`/caixinhas/${g.goal.id}`} className="dashboard-goal"><div><span className="dashboard-goal-icon"><PiggyBank size={19} /></span><strong>{str(g.goal, 'name')}</strong><ChevronRight size={15} /></div><b>{brl(g.estimated)}</b><span>Saldo estimado · {brl(g.principal)} de capital</span><div className="progress"><span style={{ width: `${Math.max(0, Math.min(100, progress.toNumber()))}%` }} /></div><small>{pct(progress.toFixed(1))} da meta de {brl(str(g.goal, 'target'))}</small><div className="dashboard-goal-yield"><span>Bruto acumulado <b>+ {brl(g.gross)}</b></span><span>No mês atual <b>+ {brl(metric?.monthly ?? '0')}</b></span></div><small>{g.goal.indexer === 'cdi' ? `${Number(g.goal.percentage)}% do CDI · condições por lote` : str(g.goal, 'indexer')} · data-base {g.asOf ? pretty(g.asOf) : 'indisponível'}</small></Link>; }) : <p className="dashboard-empty">Crie uma caixinha e faça seu primeiro aporte para acompanhar o rendimento.</p>}</div>
+        <div className="dashboard-goals-grid">{summary.goals.length ? summary.goals.map(g => { const metric = savings.details.find(d => d.goalId === g.goal.id); const progress = D(g.principal).div(str(g.goal, 'target')).mul(100); const pending = g.estimateComplete === false; return <Link key={str(g.goal, 'id')} href={`/caixinhas/${g.goal.id}`} className="dashboard-goal"><div><span className="dashboard-goal-icon"><PiggyBank size={19} /></span><strong>{str(g.goal, 'name')}</strong><ChevronRight size={15} /></div><b>{brl(pending ? g.registeredBalance : g.estimated)}</b><span>{pending ? 'Saldo registrado' : 'Saldo estimado'} · {brl(g.principal)} de capital</span><div className="progress"><span style={{ width: `${Math.max(0, Math.min(100, progress.toNumber()))}%` }} /></div><small>{pct(progress.toFixed(1))} da meta de {brl(str(g.goal, 'target'))}</small><div className="dashboard-goal-yield"><span>Bruto acumulado <b>{pending ? 'Pendente' : `+ ${brl(g.gross)}`}</b></span><span>No mês atual <b>{pending ? 'Pendente' : `+ ${brl(metric?.monthly ?? '0')}`}</b></span></div>{pending && <small>{g.estimateLimitation}</small>}<small>{g.goal.indexer === 'cdi' ? `${Number(g.goal.percentage)}% do CDI · condições por lote` : str(g.goal, 'indexer')} · data-base {g.asOf ? pretty(g.asOf) : 'indisponível'}</small></Link>; }) : <p className="dashboard-empty">Crie uma caixinha e faça seu primeiro aporte para acompanhar o rendimento.</p>}</div>
       </Block>
       <Block title="Orçamentos do mês" subtitle={`Gastos vs. limites de ${invoiceMonthLabel(model.month)}`} link="/planejamento">
         {model.budgets.length ? model.budgets.map(b => <div className="dashboard-budget" key={b.id}><div><strong>{b.name}</strong><span className={D(b.percent).gt(100) ? 'negative' : ''}>{pct(b.percent)}</span></div><div className="progress"><span className={D(b.percent).gt(100) ? 'over-budget' : ''} style={{ width: `${Math.min(100, Number(b.percent))}%` }} /></div><small>{brl(b.spent)} de {brl(b.limit)} · {D(b.remaining).lt(0) ? `${brl(D(b.remaining).abs().toFixed(2))} acima do limite` : `${brl(b.remaining)} restantes`}</small></div>) : <p className="dashboard-empty">Defina limites no Planejamento para acompanhar seus orçamentos aqui.</p>}
@@ -128,12 +131,13 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
         <div className="dashboard-liquidity"><span>Valor atual da carteira</span><strong>{brl(summary.investments)}</strong></div>{summary.positions.length ? summary.positions.filter(p => D(p.pos.quantity).gt(0)).slice(0, 5).map(p => <div className="dashboard-position" key={str(p.asset, 'id')}><span className="asset-icon">{str(p.asset, 'ticker').slice(0, 2)}</span><div><strong>{str(p.asset, 'ticker')}</strong><small>{p.quote ? `${str(p.quote, 'source')} · ${pretty(str(p.quote, 'date'))}` : 'Sem cotação · custo de aquisição'}</small></div><b>{p.supported ? brl(p.value) : 'Moeda estrangeira'}</b></div>) : <p className="dashboard-empty">Sua carteira aparecerá após cadastrar os ativos e as posições.</p>}
       </Block>
       <Block title="Últimas movimentações" subtitle="Receitas, despesas, compras e movimentações confirmadas no período" link="/transacoes" wide>
-        {model.recent.length ? model.recent.map(t => <div className="dashboard-recent" key={t.id}><span className={`dashboard-recent-icon ${D(t.amount).lt(0) ? 'out' : ''}`}>{t.kind === 'card' ? <CreditCard size={17} /> : D(t.amount).lt(0) ? <ArrowUpRight size={17} /> : <ArrowDownLeft size={17} />}</span><div><strong>{t.description}</strong><small>{t.account} · {pretty(t.date)} · {({ income: 'Receita', expense: 'Despesa', yield: 'Rendimento', card: 'Compra no cartão', transfer: 'Transferência', invoice_payment: 'Pagamento de fatura', investment: 'Investimento', adjustment: 'Ajuste' } as Record<string, string>)[t.kind]}</small></div><b className={D(t.amount).lt(0) ? 'negative' : 'positive'}>{brl(t.amount)}</b></div>) : <p className="dashboard-empty">Não há movimentações confirmadas neste período.</p>}
+        {model.recent.length ? model.recent.map(t => <div className="dashboard-recent" key={t.id}><span className={`dashboard-recent-icon ${D(t.amount).lt(0) ? 'out' : ''}`}>{t.kind === 'card' ? <CreditCard size={17} /> : D(t.amount).lt(0) ? <ArrowUpRight size={17} /> : <ArrowDownLeft size={17} />}</span><div><strong>{t.description}</strong><small>{t.account} · {pretty(t.date)} · {({ income: 'Receita', expense: 'Despesa', yield: 'Rendimento', card: 'Compra no cartão', transfer: 'Transferência', invoice_payment: 'Pagamento de fatura', investment: 'Investimento', adjustment: 'Ajuste' } as Record<string, string>)[t.kind]}</small><small>{t.category}</small></div><b className={D(t.amount).lt(0) ? 'negative' : 'positive'}>{brl(t.amount)}</b></div>) : <p className="dashboard-empty">Não há movimentações confirmadas neste período.</p>}
       </Block>
       <Block title="Próximos passos" subtitle="Ações para manter seu panorama completo">
         {[['/transacoes', 'Organizar lançamentos', 'Corrigir e categorizar receitas e despesas', Wallet], ['/planejamento', 'Planejar o próximo mês', 'Metas, orçamentos e obrigações', Target], ['/caixinhas', 'Cuidar das reservas', 'Aportes, rendimento e conciliação', PiggyBank]].map(([href, title, detail, Icon]) => { const I = Icon as typeof Wallet; return <Link className="dashboard-shortcut" href={String(href)} key={String(href)}><I size={18} /><div><strong>{String(title)}</strong><small>{String(detail)}</small></div><ChevronRight size={15} /></Link>; })}
       </Block>
     </div>
+    <DataConfidence snapshot={snapshot} today={today} />
     <CDIStatus snapshot={snapshot} today={today} status={benchmarkStatus} updating={updatingCDI} onRefresh={onRefreshCDI} />
   </div>;
 }

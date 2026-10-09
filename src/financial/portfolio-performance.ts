@@ -1,8 +1,11 @@
 import { fundId } from "@/lib/fund-id";
-import { D, position, Operation, CorporateEvent } from "./engine";
+import { D, money, position, Operation, CorporateEvent } from "./engine";
 import { benchmarkReturn, modifiedDietz } from "./performance";
 import { Snapshot, Row, rows, str } from "@/lib/summary";
 export function portfolioPerformance(s: Snapshot, start: string, end: string) {
+  // Opening is the close before the first selected date; selected-date flows
+  // and benchmark factors therefore use the same inclusive financial window.
+  const openingDate = new Date(Date.parse(`${start}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
   let opening = D(0),
     closing = D(0),
     complete = true;
@@ -35,13 +38,14 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
       ...rows(s, "fund_nav_history")
         .filter(
           (p) =>
+            asset.asset_class === "fund" &&
             str(p, "fund_id") ===
             fundId(str(asset, "cnpj"), str(asset, "share_class")),
         )
-        .map((p) => ({ ...p, price: p.nav })),
-    ];
+        .map((p) => ({ ...p, price: p.nav, currency: "BRL" })),
+    ].filter(p => p.currency === "BRL" && (p as Row).validated !== false);
     for (const [date, isOpening] of [
-      [start, true],
+      [openingDate, true],
       [end, false],
     ] as const) {
       const holdings = position(
@@ -51,7 +55,7 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
       if (D(holdings.quantity).isZero()) continue;
       const quote = prices
         .filter((q) => str(q, "date") <= date)
-        .sort((a, b) => str(b, "date").localeCompare(str(a, "date")))[0];
+        .sort((a, b) => str(b, "date").localeCompare(str(a, "date")) || str(b, "collected_at").localeCompare(str(a, "collected_at")))[0];
       if (!quote) {
         complete = false;
         continue;
@@ -60,12 +64,12 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
       if (isOpening) opening = opening.plus(value);
       else closing = closing.plus(value);
     }
-    for (const o of ops.filter((o) => o.date > start && o.date <= end))
+    for (const o of ops.filter((o) => o.date >= start && o.date <= end))
       flows.push({
         date: o.date,
         amount: (o.type === "buy"
-          ? D(o.cost_override ?? D(o.quantity).mul(o.price)).plus(o.fees)
-          : D(o.quantity).mul(o.price).minus(o.fees).neg()
+          ? D(o.cost_override ?? money(D(o.quantity).mul(o.price))).plus(o.fees)
+          : D(money(D(o.quantity).mul(o.price))).minus(o.fees).neg()
         ).toFixed(8),
       });
   }
@@ -73,22 +77,30 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
     .filter(
       (i) =>
         i.status === "received" &&
-        str(i, "date") > start &&
+        str(i, "date") >= start &&
         str(i, "date") <= end,
     )
     .reduce((a, i) => a.plus(str(i, "amount")), D(0));
-  const cdi = benchmarkReturn(
-    rows(s, "benchmark_rates")
-      .filter((r) => r.series === "12")
+  const benchmarkRows = rows(s, "benchmark_rates");
+  const coverageStart = str(rows(s, "provider_sync_states").find(r => r.provider === 'bcb-cdi-history') ?? {}, 'last_date');
+  // Global provider coverage may precede the rates actually loaded for this
+  // user. A partial snapshot cannot stand in for the full comparison period.
+  const snapshotStart = str(rows(s, "snapshot_metadata")[0] ?? {}, 'benchmark_start');
+  const benchmarkComplete = !benchmarkRows.some(r => r.series === '12' && r.validated === false && str(r, 'date') >= start && str(r, 'date') <= end)
+    && (!coverageStart || coverageStart <= start)
+    && (!snapshotStart || snapshotStart <= start);
+  const cdi = benchmarkComplete ? benchmarkReturn(
+    benchmarkRows
+      .filter((r) => r.series === "12" && r.validated !== false)
       .map((r) => ({ date: str(r, "date"), value: str(r, "value") })),
     start,
     end,
-  );
+  ) : null;
   const personal = complete
     ? modifiedDietz(
         opening.toString(),
         closing.plus(distributions).toString(),
-        start,
+        openingDate,
         end,
         flows,
       )
@@ -97,6 +109,7 @@ export function portfolioPerformance(s: Snapshot, start: string, end: string) {
     personal,
     cdi,
     complete,
+    benchmarkComplete: benchmarkComplete && cdi !== null,
     relative:
       personal !== null && cdi !== null && !D(cdi).isZero()
         ? D(personal).div(cdi).mul(100).toFixed(2)

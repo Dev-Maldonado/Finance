@@ -13,6 +13,9 @@
     "sync": "node --env-file=.env.local --import tsx scripts/sync.ts",
     "jobs": "node --env-file=.env.local --import tsx scripts/scheduler.ts",
     "test:integration": "node --env-file=.env.local --import tsx scripts/integration-test.ts",
+    "test:integrity": "node --env-file=.env.local --import tsx scripts/integrity-test.ts",
+    "test:imports": "node --env-file=.env.local --import tsx scripts/import-test.ts",
+    "test:scheduling": "node --env-file=.env.local --import tsx scripts/scheduling-test.ts",
     "sync:benchmarks": "node --env-file=.env.local --import tsx scripts/sync-benchmarks.ts"
   },
   "dependencies": {

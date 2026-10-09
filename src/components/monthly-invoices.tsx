@@ -2,8 +2,9 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cardInvoices, invoiceMonthLabel, invoiceTotals, shiftInvoiceMonth, type CardInvoice } from "@/lib/card-invoices";
-import { rows, str, type Snapshot } from "@/lib/summary";
+import { rows, str, type Snapshot, type Row } from "@/lib/summary";
 import { D } from "@/financial/engine";
+import { categoryLabel } from '@/lib/categories';
 
 const brl = (value: string) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
 const dateLabel = (value: string) => value ? value.split("-").reverse().join("/") : "—";
@@ -19,9 +20,10 @@ export function InvoiceMonthPicker({ month, today, onChange }: { month: string; 
   </div>;
 }
 
-export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay }: {
+export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay, onEditInstallment }: {
   snapshot: Snapshot; month: string; today: string;
   onMonthChange: (month: string) => void; onPay: (invoice: CardInvoice) => void;
+  onEditInstallment?: (part: Row) => void;
 }) {
   const [cardId, setCardId] = useState("");
   const invoices = useMemo(() => cardInvoices(snapshot, today), [snapshot, today]);
@@ -57,10 +59,11 @@ export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay }
         <details>
           <summary>Ver parcelas ({invoice.installments.length})</summary>
           <div className="table-wrap"><table>
-            <thead><tr><th>Compra</th><th>Data da compra</th><th>Parcela</th><th>Valor nesta fatura</th></tr></thead>
+            <thead><tr><th>Compra</th><th>Data da compra</th><th>Parcela</th><th>Valor nesta fatura</th>{onEditInstallment && <th>Ações</th>}</tr></thead>
             <tbody>{invoice.installments.map(part => <tr key={part.id}>
-              <td>{part.description}</td><td>{dateLabel(part.purchaseDate)}</td>
+              <td>{part.description}<small>{categoryLabel(rows(snapshot, 'categories'), part.categoryId, ' / ')}</small></td><td>{dateLabel(part.purchaseDate)}</td>
               <td>{part.number}/{part.count || "—"}</td><td>{brl(part.amount)}</td>
+              {onEditInstallment && <td>{invoice.due > today && D(invoice.paid).eq(0) ? <button aria-label={`Editar parcela ${part.number} de ${part.description}`} onClick={() => onEditInstallment({ id: part.id, amount: part.amount })}>Editar parcela</button> : <small>Histórico preservado</small>}</td>}
             </tr>)}</tbody>
           </table></div>
         </details>

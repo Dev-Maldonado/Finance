@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     sameOrigin(req);
     const { db } = await authenticatedDb();
-    const body = await req.json();
+    const body = z.object({ transaction_id: z.uuid(), replacement: z.unknown().optional(), cancel: z.boolean().default(false) }).parse(await req.json());
     const { data, error } = await db.rpc("revise_transaction", {
       transaction_id: z.uuid().parse(body.transaction_id),
       replacement: body.cancel

@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 export const D = (v: Decimal.Value) => new Decimal(v);
 export const money = (v: Decimal.Value) => D(v).toFixed(2);
-export type Rate = { date: string; value: string; series?: string };
+export type Rate = { date: string; value: string; series?: string; validated?: boolean };
 export type Lot = {
   id: string;
   principal: string;
@@ -16,6 +16,8 @@ export type Lot = {
 };
 export type Movement = {
   lot_id?: string;
+  goal_id?: string;
+  status?: string;
   date: string;
   type: string;
   amount: string;
@@ -37,7 +39,7 @@ export function accrued(
   const days = [
     ...new Set([
       ...rates
-        .filter((r) => r.date >= lot.start_date && r.date <= end)
+        .filter((r) => r.validated !== false && r.date >= lot.start_date && r.date <= end)
         .map((r) => r.date),
       ...changes.map((m) => m.date),
     ]),
@@ -50,7 +52,7 @@ export function accrued(
       balance = balance.mul(D(1).minus(fraction));
       capital = capital.minus(m.amount);
     }
-    const rate = rates.find((r) => r.date === day);
+    const rate = rates.find((r) => r.date === day && r.validated !== false);
     if (rate && (lot.indexer === "cdi" || lot.indexer === "selic"))
       balance = balance.mul(
         D(1).plus(D(rate.value).div(100).mul(D(lot.percentage).div(100))),
@@ -68,7 +70,7 @@ export function accrued(
     gross: money(balance.minus(capital)),
     withdrawnEstimatedYield: money(withdrawn),
     asOf:
-      rates.filter((r) => r.date <= end && r.date >= lot.start_date).at(-1)
+      rates.filter((r) => r.validated !== false && r.date <= end && r.date >= lot.start_date).sort((a, b) => a.date.localeCompare(b.date)).at(-1)
         ?.date ?? null,
     supported: ["cdi", "none", "selic", "fixed"].includes(lot.indexer),
   };
@@ -110,8 +112,8 @@ export function estimateTax(
     return { ir: null, iof: null, net: null, supported: false };
   const gains = Decimal.max(0, D(gross));
   const taxIof = gains.mul(
-    (rule?.iof_applicable ?? true) && days > 0 && days < 30
-      ? D(iof[days - 1]).div(100)
+    (rule?.iof_applicable ?? true) && days >= 0 && days < 30
+      ? D(days === 0 ? 100 : iof[days - 1]).div(100)
       : 0,
   );
   const ir = gains
@@ -129,7 +131,8 @@ export function estimateTax(
   return {
     ir: money(ir),
     iof: money(taxIof),
-    net: money(gains.minus(taxIof).minus(ir)),
+    // The separately payable rounded taxes must reconcile with rounded net gains.
+    net: money(D(money(gains)).minus(money(taxIof)).minus(money(ir))),
     supported: true,
   };
 }
@@ -142,6 +145,7 @@ export type Operation = {
   price: string;
   fees: string;
   date: string;
+  status?: string;
 };
 export type CorporateEvent = {
   asset_id: string;
@@ -157,7 +161,7 @@ export function position(
     cost = D(0),
     realized = D(0);
   const timeline = [
-    ...operations.map((o) => ({
+    ...operations.filter((o) => o.status !== "cancelled").map((o) => ({
       date: o.date,
       op: o,
       event: null as CorporateEvent | null,
@@ -185,12 +189,12 @@ export function position(
       p = D(o.price),
       fee = D(o.fees);
     if (o.type === "buy") {
-      cost = cost.plus(o.cost_override ?? q.mul(p)).plus(fee);
+      cost = cost.plus(o.cost_override ?? money(q.mul(p))).plus(fee);
       quantity = quantity.plus(q);
     } else {
       if (q.gt(quantity)) throw new Error("Venda excede posição");
       const removed = cost.div(quantity).mul(q);
-      realized = realized.plus(q.mul(p).minus(fee).minus(removed));
+      realized = realized.plus(D(money(q.mul(p))).minus(fee).minus(removed));
       cost = cost.minus(removed);
       quantity = quantity.minus(q);
     }

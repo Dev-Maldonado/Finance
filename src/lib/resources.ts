@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { D } from "@/financial/engine";
 const text = z.string().trim().min(1).max(200),
   optional = z.string().max(1000).optional(),
   id = z.uuid(),
@@ -15,7 +16,24 @@ const positive = z
   .regex(/^\d{1,12}(\.\d{1,8})?$/)
   .refine((v) => Number(v) > 0);
 const date = z.iso.date();
+export const nonnegativeMoney = z.string().regex(/^\d{1,12}(\.\d{1,2})?$/, "Use até duas casas decimais");
+export const signedMoney = z.string().regex(/^-?\d{1,12}(\.\d{1,2})?$/, "Use até duas casas decimais");
+const optionalDate = z.union([date, z.literal(""), z.null()]).optional().transform(v => v || null);
 export const schemas = {
+  user_settings: z.object({
+    name: optional,
+    emergency_months_target: z.coerce.number().int().min(1).max(24).default(6),
+  }),
+  financial_obligations: z.object({
+    name: text,
+    amount,
+    due_date: date,
+    status: z.enum(["pending", "cancelled"]).default("pending"),
+    category_id: nullableId,
+    liability_id: nullableId,
+    transaction_id: nullableId,
+    notes: optional,
+  }),
   financial_liabilities: z.object({
     name: text,
     amount: z.string().regex(/^\d{1,12}(\.\d{1,2})?$/),
@@ -38,8 +56,12 @@ export const schemas = {
     type: z.enum(["income", "expense"]),
     amount,
     next_date: date,
-    frequency: z.enum(["monthly", "weekly"]),
+    frequency: z.enum(["monthly", "weekly", "annual"]),
     active: z.boolean().default(true),
+    end_date: optionalDate,
+    start_date: optionalDate,
+    anchor_month: z.coerce.number().int().min(1).max(12).optional(),
+    anchor_day: z.coerce.number().int().min(1).max(31).optional(),
   }),
   financial_accounts: z.object({
     name: text,
@@ -59,6 +81,7 @@ export const schemas = {
     name: text,
     parent_id: nullableId,
     budget: amount.nullable().optional(),
+    spending_kind: z.enum(["essential", "optional", "unclassified"]).default("unclassified"),
   }),
   credit_cards: z.object({
     name: text,
@@ -67,8 +90,8 @@ export const schemas = {
     brand: optional,
     last_four: z.string().regex(/^\d{4}$/),
     credit_limit: amount,
-    closing_day: z.coerce.number().int().min(1).max(28),
-    due_day: z.coerce.number().int().min(1).max(28),
+    closing_day: z.coerce.number().int().min(1).max(31),
+    due_day: z.coerce.number().int().min(1).max(31),
     account_id: id,
   }),
   savings_goals: z.object({
@@ -93,6 +116,7 @@ export const schemas = {
       .enum(["custom", "cdb", "rdb", "treasury", "fund"])
       .default("custom"),
     tax_exempt: z.boolean().default(false),
+    is_emergency_reserve: z.boolean().default(false),
   }),
   investment_opening_positions: z.object({
     asset_id: id,
@@ -102,7 +126,7 @@ export const schemas = {
     notes: optional,
   }),
   investment_assets: z.object({
-    ticker: text,
+    ticker: text.transform(value => value.toUpperCase()),
     name: text,
     asset_class: z.enum([
       "stock",
@@ -118,7 +142,7 @@ export const schemas = {
       "international",
       "custom",
     ]),
-    currency: z.string().length(3).default("BRL"),
+    currency: z.string().length(3).transform(value => value.toUpperCase()).default("BRL"),
     cnpj: optional,
     share_class: optional,
     maturity: z
@@ -134,7 +158,7 @@ export const schemas = {
     type: z.enum(["split", "reverse_split", "bonus", "ticker_change"]),
     ratio: positive,
     date,
-    new_ticker: optional,
+    new_ticker: optional.transform(value => value?.toUpperCase()),
   }),
   investment_income: z.object({
     asset_id: id,
@@ -169,13 +193,13 @@ export const operationSchemas = {
     category_id: nullableId,
     description: text,
     type: z.enum(["income", "expense", "yield", "adjustment"]),
-    amount,
+    amount: signedMoney,
     date,
     status: z.enum(["confirmed", "pending"]).default("confirmed"),
     notes: optional,
     recurrence: optional,
     source_id: optional,
-  }),
+  }).refine(p => p.type === "adjustment" ? !D(p.amount).isZero() : D(p.amount).gt(0), "Informe um valor positivo; ajustes podem ser negativos"),
   transfer: z
     .object({ from_account: id, to_account: id, amount, date })
     .refine(
@@ -189,11 +213,28 @@ export const operationSchemas = {
     date,
     installments: z.coerce.number().int().min(1).max(120),
     category_id: nullableId,
-  }),
+    entry_method: z.enum(["total", "installment"]).default("total"),
+    installment_amount: amount.optional(),
+  }).superRefine((value, context) => {
+    if (value.entry_method === "installment" && !value.installment_amount) context.addIssue({ code: "custom", path: ["installment_amount"], message: "Informe o valor individual da parcela" });
+    const total = value.entry_method === "installment" && value.installment_amount ? D(value.installment_amount).mul(value.installments) : D(value.amount);
+    if (total.gte("1000000000000")) context.addIssue({ code: "custom", path: ["amount"], message: "Valor total excede o limite permitido" });
+    if (total.div(value.installments).toDecimalPlaces(2, 1).lte(0)) context.addIssue({ code: "custom", path: ["amount"], message: "Cada parcela deve ter pelo menos um centavo" });
+  }).transform(value => ({ ...value, amount: value.entry_method === "installment" && value.installment_amount ? D(value.installment_amount).mul(value.installments).toFixed(2) : value.amount })) ,
   pay_invoice: z.object({ invoice_id: id, account_id: id, amount, date }),
   create_goal: schemas.savings_goals,
   savings_deposit: z.object({ goal_id: id, account_id: id, amount, date }),
-  savings_withdraw: z.object({ goal_id: id, account_id: id, amount, date }),
+  savings_withdraw: z.object({
+    goal_id: id, account_id: id, amount: nonnegativeMoney, date,
+    yield_amount: nonnegativeMoney.default("0"),
+    ir_amount: nonnegativeMoney.default("0"),
+    iof_amount: nonnegativeMoney.default("0"),
+  }).refine(p => D(p.amount).plus(p.yield_amount).gt(0), "Informe principal ou rendimento para resgatar")
+    .refine(p => D(p.ir_amount).plus(p.iof_amount).lte(p.yield_amount), "Os impostos não podem superar o rendimento confirmado"),
+  reconcile_savings: schemas.savings_reconciliations.extend({ apply_adjustment: z.boolean().default(false) }),
+  reconcile_account: z.object({ account_id: id, date, confirmed_balance: signedMoney, notes: optional, apply_adjustment: z.boolean().default(false) }),
+  reconcile_invoice: z.object({ invoice_id: id, date, confirmed_balance: nonnegativeMoney, notes: optional }),
+  pay_obligation: z.object({ obligation_id: id, account_id: id, date, principal_reduction: nonnegativeMoney.default("0") }),
   confirm_yield: z.object({ goal_id: id, amount, date }),
   investment: z.object({
     asset_id: id,
@@ -208,17 +249,21 @@ export const operationSchemas = {
     date,
     broker: optional,
   }),
-  confirm_income: z.object({ income_id: id, account_id: id, date }),
+  confirm_income: z.object({ income_id: id, account_id: id, date, received_amount: amount.optional() }),
 };
 export const selects: Record<string, string> = {
   manual_asset_prices: "*,price::text",
   financial_liabilities: "*,amount::text",
+  financial_obligations: "*,amount::text,principal_reduction::text",
+  user_settings: "*",
+  account_reconciliations: "*,confirmed_balance::text,registered_balance::text,difference::text",
+  invoice_reconciliations: "*,confirmed_balance::text,registered_balance::text,difference::text",
   savings_reconciliations: "*,confirmed_balance::text",
   recurring_transactions: "*,amount::text",
   net_worth_snapshots: "*,assets::text,liabilities::text",
   tax_rules: "*,ir_rate::text",
   financial_accounts: "*,initial_balance::text",
-  account_balances: "*,initial_balance::text",
+  account_balances: "*,initial_balance::text,balance::text",
   categories: "*,budget::text",
   credit_cards: "*,credit_limit::text",
   transactions: "*,amount::text",

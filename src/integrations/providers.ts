@@ -10,6 +10,22 @@ export class ProviderError extends Error {
     super(message);
   }
 }
+export class ProviderValidationError extends ProviderError {}
+export function normalizeTicker(value: string) {
+  const ticker = value.trim().toUpperCase();
+  if (!/^[A-Z0-9.-]{1,20}$/.test(ticker)) throw new ProviderValidationError("Ticker inválido");
+  return ticker;
+}
+export function validatedDate(value: string, allowFuture = false, today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())) {
+  const date = value.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date || (!allowFuture && date > today)) {
+    throw new ProviderValidationError("Data do provedor inválida ou futura");
+  }
+  return date;
+}
+function validateIdentity(requested: string, received: string) {
+  if (normalizeTicker(received) !== requested) throw new ProviderValidationError("Resposta pertence a outro ativo");
+}
 export async function fetchData(
   url: string,
   init: RequestInit = {},
@@ -20,7 +36,7 @@ export async function fetchData(
     try {
       const options: RequestInit & { dispatcher?: ProxyAgent } = {
         ...init,
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
         cache: "no-store",
         ...(dispatcher ? { dispatcher } : {}),
       };
@@ -37,11 +53,44 @@ export async function fetchData(
           response.status,
         );
     } catch (error) {
-      if (error instanceof ProviderError || i === attempts - 1) throw error;
+      if (error instanceof ProviderError || init.signal?.aborted || i === attempts - 1) throw error;
     }
-    await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** i, 4000)));
+    await new Promise<void>((resolve, reject) => {
+      if (init.signal?.aborted) { reject(init.signal.reason); return; }
+      const finish = () => { init.signal?.removeEventListener('abort', abort); resolve(); };
+      const timer = setTimeout(finish, Math.min(1000 * 2 ** i, 4000));
+      const abort = () => { clearTimeout(timer); reject(init.signal?.reason); };
+      init.signal?.addEventListener('abort', abort, { once: true });
+    });
   }
   throw new ProviderError("Falha de rede");
+}
+export async function boundedBytes(response: Response, limit: number) {
+  const advertised = Number(response.headers.get('content-length'));
+  if (advertised > limit) throw new ProviderValidationError("Arquivo do provedor excede limite");
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > limit) throw new ProviderValidationError("Arquivo do provedor excede limite");
+      chunks.push(value);
+    }
+  } catch (error) { await reader.cancel().catch(() => {}); throw error; }
+  finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+  return bytes;
+}
+async function providerJson(response: Response) {
+  const bytes = await boundedBytes(response, 5_000_000);
+  try { return JSON.parse(new TextDecoder().decode(bytes)); }
+  catch { throw new ProviderValidationError('Resposta JSON inválida'); }
 }
 export class CDIRateProvider {
   constructor(
@@ -66,7 +115,7 @@ export class CDIRateProvider {
           valor: z.string(),
         }),
       )
-      .parse(await response.json());
+      .parse(await providerJson(response));
     return rows
       .map((r) => {
         const value = r.valor.replace(",", ".");
@@ -74,7 +123,7 @@ export class CDIRateProvider {
           throw new ProviderError("Taxa CDI inválida");
         return {
           series: this.series,
-          date: r.data.split("/").reverse().join("-"),
+          date: validatedDate(r.data.split("/").reverse().join("-"), false, end),
           value,
           source: `BCB SGS ${this.series}`,
         };
@@ -113,11 +162,10 @@ export class BrapiProvider implements MarketDataProvider {
     const response = await this.fetcher(url.toString(), {
       headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
     });
-    return response.json();
+    return providerJson(response);
   }
   async getQuote(ticker: string, assetClass = "stock"): Promise<Quote> {
-    if (!/^[A-Z0-9.-]{1,20}$/.test(ticker))
-      throw new ProviderError("Ticker inválido");
+    ticker = normalizeTicker(ticker);
     if (["fii", "fiagro"].includes(assetClass)) {
       const body = z
         .object({
@@ -132,11 +180,12 @@ export class BrapiProvider implements MarketDataProvider {
         .parse(await this.request("fii/indicators", { symbols: ticker }));
       const q = body.fiis[0];
       if (!q) throw new ProviderError("Cotação ausente");
+      validateIdentity(ticker, q.symbol);
       return {
         ticker: q.symbol,
         price: String(q.price),
         currency: "BRL",
-        date: q.asOfDate.slice(0, 10),
+        date: validatedDate(q.asOfDate),
         source: "brapi",
       };
     }
@@ -156,11 +205,13 @@ export class BrapiProvider implements MarketDataProvider {
       .parse(await this.request("stocks/quote", { symbols: ticker }));
     const q = body.results[0];
     if (!q) throw new ProviderError("Cotação ausente");
+    validateIdentity(ticker, q.symbol);
+    if (!/^[A-Z]{3}$/.test(q.data.currency)) throw new ProviderValidationError("Moeda do provedor inválida");
     return {
       ticker: q.symbol,
       price: String(q.data.regularMarketPrice),
       currency: q.data.currency,
-      date: q.data.regularMarketTime.slice(0, 10),
+      date: validatedDate(q.data.regularMarketTime),
       source: "brapi",
     };
   }
@@ -171,6 +222,7 @@ export class BrapiProvider implements MarketDataProvider {
     return body.results;
   }
   async getHistoricalPrices(ticker: string, assetClass = "stock") {
+    ticker = normalizeTicker(ticker);
     const isFii = ["fii", "fiagro"].includes(assetClass);
     const body = await this.request(
       isFii ? "fii/historical" : "stocks/historical",
@@ -178,15 +230,20 @@ export class BrapiProvider implements MarketDataProvider {
         ? { symbols: ticker, sortOrder: "asc" }
         : { symbols: ticker, range: "1y", interval: "1d", sortOrder: "asc" },
     );
-    const series = isFii ? body.fiis?.[0] : body.results?.[0]?.data;
+    const item = isFii ? body.fiis?.[0] : body.results?.[0];
+    if (!item || typeof item.symbol !== 'string') throw new ProviderValidationError("Histórico sem identificação do ativo");
+    validateIdentity(ticker, item.symbol);
+    const series = z.object({ currency: z.string().optional(), historicalDataPrice: z.unknown() }).parse(isFii ? item : item.data);
+    const currency = isFii ? 'BRL' : series.currency ?? 'BRL';
+    if (!/^[A-Z]{3}$/.test(currency)) throw new ProviderValidationError("Moeda do histórico inválida");
     const history = z
       .array(z.object({ date: z.number().int(), close: z.number().positive() }))
       .parse(series?.historicalDataPrice);
     return history.map((r) => ({
       ticker,
-      date: new Date(r.date * 1000).toISOString().slice(0, 10),
+      date: validatedDate(new Date(r.date * 1000).toISOString()),
       price: String(r.close),
-      currency: "BRL",
+      currency,
       source: "brapi",
     }));
   }
@@ -194,14 +251,27 @@ export class BrapiProvider implements MarketDataProvider {
     ticker: string,
     assetClass = "stock",
   ): Promise<DividendEvent[]> {
+    ticker = normalizeTicker(ticker);
     const isFii = ["fii", "fiagro"].includes(assetClass);
     const body = await this.request(
       isFii ? "fii/dividends" : "stocks/dividends",
       { symbols: ticker, sortOrder: "asc" },
     );
+    if (!isFii) {
+      const item = body.results?.[0];
+      if (!item || typeof item.symbol !== 'string') throw new ProviderValidationError("Proventos sem identificação do ativo");
+      validateIdentity(ticker, item.symbol);
+    }
     const list = isFii
       ? body.dividends
       : body.results?.[0]?.data?.cashDividends;
+    if (isFii && Array.isArray(list)) {
+      // FII layouts can identify the symbol per event instead of at the envelope.
+      for (const event of list) {
+        const symbol = event?.symbol ?? event?.ticker;
+        if (typeof symbol === 'string') validateIdentity(ticker, symbol);
+      }
+    }
     const events = z
       .array(
         z.object({
@@ -216,10 +286,14 @@ export class BrapiProvider implements MarketDataProvider {
       .parse(list);
     return events
       .filter((e) => e.lastDatePrior && e.paymentDate)
-      .map((e) => ({
+      .map((e) => {
+        const dateCom = validatedDate(e.lastDatePrior!, true);
+        const paymentDate = validatedDate(e.paymentDate!, true);
+        if (paymentDate < dateCom) throw new ProviderValidationError('Pagamento anterior à data-com do provento');
+        return {
         ticker,
-        date_com: e.lastDatePrior!.slice(0, 10),
-        payment_date: e.paymentDate!.slice(0, 10),
+        date_com: dateCom,
+        payment_date: paymentDate,
         rate: String(e.rate),
         label: e.label,
         source: "brapi",
@@ -231,7 +305,8 @@ export class BrapiProvider implements MarketDataProvider {
           e.approvedOn ?? "",
           e.relatedTo ?? "",
         ].join("|"),
-      }));
+        };
+      });
   }
 }
 export class ManualPriceProvider {
@@ -243,6 +318,9 @@ export class ManualPriceProvider {
   ): Quote {
     if (!/^\d+(\.\d{1,8})?$/.test(price) || Number(price) <= 0)
       throw new ProviderError("Preço inválido");
-    return { ticker, price, date, currency, source: "manual" };
+    if (!/^[A-Z]{3}$/.test(currency)) throw new ProviderValidationError("Moeda inválida");
+    const identifier = ticker.trim().toUpperCase();
+    if (!identifier || identifier.length > 200) throw new ProviderValidationError('Identificador manual inválido');
+    return { ticker: identifier, price, date: validatedDate(date), currency, source: "manual" };
   }
 }

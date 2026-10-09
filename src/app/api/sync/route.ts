@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { syncMarket } from "@/integrations/sync";
+import { syncMarket, MarketConfigurationError } from "@/integrations/sync";
 export async function POST(req: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET?.trim();
   const token = req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
   if (
     !secret ||
@@ -11,10 +11,12 @@ export async function POST(req: Request) {
   )
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   try {
-    return NextResponse.json(await syncMarket());
-  } catch {
+    const results = await syncMarket();
+    const failed = results.some(r => r.status === 'error' || r.status === 'partial');
+    return NextResponse.json(results, { status: failed ? 503 : 200, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
     return NextResponse.json(
-      { error: "Sincronização não configurada" },
+      { error: error instanceof MarketConfigurationError ? error.message : 'Falha interna na sincronização de mercado. Dados anteriores preservados.' },
       { status: 503 },
     );
   }

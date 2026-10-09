@@ -8,9 +8,18 @@ const defaultProject = {
 export function supabasePublicConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const deployment = process.env.NEXT_PUBLIC_FINORA_DEPLOYMENT_ENV || process.env.VERCEL_ENV;
+  // Preview builds must explicitly use another project, in both browser and server.
+  if (deployment === 'preview' && (!url || !key)) return null;
   if (!url && !key) return defaultProject;
   // Never combine credentials from different projects when an override is partial.
   if (!url || !key) return null;
+  try {
+    const parsed = new URL(url);
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+    if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/' || (parsed.protocol !== 'https:' && !(local && parsed.protocol === 'http:'))) return null;
+    if (deployment === 'preview' && parsed.origin === defaultProject.url) return null;
+  } catch { return null; }
   return { url, key };
 }
 

@@ -6,6 +6,9 @@ export type Field = {
   source?: string;
   default?: string;
   required?: boolean;
+  min?: number;
+  max?: number;
+  help?: string;
 };
 export type FormDef = {
   title: string;
@@ -13,6 +16,7 @@ export type FormDef = {
   resource?: string;
   action?: string;
   endpoint?: string;
+  purchaseCalculator?: boolean;
   fields: Field[];
 };
 const name: Field = { key: "name", label: "Nome" },
@@ -26,6 +30,21 @@ const name: Field = { key: "name", label: "Nome" },
     required: false,
   };
 export const forms: Record<string, FormDef> = {
+  preferences: {
+    title: "Preferências financeiras",
+    editTitle: "Preferências financeiras",
+    resource: "user_settings",
+    fields: [
+      {
+        key: "emergency_months_target",
+        label: "Meses de despesas essenciais para a reserva",
+        type: "number",
+        min: 1,
+        max: 24,
+        default: "6",
+      },
+    ],
+  },
   liability: {
     title: "Dívida ou obrigação",
     resource: "financial_liabilities",
@@ -36,9 +55,52 @@ export const forms: Record<string, FormDef> = {
       { key: "notes", label: "Observações", required: false },
     ],
   },
+  obligation: {
+    title: "Agendar compromisso",
+    editTitle: "Editar compromisso",
+    resource: "financial_obligations",
+    fields: [
+      name,
+      amount,
+      { key: "due_date", label: "Vencimento", type: "date" },
+      category,
+      {
+        key: "liability_id",
+        label: "Dívida relacionada",
+        source: "liabilities",
+        required: false,
+      },
+      {
+        key: "status",
+        label: "Status",
+        options: [
+          ["pending", "Pendente"],
+          ["cancelled", "Cancelado"],
+        ],
+        default: "pending",
+      },
+    ],
+  },
+  payObligation: {
+    title: "Confirmar pagamento do compromisso",
+    editTitle: "Confirmar pagamento do compromisso",
+    action: "pay_obligation",
+    fields: [
+      { key: "obligation_id", label: "Compromisso", source: "obligations" },
+      account,
+      date,
+      {
+        key: "principal_reduction",
+        label: "Principal da dívida amortizado (R$)",
+        type: "decimal",
+        default: "0",
+        help: "Informe somente a parcela que reduz o saldo devedor. Juros e tarifas não amortizam principal.",
+      },
+    ],
+  },
   reconciliation: {
     title: "Registrar saldo oficial da caixinha",
-    resource: "savings_reconciliations",
+    action: "reconcile_savings",
     fields: [
       { key: "goal_id", label: "Caixinha", source: "goals" },
       {
@@ -48,10 +110,17 @@ export const forms: Record<string, FormDef> = {
       },
       date,
       { key: "notes", label: "Fonte / observações", required: false },
+      {
+        key: "apply_adjustment",
+        label: "Aplicar diferença ao saldo confirmado",
+        type: "checkbox",
+        help: "Marque somente depois de conferir o extrato; a diferença ficará auditada.",
+      },
     ],
   },
   recurring: {
     title: "Novo lançamento recorrente",
+    editTitle: "Editar recorrência",
     resource: "recurring_transactions",
     fields: [
       { key: "description", label: "Descrição" },
@@ -66,19 +135,37 @@ export const forms: Record<string, FormDef> = {
       amount,
       account,
       category,
-      { key: "next_date", label: "Próxima data", type: "date" },
+      { key: "next_date", label: "Data de início / próxima ocorrência", type: "date" },
+      { key: "end_date", label: "Data de término (opcional)", type: "date", required: false, help: "Deixe em branco para continuar por tempo indeterminado." },
+      {
+        key: "anchor_day",
+        label: "Dia preferido do mês",
+        type: "number",
+        min: 1,
+        max: 31,
+        required: false,
+        help: "No mês mais curto, será usado o último dia. Não se aplica à frequência semanal.",
+      },
       {
         key: "frequency",
         label: "Frequência",
         options: [
           ["monthly", "Mensal"],
           ["weekly", "Semanal"],
+          ["annual", "Anual"],
         ],
+      },
+      {
+        key: "active",
+        label: "Recorrência ativa",
+        type: "checkbox",
+        default: "true",
       },
     ],
   },
   account: {
     title: "Nova conta",
+    editTitle: "Editar conta",
     resource: "financial_accounts",
     fields: [
       name,
@@ -102,13 +189,24 @@ export const forms: Record<string, FormDef> = {
   },
   category: {
     title: "Nova categoria",
+    editTitle: "Editar categoria",
     resource: "categories",
     fields: [
       name,
       {
+        key: "spending_kind",
+        label: "Tipo de gasto",
+        options: [
+          ["essential", "Essencial"],
+          ["optional", "Opcional"],
+          ["unclassified", "Ainda não classificado"],
+        ],
+        default: "unclassified",
+      },
+      {
         key: "parent_id",
         label: "Categoria principal",
-        source: "categories",
+        source: "category_roots",
         required: false,
       },
       {
@@ -155,7 +253,7 @@ export const forms: Record<string, FormDef> = {
     action: "transfer",
     fields: [
       { key: "from_account", label: "Origem", source: "accounts" },
-      { key: "to_account", label: "Destino", source: "all_accounts" },
+      { key: "to_account", label: "Destino", source: "accounts" },
       amount,
       date,
     ],
@@ -166,13 +264,31 @@ export const forms: Record<string, FormDef> = {
     resource: "credit_cards",
     fields: [
       name,
-      { key: "color", label: "Cor do cartão", type: "color", default: "#5B35D5" },
+      {
+        key: "color",
+        label: "Cor do cartão",
+        type: "color",
+        default: "#5B35D5",
+      },
       { key: "institution", label: "Instituição", required: false },
       { key: "brand", label: "Bandeira", required: false },
       { key: "last_four", label: "Quatro últimos dígitos", type: "text" },
       { key: "credit_limit", label: "Limite (R$)", type: "decimal" },
-      { key: "closing_day", label: "Dia de fechamento (1–28)", type: "number" },
-      { key: "due_day", label: "Dia de vencimento (1–28)", type: "number" },
+      {
+        key: "closing_day",
+        label: "Dia de fechamento",
+        type: "number",
+        min: 1,
+        max: 31,
+        help: "Dias 29–31 usam o último dia nos meses mais curtos.",
+      },
+      {
+        key: "due_day",
+        label: "Dia de vencimento",
+        type: "number",
+        min: 1,
+        max: 31,
+      },
       account,
     ],
   },
@@ -180,6 +296,7 @@ export const forms: Record<string, FormDef> = {
     title: "Registrar compra",
     editTitle: "Editar compra",
     action: "purchase",
+    purchaseCalculator: true,
     fields: [
       { key: "card_id", label: "Cartão", source: "cards" },
       { key: "description", label: "Descrição" },
@@ -192,6 +309,15 @@ export const forms: Record<string, FormDef> = {
         default: "1",
       },
       category,
+    ],
+  },
+  installment: {
+    title: "Editar parcela futura",
+    editTitle: "Editar parcela futura",
+    endpoint: "/api/installments",
+    fields: [
+      { key: "amount", label: "Valor da parcela (R$)", type: "decimal", help: "A alteração afeta somente esta parcela. Parcelas vencidas ou de faturas com pagamentos são preservadas." },
+      { key: "notes", label: "Motivo da correção", required: false },
     ],
   },
   invoice: {
@@ -210,6 +336,11 @@ export const forms: Record<string, FormDef> = {
     action: "create_goal",
     fields: [
       name,
+      {
+        key: "is_emergency_reserve",
+        label: "Esta caixinha é reserva de emergência",
+        type: "checkbox",
+      },
       { key: "description", label: "Descrição", required: false },
       { key: "target", label: "Meta (R$)", type: "decimal" },
       {
@@ -271,12 +402,35 @@ export const forms: Record<string, FormDef> = {
     ],
   },
   withdrawal: {
-    title: "Resgatar principal",
+    title: "Registrar resgate confirmado",
     action: "savings_withdraw",
     fields: [
       { key: "goal_id", label: "Caixinha", source: "goals" },
       account,
-      amount,
+      {
+        ...amount,
+        label: "Principal resgatado (R$)",
+        help: "Pode ser zero quando você resgata somente rendimento já confirmado.",
+      },
+      {
+        key: "yield_amount",
+        label: "Rendimento bruto resgatado (R$)",
+        type: "decimal",
+        default: "0",
+      },
+      {
+        key: "ir_amount",
+        label: "IR retido (R$)",
+        type: "decimal",
+        default: "0",
+      },
+      {
+        key: "iof_amount",
+        label: "IOF retido (R$)",
+        type: "decimal",
+        default: "0",
+        help: "Use os valores confirmados no extrato. A conta recebe principal + rendimento − impostos.",
+      },
       date,
     ],
   },
@@ -336,6 +490,7 @@ export const forms: Record<string, FormDef> = {
   },
   investment: {
     title: "Registrar operação",
+    editTitle: "Editar operação de investimento",
     action: "investment",
     fields: [
       { key: "asset_id", label: "Ativo", source: "assets" },
@@ -395,6 +550,7 @@ export const forms: Record<string, FormDef> = {
   },
   dividend: {
     title: "Cadastrar provento anunciado",
+    editTitle: "Editar provento anunciado",
     resource: "investment_income",
     fields: [
       { key: "asset_id", label: "Ativo", source: "assets" },
@@ -418,12 +574,19 @@ export const forms: Record<string, FormDef> = {
     action: "confirm_income",
     fields: [
       { key: "income_id", label: "Provento anunciado", source: "income" },
+      {
+        key: "received_amount",
+        label: "Valor líquido efetivamente recebido (R$)",
+        type: "decimal",
+        help: "Confira o extrato. Impostos e retenções podem fazer o valor recebido diferir do anúncio.",
+      },
       account,
       date,
     ],
   },
   budget: {
     title: "Novo orçamento",
+    editTitle: "Editar orçamento",
     resource: "budgets",
     fields: [
       name,
@@ -434,6 +597,7 @@ export const forms: Record<string, FormDef> = {
   },
   financialGoal: {
     title: "Nova meta",
+    editTitle: "Editar meta",
     resource: "financial_goals",
     fields: [
       name,
@@ -462,4 +626,5 @@ forms.goalEdit = {
   action: undefined,
   resource: "savings_goals",
   title: "Editar caixinha",
+  editTitle: "Editar caixinha",
 };

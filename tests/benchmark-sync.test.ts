@@ -9,7 +9,7 @@ test('missing server credential produces a configuration error before contacting
   expect(() => syncBenchmarks()).toThrow(BenchmarkConfigurationError);
   expect(() => syncBenchmarks()).toThrow('Production da Vercel');
 });
-function fakeDB(initial: Record<string, Entry[]> = {}) {
+function fakeDB(initial: Record<string, Entry[]> = {}, failingTable?: string) {
   const tables: Record<string, Entry[]> = { benchmark_rates: [], provider_sync_states: [], provider_sync_logs: [], savings_lots: [], ...initial };
   const db = { from(table: string) {
     let filters: ((r: Entry) => boolean)[] = [], sort = '', count = 99999, ascending = true;
@@ -18,8 +18,8 @@ function fakeDB(initial: Record<string, Entry[]> = {}) {
       in(key: string, values: unknown[]) { filters.push(r => values.includes(r[key])); return query; },
       order(key: string, options?: { ascending: boolean }) { sort = key; ascending = options?.ascending ?? true; return query; }, limit(n: number) { count = n; return query; },
       async maybeSingle() { const data = tables[table].filter(r => filters.every(f => f(r))).sort((a, b) => String(a[sort]).localeCompare(String(b[sort])) * (ascending ? 1 : -1)).slice(0, count); return { data: data[0] ?? null, error: null }; },
-      async upsert(input: Entry | Entry[]) { for (const row of Array.isArray(input) ? input : [input]) { const old = tables[table].find(r => table === 'benchmark_rates' ? r.series === row.series && r.date === row.date : r.provider === row.provider); if (old) Object.assign(old, row); else tables[table].push(row); } return { error: null }; },
-      async insert(row: Entry) { tables[table].push(row); return { error: null }; },
+      async upsert(input: Entry | Entry[]) { if (table === failingTable) return { error: new Error('write failure') }; for (const row of Array.isArray(input) ? input : [input]) { const old = tables[table].find(r => table === 'benchmark_rates' ? r.series === row.series && r.date === row.date : r.provider === row.provider); if (old) Object.assign(old, row); else tables[table].push(row); } return { error: null }; },
+      async insert(row: Entry) { if (table === failingTable) return { error: new Error('audit failure') }; tables[table].push(row); return { error: null }; },
     }; return query;
   } } as unknown as SupabaseClient;
   return { db, tables };
@@ -59,10 +59,57 @@ test('old deposits backfill a bounded historical window while keeping the latest
   expect(tables.provider_sync_states.find(r => r.provider === 'bcb-cdi-history')?.last_date).toBe('2024-10-07');
 });
 test('weekends without publication are cached without substituting the previous rate', async () => {
-  const { db, tables } = fakeDB();
-  const factory = provider(async () => []);
-  await updateBenchmarks(db, now, factory);
-  expect(tables.benchmark_rates).toHaveLength(0);
-  const results = await updateBenchmarks(db, now, factory);
+  const friday = '2026-10-09';
+  const sunday = new Date('2026-10-11T12:00:00Z');
+  const { db, tables } = fakeDB({
+    benchmark_rates: ['12','11'].map(series => ({ series, date: friday, value: '0.05', source: `BCB SGS ${series}` })),
+    provider_sync_states: ['bcb-cdi','bcb-selic'].map(provider => ({ provider, last_success: '2026-10-09T12:00:00Z', last_date: friday })),
+  });
+  const factory = provider(async series => [{ series, date: friday, value: '0.05', source: `BCB SGS ${series}` }]);
+  await updateBenchmarks(db, sunday, factory);
+  expect(tables.benchmark_rates).toHaveLength(2);
+  expect(tables.benchmark_rates.every(rate => rate.date === friday)).toBe(true);
+  const results = await updateBenchmarks(db, sunday, factory);
   expect(results.every(r => r.status === 'cached')).toBe(true);
+});
+test('empty initial annual history is a failure rather than successful full coverage', async () => {
+  const { db, tables } = fakeDB();
+  const results = await updateBenchmarks(db, now, provider(async () => []));
+  expect(results.every(result => result.status === 'error')).toBe(true);
+  expect(tables.provider_sync_states).toHaveLength(0);
+  expect(tables.benchmark_rates).toHaveLength(0);
+});
+test('an empty historical backfill cannot advance coverage over missing years', async () => {
+  const { db, tables } = fakeDB({
+    benchmark_rates: [{ series: '12', date: '2026-10-07', value: '0.05' }],
+    provider_sync_states: [
+      { provider: 'bcb-cdi', last_success: now.toISOString(), last_date: '2026-10-07' },
+      { provider: 'bcb-selic', last_success: now.toISOString(), last_date: '2026-10-07' },
+      { provider: 'bcb-cdi-history', last_success: now.toISOString(), last_date: '2025-10-08' },
+    ],
+    savings_lots: [{ indexer: 'cdi', start_date: '2023-01-01' }],
+  });
+  const results = await updateBenchmarks(db, now, provider(async () => []));
+  expect(results[0].status).toBe('error');
+  expect(results[1].status).toBe('cached');
+  expect(tables.provider_sync_states.find(state => state.provider === 'bcb-cdi-history')?.last_date).toBe('2025-10-08');
+  expect(tables.benchmark_rates).toEqual([{ series: '12', date: '2026-10-07', value: '0.05' }]);
+});
+test('a global deadline bounds a hung provider and preserves its last success', async () => {
+  const { db, tables } = fakeDB({ benchmark_rates: [{ series: '12', date: '2026-10-06', value: '0.04' }] });
+  const started = Date.now();
+  const results = await updateBenchmarks(db, now, provider(async () => new Promise(() => {})), { timeoutMs: 20 });
+  expect(results.every(r => r.status === 'error')).toBe(true);
+  expect(Date.now() - started).toBeLessThan(1000);
+  expect(tables.provider_sync_states).toHaveLength(0);
+  expect(tables.benchmark_rates).toEqual([{ series: '12', date: '2026-10-06', value: '0.04' }]);
+  expect(tables.provider_sync_logs.every(r => String(r.message).includes('Prazo global'))).toBe(true);
+});
+test('failed persistence or audit cannot create a successful benchmark cache', async () => {
+  const factory = provider(async series => [{ series, date: '2026-10-07', value: '0.05', source: 'BCB' }]);
+  for (const failingTable of ['benchmark_rates', 'provider_sync_logs']) {
+    const { db, tables } = fakeDB({}, failingTable);
+    expect((await updateBenchmarks(db, now, factory)).every(r => r.status === 'error')).toBe(true);
+    expect(tables.provider_sync_states).toHaveLength(0);
+  }
 });

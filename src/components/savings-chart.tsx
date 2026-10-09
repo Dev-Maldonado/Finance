@@ -11,12 +11,25 @@ import {
 export function SavingsChart({
   data,
 }: {
-  data: { date: string; principal: number; yield: number }[];
+  data: { date: string; principal: number; yield: number; estimateComplete?: boolean }[];
 }) {
+  if (!data.length)
+    return (
+      <p className="notice" role="status">
+        Nenhuma evolução registrada até a data selecionada.
+      </p>
+    );
+  const incomplete = data.some(point => point.estimateComplete === false);
+  const chartData = data.map(point => ({ ...point, yield: point.estimateComplete === false ? null : point.yield }));
   return (
-    <div className="chart">
+    <>
+    {incomplete && <p className="notice" role="status">A linha de rendimento foi interrompida após resgate sem detalhamento por lote. Confira o saldo registrado e o extrato oficial.</p>}
+    <div
+      className="chart"
+      aria-label="Evolução do principal e do rendimento bruto estimado da caixinha"
+    >
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
+        <AreaChart data={chartData}>
           <CartesianGrid strokeDasharray="3 5" vertical={false} />
           <XAxis
             dataKey="date"
@@ -33,6 +46,7 @@ export function SavingsChart({
             }
           />
           <Area
+            isAnimationActive={false}
             dataKey="principal"
             name="Capital aportado restante"
             stackId="total"
@@ -40,7 +54,9 @@ export function SavingsChart({
             fill="#e8e0fb"
           />
           <Area
+            isAnimationActive={false}
             dataKey="yield"
+            connectNulls={false}
             name="Rendimento bruto estimado"
             stackId="total"
             stroke="#5B35D5"
@@ -49,5 +65,6 @@ export function SavingsChart({
         </AreaChart>
       </ResponsiveContainer>
     </div>
+    </>
   );
 }

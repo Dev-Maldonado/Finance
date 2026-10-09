@@ -40,9 +40,17 @@ import { CDIStatus, type BenchmarkStatus } from "./cdi-status";
 import { savingsMetrics } from "@/lib/savings-metrics";
 import { ProventEvents } from "./provent-events";
 import { Auth } from "./auth";
-import { DeleteDialog } from "./delete-dialog";
+import { DeleteDialog, type RemovalKind } from "./delete-dialog";
+import { FinancialPlanning } from "./financial-planning";
+import { DataConfidence } from "./data-confidence";
+import { ReconciliationPanel } from "./reconciliation-panel";
+import { periodMetrics, budgetMetrics } from "@/lib/dashboard";
 import { cardColors } from "@/lib/card-color";
-import { cardInvoices, invoiceMonthLabel, invoiceTotals } from "@/lib/card-invoices";
+import {
+  cardInvoices,
+  invoiceMonthLabel,
+  invoiceTotals,
+} from "@/lib/card-invoices";
 import { InvoiceMonthPicker, MonthlyInvoices } from "./monthly-invoices";
 import { AssetSearch } from "./asset-search";
 import { browserDb } from "@/lib/supabase";
@@ -56,7 +64,11 @@ import { SavingsChart } from "./savings-chart";
 import { savingsHistory } from "@/financial/savings-history";
 import type { Lot, Movement, Rate } from "@/financial/engine";
 import { FlowChart } from "./chart";
-import { exportData } from "./exports";
+import { CategoryManagement } from "./category-management";
+import { CategoryExpensesReport } from "./category-expenses-report";
+import { CategoryPicker } from "./category-picker";
+import { categoryMatches, categoryLabel, categoryOptions } from "@/lib/categories";
+import { exportData, exportReportRows } from "./exports";
 const nav = [
   ["dashboard", "Dashboard", LayoutDashboard],
   ["contas", "Contas e Saldos", Wallet],
@@ -183,13 +195,26 @@ function Workspace({
   detail?: string;
 }) {
   const qc = useQueryClient();
-  const [removal, setRemoval] = useState<{ kind: "transaction" | "purchase"; row: Row } | null>(null);
+  const [removal, setRemoval] = useState<{
+    kind: RemovalKind;
+    row: Row;
+  } | null>(null);
   const [showExcluded, setShowExcluded] = useState(false);
   const [showExcludedPurchases, setShowExcludedPurchases] = useState(false);
+  const [showExcludedInvestments, setShowExcludedInvestments] = useState(false);
+  const [txAccount, setTxAccount] = useState(""),
+    [txCategory, setTxCategory] = useState(""),
+    [txType, setTxType] = useState(""),
+    [txStatus, setTxStatus] = useState("");
   const [invoiceMonth, setInvoiceMonth] = useState(localDate().slice(0, 7));
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get("month");
-    if (section === "cartoes" && selected && /^\d{4}-(0[1-9]|1[0-2])$/.test(selected)) setInvoiceMonth(selected);
+    if (
+      section === "cartoes" &&
+      selected &&
+      /^\d{4}-(0[1-9]|1[0-2])$/.test(selected)
+    )
+      setInvoiceMonth(selected);
   }, [section]);
   const [session, setSession] = useState<boolean | null>(null),
     [collapsed, setCollapsed] = useState(false),
@@ -197,6 +222,47 @@ function Workspace({
     [modal, setModal] = useState<{ form: FormDef; initial?: Row } | null>(null),
     [notice, setNotice] = useState(""),
     [search, setSearch] = useState("");
+  useEffect(() => {
+    if (!mobile) return;
+    const menu = document.getElementById("main-navigation");
+    menu?.querySelector<HTMLAnchorElement>("nav a")?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (document.querySelector("dialog[open]")) return;
+      if (event.key === "Escape") {
+        setMobile(false);
+      }
+      if (event.key === "Tab") {
+        const elements = [
+          ...document.querySelectorAll<HTMLElement>(
+            ".navigation-backdrop, #main-navigation a, #main-navigation button:not(:disabled)",
+          ),
+        ];
+        if (event.shiftKey && document.activeElement === elements[0]) {
+          event.preventDefault();
+          elements.at(-1)?.focus();
+        } else if (
+          !event.shiftKey &&
+          document.activeElement === elements.at(-1)
+        ) {
+          event.preventDefault();
+          elements[0]?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      setTimeout(() => document.getElementById("open-navigation")?.focus(), 0);
+    };
+  }, [mobile]);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 761px)");
+    const reset = () => {
+      if (desktop.matches) setMobile(false);
+    };
+    desktop.addEventListener("change", reset);
+    return () => desktop.removeEventListener("change", reset);
+  }, []);
   const [chartMode, setChartMode] = useState("monthly");
   const [period, setPeriod] = useState("month"),
     [start, setStart] = useState(localDate().slice(0, 7) + "-01"),
@@ -221,6 +287,8 @@ function Workspace({
     refetchInterval: 5 * 60 * 1000,
     enabled: session === true,
     queryFn: async () => {
+      // Due recurring entries are pending and idempotent; confirmed cash is unchanged.
+      await post("/api/recurring", {});
       const res = await fetch("/api/snapshot");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -230,21 +298,39 @@ function Workspace({
   const snapshot = query.data;
   const benchmarkQuery = useQuery<BenchmarkStatus>({
     queryKey: ["benchmarks"],
-    enabled: session === true && !!snapshot && rows(snapshot, "savings_lots").some(l => ["cdi", "selic", "fixed"].includes(str(l, "indexer"))),
+    enabled:
+      session === true &&
+      !!snapshot &&
+      rows(snapshot, "savings_lots").some((l) =>
+        ["cdi", "selic", "fixed"].includes(str(l, "indexer")),
+      ),
     staleTime: 4 * 60 * 60 * 1000,
     refetchInterval: 4 * 60 * 60 * 1000,
     retry: false,
     queryFn: async () => {
       try {
         const response = await fetch("/api/benchmarks", { method: "POST" });
-        const data = await response.json() as BenchmarkStatus;
-        if (data.results?.some(r => r.status === "success")) void qc.invalidateQueries({ queryKey: ["snapshot"] });
+        const data = (await response.json()) as BenchmarkStatus;
+        if (data.results?.some((r) => r.status === "success"))
+          void qc.invalidateQueries({ queryKey: ["snapshot"] });
         return data;
-      } catch { return { error: "Não foi possível verificar o CDI. Último histórico preservado." }; }
+      } catch {
+        return {
+          error:
+            "Não foi possível verificar o CDI. Último histórico preservado.",
+        };
+      }
     },
   });
   const today = localDate();
-  const allInvoices = useMemo(() => snapshot ? cardInvoices(snapshot, today) : [], [snapshot, today]);
+  const goalYieldMetrics = useMemo(
+    () => (snapshot ? savingsMetrics(snapshot, today) : null),
+    [snapshot, today],
+  );
+  const allInvoices = useMemo(
+    () => (snapshot ? cardInvoices(snapshot, today) : []),
+    [snapshot, today],
+  );
   const performance = useMemo(
     () => (snapshot ? portfolioPerformance(snapshot, start, end) : null),
     [snapshot, start, end],
@@ -252,6 +338,40 @@ function Workspace({
   const summary = useMemo(
     () => (snapshot ? financialSummary(snapshot, start, end) : null),
     [snapshot, start, end],
+  );
+  const periodSummary = useMemo(
+    () =>
+      snapshot
+        ? periodMetrics(
+            snapshot,
+            start,
+            end,
+            ["month", "previous"].includes(period),
+          )
+        : null,
+    [snapshot, start, end, period],
+  );
+  const periodExpenses = useMemo<Row[]>(
+    () =>
+      periodSummary
+        ? [
+            ...periodSummary.tx
+              .filter((t) => t.type === "expense")
+              .map((t) => ({
+                ...t,
+                amount: D(str(t, "amount")).abs().toFixed(2),
+                origin: "Conta",
+                kind: "Despesa",
+              })),
+            ...periodSummary.installments.map((t) => ({
+              ...t,
+              amount: str(t, "amount"),
+              origin: "Cartão",
+              kind: `Parcela ${str(t, "number")}/${str(t, "installments")}`,
+            })),
+          ]
+        : [],
+    [periodSummary],
   );
   const open = (key: string, initial?: Row) =>
     setModal({ form: forms[key], initial });
@@ -335,6 +455,7 @@ function Workspace({
       ["asset", "Novo ativo"],
     ],
     planejamento: [
+      ["obligation", "Agendar compromisso"],
       ["liability", "Dívida / obrigação"],
       ["budget", "Novo orçamento"],
       ["financialGoal", "Nova meta"],
@@ -347,93 +468,67 @@ function Workspace({
         .filter(
           (r) =>
             str(r, "date") >= start &&
-            (r.status !== "cancelled" || (section === "transacoes" && showExcluded)) &&
+            (r.status !== "cancelled" ||
+              (section === "transacoes" && showExcluded)) &&
             str(r, "date") <= end &&
-            str(r, "description").toLowerCase().includes(search.toLowerCase()),
+            str(r, "description")
+              .toLowerCase()
+              .includes(search.toLowerCase()) &&
+            (!txAccount || r.account_id === txAccount) &&
+            (!txCategory ||
+              categoryMatches(rows(snapshot, "categories"), str(r, "category_id"), txCategory)) &&
+            (!txType || r.type === txType) &&
+            (!txStatus || r.status === txStatus),
         )
         .sort((a, b) => str(b, "date").localeCompare(str(a, "date")))
     : [];
   const sum = (list: Row[], key: string) =>
     list.reduce((a, r) => a.plus(str(r, key) || 0), D(0));
-  const categoryData =
-    snapshot && summary
-      ? rows(snapshot, "categories")
-          .map((c) => {
-            const cash = sum(
-                summary.tx.filter(
-                  (t) => t.type === "expense" && t.category_id === c.id,
-                ),
-                "amount",
-              ).abs(),
-              card = sum(
-                summary.purchases.filter((t) => t.category_id === c.id),
-                "amount",
-              );
-            return {
-              name: str(c, "name"),
-              value: cash.plus(card).toNumber(),
-              id: str(c, "id"),
-            };
-          })
-          .filter((c) => c.value > 0)
-      : [];
-  const flowData = snapshot
+  const flowData = periodSummary
     ? (() => {
-        const effectiveMode =
+        const byMonth =
           chartMode === "annual" ||
-          (Date.parse(end) - Date.parse(start)) / 86400000 > 366
-            ? "annual"
-            : "monthly";
-        const buckets: string[] = [];
-        const cursor = new Date(start + "T12:00:00Z");
-        if (effectiveMode === "annual") cursor.setUTCDate(1);
-        while (
-          cursor.toISOString().slice(0, 10) <= end &&
-          buckets.length < 1200
-        ) {
-          buckets.push(
-            cursor.toISOString().slice(0, effectiveMode === "annual" ? 7 : 10),
-          );
-          if (effectiveMode === "annual")
-            cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-          else cursor.setUTCDate(cursor.getUTCDate() + 1);
-        }
-        return buckets.map((key) => {
-          const tx = rows(snapshot, "transactions").filter(
-            (t) =>
-              str(t, "date") >= start &&
-              str(t, "date") <= end &&
-              str(t, "date").startsWith(key) &&
-              t.status === "confirmed",
-          );
-          const cards = rows(snapshot, "credit_card_purchases").filter(
-            (t) =>
-              str(t, "date") >= start &&
-              str(t, "date") <= end &&
-              str(t, "date").startsWith(key),
-          );
-          return {
-            name:
-              effectiveMode === "annual"
-                ? key.split("-").reverse().join("/")
-                : key.slice(5).split("-").reverse().join("/"),
-            income: sum(
-              tx.filter((t) => t.type === "income"),
-              "amount",
-            ).toNumber(),
-            expense: sum(
-              tx.filter((t) => t.type === "expense"),
-              "amount",
-            )
-              .abs()
-              .plus(sum(cards, "amount"))
-              .toNumber(),
-            yield: sum(
-              tx.filter((t) => t.type === "yield"),
-              "amount",
-            ).toNumber(),
+          (Date.parse(end) - Date.parse(start)) / 86400000 > 366;
+        const events = [
+          ...periodSummary.tx.filter((t) =>
+            ["income", "expense", "yield"].includes(str(t, "type")),
+          ),
+          ...periodSummary.installments.map((t) => ({ ...t, type: "expense" })),
+        ];
+        const buckets = new Map<
+          string,
+          {
+            income: ReturnType<typeof D>;
+            expense: ReturnType<typeof D>;
+            yield: ReturnType<typeof D>;
+          }
+        >();
+        for (const event of events) {
+          const key = str(event, "date").slice(0, byMonth ? 7 : 10);
+          const row = buckets.get(key) ?? {
+            income: D(0),
+            expense: D(0),
+            yield: D(0),
           };
-        });
+          const field =
+            event.type === "income"
+              ? "income"
+              : event.type === "yield"
+                ? "yield"
+                : "expense";
+          row[field] = row[field].plus(D(str(event, "amount")).abs());
+          buckets.set(key, row);
+        }
+        return [...buckets.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, r]) => ({
+            name: byMonth
+              ? key.split("-").reverse().join("/")
+              : key.slice(5).split("-").reverse().join("/"),
+            income: r.income.toNumber(),
+            expense: r.expense.toNumber(),
+            yield: r.yield.toNumber(),
+          }));
       })()
     : [];
   function transactionTable(list: Row[]) {
@@ -484,11 +579,7 @@ function Workspace({
                   </span>
                 </td>
                 <td>
-                  {(snapshot &&
-                    rows(snapshot, "categories").find(
-                      (c) => c.id === t.category_id,
-                    )?.name) ||
-                    "—"}
+                  {snapshot ? categoryLabel(rows(snapshot, "categories"), str(t, "category_id"), " / ") : "—"}
                 </td>
                 <td>
                   {(snapshot &&
@@ -538,7 +629,11 @@ function Workspace({
                         >
                           Editar
                         </button>
-                        <button onClick={() => setRemoval({ kind: "transaction", row: t })}>
+                        <button
+                          onClick={() =>
+                            setRemoval({ kind: "transaction", row: t })
+                          }
+                        >
                           Excluir
                         </button>
                       </div>
@@ -555,7 +650,21 @@ function Workspace({
   }
   return (
     <div className={`workspace ${collapsed ? "collapsed" : ""}`}>
-      <aside className={`sidebar ${mobile ? "visible" : ""}`}>
+      {mobile && (
+        <button
+          className="navigation-backdrop"
+          aria-label="Fechar menu"
+          onClick={() => {
+            setMobile(false);
+            document.getElementById("open-navigation")?.focus();
+          }}
+        />
+      )}
+      <aside
+        id="main-navigation"
+        aria-label="Menu principal"
+        className={`sidebar ${mobile ? "visible" : ""}`}
+      >
         <Link href="/" className="brand">
           f
           {!collapsed && (
@@ -595,7 +704,8 @@ function Workspace({
         <button
           className="collapse"
           onClick={() => setCollapsed(!collapsed)}
-          aria-label="Recolher menu"
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+          aria-expanded={!collapsed}
         >
           {collapsed ? (
             <ChevronRight size={18} />
@@ -628,13 +738,16 @@ function Workspace({
           </button>
         </div>
       </aside>
-      <div className="main">
+      <div className="main" inert={mobile ? true : undefined}>
         <header className="topbar">
           <div>
             <button
               className="mobile-menu icon-button"
               onClick={() => setMobile(!mobile)}
-              aria-label="Abrir menu"
+              id="open-navigation"
+              aria-label={mobile ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={mobile}
+              aria-controls="main-navigation"
             >
               <Menu />
             </button>
@@ -692,58 +805,60 @@ function Workspace({
               ))}
             </div>
           </div>
-          {current[0] !== "cartoes" && <div className="period-bar">
-            <div className="period-tabs">
-              {[
-                ["month", "Este mês"],
-                ["previous", "Mês anterior"],
-                ["7", "7 dias"],
-                ["30", "30 dias"],
-                ["year", "Este ano"],
-                ["custom", "Personalizado"],
-              ].map(([v, l]) => (
-                <button
-                  key={v}
-                  className={period === v ? "selected" : ""}
-                  onClick={() => changePeriod(v)}
-                >
-                  {l}
-                </button>
-              ))}
+          {current[0] !== "cartoes" && (
+            <div className="period-bar">
+              <div className="period-tabs">
+                {[
+                  ["month", "Este mês"],
+                  ["previous", "Mês anterior"],
+                  ["7", "7 dias"],
+                  ["30", "30 dias"],
+                  ["year", "Este ano"],
+                  ["custom", "Personalizado"],
+                ].map(([v, l]) => (
+                  <button
+                    key={v}
+                    className={period === v ? "selected" : ""}
+                    onClick={() => changePeriod(v)}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div className="date-range">
+                <CalendarDays size={15} />
+                {period === "custom" ? (
+                  <>
+                    <input
+                      aria-label="Data inicial"
+                      type="date"
+                      value={start}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setStart(e.target.value);
+                          if (e.target.value > end) setEnd(e.target.value);
+                        }
+                      }}
+                    />
+                    <span>—</span>
+                    <input
+                      aria-label="Data final"
+                      type="date"
+                      value={end}
+                      min={start}
+                      onChange={(e) => {
+                        if (e.target.value) setEnd(e.target.value);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <span>
+                    {pretty(start)} — {pretty(end)}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="date-range">
-              <CalendarDays size={15} />
-              {period === "custom" ? (
-                <>
-                  <input
-                    aria-label="Data inicial"
-                    type="date"
-                    value={start}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setStart(e.target.value);
-                        if (e.target.value > end) setEnd(e.target.value);
-                      }
-                    }}
-                  />
-                  <span>—</span>
-                  <input
-                    aria-label="Data final"
-                    type="date"
-                    value={end}
-                    min={start}
-                    onChange={(e) => {
-                      if (e.target.value) setEnd(e.target.value);
-                    }}
-                  />
-                </>
-              ) : (
-                <span>
-                  {pretty(start)} — {pretty(end)}
-                </span>
-              )}
-            </div>
-          </div>}
+          )}
           {notice && (
             <p role="status" className="notice" onClick={() => setNotice("")}>
               {notice}
@@ -759,13 +874,37 @@ function Workspace({
           {snapshot && summary && (
             <>
               {current[0] === "dashboard" && (
-                <Dashboard snapshot={snapshot} summary={summary} start={start} end={end} period={period} today={today}
-                  benchmarkStatus={benchmarkQuery.data} updatingCDI={benchmarkQuery.isFetching}
-                  onRefreshCDI={() => { void benchmarkQuery.refetch(); }}
-                  onPay={invoice => setModal({ form: forms.invoice, initial: { invoice_id: invoice.id, account_id: invoice.accountId, amount: invoice.pending, date: today } })}
+                <Dashboard
+                  snapshot={snapshot}
+                  summary={summary}
+                  start={start}
+                  end={end}
+                  period={period}
+                  today={today}
+                  benchmarkStatus={benchmarkQuery.data}
+                  updatingCDI={benchmarkQuery.isFetching}
+                  onRefreshCDI={() => {
+                    void benchmarkQuery.refetch();
+                  }}
+                  onPay={(invoice) =>
+                    setModal({
+                      form: forms.invoice,
+                      initial: {
+                        invoice_id: invoice.id,
+                        account_id: invoice.accountId,
+                        amount: invoice.pending,
+                        date: today,
+                      },
+                    })
+                  }
                   onSaveWealth={async () => {
-                    try { await post("/api/snapshot", {}); setNotice("Posição patrimonial de hoje registrada."); refresh(); }
-                    catch (e) { setNotice(String(e)); }
+                    try {
+                      await post("/api/snapshot", {});
+                      setNotice("Posição patrimonial de hoje registrada.");
+                      refresh();
+                    } catch (e) {
+                      setNotice(String(e));
+                    }
                   }}
                 />
               )}
@@ -831,7 +970,11 @@ function Workspace({
               {current[0] === "transacoes" && (
                 <>
                   <label className="excluded-toggle">
-                    <input type="checkbox" checked={showExcluded} onChange={e => setShowExcluded(e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={showExcluded}
+                      onChange={(e) => setShowExcluded(e.target.checked)}
+                    />
                     Mostrar lançamentos excluídos
                   </label>
                   <Panel
@@ -854,11 +997,86 @@ function Workspace({
                       </div>
                     }
                   >
+                    <div
+                      className="transaction-filters"
+                      aria-label="Filtrar transações"
+                    >
+                      <label>
+                        Conta
+                        <select
+                          aria-label="Filtrar transações por conta"
+                          value={txAccount}
+                          onChange={(e) => setTxAccount(e.target.value)}
+                        >
+                          <option value="">Todas</option>
+                          {rows(snapshot, "financial_accounts").map((a) => (
+                            <option key={str(a, "id")} value={str(a, "id")}>
+                              {a.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Categoria
+                        <select
+                          aria-label="Filtrar transações por categoria"
+                          value={txCategory}
+                          onChange={(e) => setTxCategory(e.target.value)}
+                        >
+                          <option value="">Todas</option>
+                          <option value="uncategorized">Sem categoria</option>
+                          {categoryOptions(rows(snapshot, "categories"), true).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                        </select>
+                      </label>
+                      <label>
+                        Tipo
+                        <select
+                          aria-label="Filtrar transações por tipo"
+                          value={txType}
+                          onChange={(e) => setTxType(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          <option value="income">Receita</option>
+                          <option value="expense">Despesa</option>
+                          <option value="yield">Rendimento</option>
+                          <option value="invoice_payment">
+                            Pagamento de fatura
+                          </option>
+                          <option value="transfer">Transferência</option>
+                          <option value="investment">Investimento</option>
+                          <option value="adjustment">Ajuste</option>
+                        </select>
+                      </label>
+                      <label>
+                        Status
+                        <select
+                          aria-label="Filtrar transações por status"
+                          value={txStatus}
+                          onChange={(e) => setTxStatus(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          <option value="confirmed">Confirmado</option>
+                          <option value="pending">Pendente</option>
+                          <option value="cancelled">Excluído</option>
+                        </select>
+                      </label>
+                      <button
+                        onClick={() => {
+                          setSearch("");
+                          setTxAccount("");
+                          setTxCategory("");
+                          setTxType("");
+                          setTxStatus("");
+                        }}
+                      >
+                        Limpar filtros
+                      </button>
+                    </div>
                     {transactionTable(filteredTx)}
                   </Panel>
                   <Panel
                     title="Lançamentos recorrentes"
-                    subtitle="Gerados como pendentes para conferência; não alteram saldo até confirmação."
+                    subtitle="Ocorrências até hoje são geradas automaticamente como pendentes. Meses futuros ficam separados na projeção; o saldo muda somente na confirmação."
                     action={
                       <button
                         onClick={async () => {
@@ -876,79 +1094,106 @@ function Workspace({
                     }
                   >
                     {rows(snapshot, "recurring_transactions").map((r) => (
-                      <div className="list-row" key={str(r, "id")}>
-                        <strong>{r.description}</strong>
-                        <span>
-                          {r.frequency === "monthly" ? "Mensal" : "Semanal"} ·
-                          próxima {pretty(str(r, "next_date"))}
+                      <div
+                        className="list-row recurrence-row"
+                        key={str(r, "id")}
+                      >
+                        <div>
+                          <strong>{r.description}</strong><small>{categoryLabel(rows(snapshot, "categories"), str(r, "category_id"), " / ")}</small>
+                          <small>
+                            {r.frequency === "monthly"
+                              ? `Mensal · dia ${str(r, "anchor_day") || str(r, "next_date").slice(8)}`
+                              : r.frequency === "annual" ? "Anual" : "Semanal"}{" "}
+                            · próxima {pretty(str(r, "next_date"))}
+                            {r.start_date && ` · início ${pretty(str(r, "start_date"))}`}
+                            {r.end_date && ` · término ${pretty(str(r, "end_date"))}`}
+                          </small>
+                        </div>
+                        <span className={`badge ${r.active && !r.cancelled_at && !(r.end_date && str(r, "next_date") > str(r, "end_date")) ? "green" : ""}`}>
+                          {r.cancelled_at || (r.end_date && str(r, "next_date") > str(r, "end_date"))
+                            ? "Encerrada"
+                            : r.active
+                              ? "Ativa"
+                              : "Pausada"}
                         </span>
                         <strong>{brl(str(r, "amount"))}</strong>
+                        {!r.cancelled_at && !(r.end_date && str(r, "next_date") > str(r, "end_date")) && (
+                          <div className="actions">
+                            <button onClick={() => open("recurring", r)}>
+                              Editar
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await post(
+                                    "/api/recurring",
+                                    {
+                                      recurrence_id: r.id,
+                                      replacement: {
+                                        ...r,
+                                        active: !r.active,
+                                      },
+                                    },
+                                  );
+                                  refresh();
+                                  setNotice(
+                                    r.active
+                                      ? "Recorrência pausada; lançamentos já gerados permanecem para conferência."
+                                      : "Recorrência retomada a partir da próxima ocorrência; períodos pausados não serão gerados retroativamente.",
+                                  );
+                                } catch (e) {
+                                  setNotice(
+                                    e instanceof Error
+                                      ? e.message
+                                      : "Falha ao atualizar recorrência.",
+                                  );
+                                }
+                              }}
+                            >
+                              {r.active ? "Pausar" : "Retomar"}
+                            </button>
+                            <button
+                              onClick={() =>
+                                setRemoval({ kind: "recurring", row: r })
+                              }
+                            >
+                              Encerrar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
+                    {!rows(snapshot, "recurring_transactions").length && (
+                      <p className="notice">
+                        Cadastre despesas e receitas fixas. Novas ocorrências
+                        ficam pendentes até sua conferência.
+                      </p>
+                    )}
                   </Panel>
                   <ImportPanel snapshot={snapshot} onSaved={refresh} />
                 </>
               )}
               {current[0] === "categorias" && (
-                <div className="cards-grid">
-                  {rows(snapshot, "categories").map((c) => (
-                    <Panel
-                      key={str(c, "id")}
-                      title={str(c, "name")}
-                      subtitle={
-                        c.parent_id
-                          ? `Subcategoria de ${rows(snapshot, "categories").find((p) => p.id === c.parent_id)?.name}`
-                          : "Categoria principal"
-                      }
-                      action={
-                        <button onClick={() => open("category", c)}>
-                          Editar
-                        </button>
-                      }
-                    >
-                      <div className="list-row">
-                        <span>Gastos no período</span>
-                        <strong>
-                          {brl(
-                            categoryData.find((d) => d.id === c.id)?.value ?? 0,
-                          )}
-                        </strong>
-                      </div>
-                      {c.budget && (
-                        <div className="list-row">
-                          <span>Limite mensal</span>
-                          <strong>{brl(str(c, "budget"))}</strong>
-                        </div>
-                      )}
-                      <button
-                        className="text-link"
-                        onClick={() =>
-                          setNotice(
-                            filteredTx
-                              .filter((t) => t.category_id === c.id)
-                              .map(
-                                (t) =>
-                                  `${t.description}: ${brl(str(t, "amount"))}`,
-                              )
-                              .join(" · ") ||
-                              "Nenhuma despesa nesta categoria.",
-                          )
-                        }
-                      >
-                        Detalhar despesas
-                      </button>
-                    </Panel>
-                  ))}
-                  {!rows(snapshot, "categories").length && (
-                    <Empty action={() => open("category")} />
-                  )}
-                </div>
+                <>
+                  <p className="notice">Gastos confirmados nas contas e parcelas por vencimento. Categorias essenciais ajudam a calcular sua reserva de emergência.</p>
+                  <CategoryManagement snapshot={snapshot} expenses={periodExpenses} onEdit={(row) => open("category", row)} onRemove={(row) => setRemoval({ kind: "category", row })} />
+                </>
               )}
               {current[0] === "cartoes" && (
                 <>
                   <div className="invoice-month-toolbar">
-                    <div><h2>Faturas por mês</h2><p>Valores pelo mês de vencimento, separados do total comprometido.</p></div>
-                    <InvoiceMonthPicker month={invoiceMonth} today={today} onChange={setInvoiceMonth} />
+                    <div>
+                      <h2>Faturas por mês</h2>
+                      <p>
+                        Valores pelo mês de vencimento, separados do total
+                        comprometido.
+                      </p>
+                    </div>
+                    <InvoiceMonthPicker
+                      month={invoiceMonth}
+                      today={today}
+                      onChange={setInvoiceMonth}
+                    />
                   </div>
                   <div className="cards-grid">
                     {rows(snapshot, "credit_cards").map((c) => (
@@ -978,18 +1223,35 @@ function Workspace({
                       month={invoiceMonth}
                       today={today}
                       onMonthChange={setInvoiceMonth}
-                      onPay={invoice => setModal({
-                        form: forms.invoice,
-                        initial: { invoice_id: invoice.id, account_id: invoice.accountId, amount: invoice.pending, date: today },
-                      })}
+                      onEditInstallment={(part) => setModal({ form: forms.installment, initial: part })}
+                      onPay={(invoice) =>
+                        setModal({
+                          form: forms.invoice,
+                          initial: {
+                            invoice_id: invoice.id,
+                            account_id: invoice.accountId,
+                            amount: invoice.pending,
+                            date: today,
+                          },
+                        })
+                      }
                     />
                   </Panel>
-                  <Panel title="Compras registradas" action={
-                    <label className="excluded-toggle">
-                      <input type="checkbox" checked={showExcludedPurchases} onChange={e => setShowExcludedPurchases(e.target.checked)} />
-                      Mostrar compras excluídas
-                    </label>
-                  }>
+                  <Panel
+                    title="Compras registradas"
+                    action={
+                      <label className="excluded-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showExcludedPurchases}
+                          onChange={(e) =>
+                            setShowExcludedPurchases(e.target.checked)
+                          }
+                        />
+                        Mostrar compras excluídas
+                      </label>
+                    }
+                  >
                     <div className="table-wrap">
                       <table>
                         <thead>
@@ -1002,19 +1264,47 @@ function Workspace({
                           </tr>
                         </thead>
                         <tbody>
-                          {rows(snapshot, "credit_card_purchases", showExcludedPurchases).map((p) => (
+                          {rows(
+                            snapshot,
+                            "credit_card_purchases",
+                            showExcludedPurchases,
+                          ).map((p) => (
                             <tr key={str(p, "id")}>
-                              <td><span>{p.description}</span>{p.status === "cancelled" && <span className="badge">Excluída</span>}</td>
+                              <td>
+                                <span>{p.description}</span><small>{categoryLabel(rows(snapshot, "categories"), str(p, "category_id"), " / ")}</small>
+                                {p.status === "cancelled" && (
+                                  <span className="badge">Excluída</span>
+                                )}
+                              </td>
                               <td>{pretty(str(p, "date"))}</td>
                               <td>{brl(str(p, "amount"))}</td>
                               <td>{p.installments}×</td>
                               <td className="transaction-actions">
-                                {p.status !== "cancelled" && <div className="actions">
-                                  <button onClick={() => setModal({
-                                    form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: p,
-                                  })}>Editar</button>
-                                  <button onClick={() => setRemoval({ kind: "purchase", row: p })}>Excluir</button>
-                                </div>}
+                                {p.status !== "cancelled" && (
+                                  <div className="actions">
+                                    <button
+                                      onClick={() =>
+                                        setModal({
+                                          form: {
+                                            ...forms.purchase,
+                                            action: undefined,
+                                            endpoint: "/api/purchases",
+                                          },
+                                          initial: p,
+                                        })
+                                      }
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        setRemoval({ kind: "purchase", row: p })
+                                      }
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1042,7 +1332,15 @@ function Workspace({
                       Conciliar rendimento
                     </button>
                   </div>
-                  <CDIStatus snapshot={snapshot} today={today} status={benchmarkQuery.data} updating={benchmarkQuery.isFetching} onRefresh={() => { void benchmarkQuery.refetch(); }} />
+                  <CDIStatus
+                    snapshot={snapshot}
+                    today={today}
+                    status={benchmarkQuery.data}
+                    updating={benchmarkQuery.isFetching}
+                    onRefresh={() => {
+                      void benchmarkQuery.refetch();
+                    }}
+                  />
                   <div className="cards-grid">
                     {summary.goals
                       .filter((g) => !detail || g.goal.id === detail)
@@ -1078,9 +1376,7 @@ function Workspace({
                                   (l) => l.goal_id === g.goal.id,
                                 ) as unknown as Lot[],
                                 rows(snapshot, "benchmark_rates").filter(
-                                  (r) =>
-                                    r.series ===
-                                    (g.goal.indexer === "selic" ? "11" : "12"),
+                                  (r) => r.validated !== false,
                                 ) as unknown as Rate[],
                                 rows(snapshot, "savings_movements").filter(
                                   (m) => m.goal_id === g.goal.id,
@@ -1115,26 +1411,41 @@ function Workspace({
                           </tr>
                         </thead>
                         <tbody>
-                          {rows(snapshot, "savings_movements").map((m) => (
-                            <tr key={str(m, "id")}>
-                              <td>
-                                {
-                                  rows(snapshot, "savings_goals").find(
-                                    (g) => g.id === m.goal_id,
-                                  )?.name
-                                }
-                              </td>
-                              <td>
-                                {m.type === "deposit"
-                                  ? "Aporte"
-                                  : m.type === "withdrawal"
-                                    ? "Resgate de principal"
-                                    : "Rendimento conciliado"}
-                              </td>
-                              <td>{pretty(str(m, "date"))}</td>
-                              <td>{brl(str(m, "amount"))}</td>
-                            </tr>
-                          ))}
+                          {rows(snapshot, "savings_movements")
+                            .filter(
+                              (m) =>
+                                (!detail || m.goal_id === detail) &&
+                                str(m, "date") >= start &&
+                                str(m, "date") <= end,
+                            )
+                            .sort((a, b) =>
+                              str(b, "date").localeCompare(str(a, "date")),
+                            )
+                            .map((m) => (
+                              <tr key={str(m, "id")}>
+                                <td>
+                                  {
+                                    rows(snapshot, "savings_goals").find(
+                                      (g) => g.id === m.goal_id,
+                                    )?.name
+                                  }
+                                </td>
+                                <td>
+                                  {(
+                                    {
+                                      deposit: "Aporte",
+                                      withdrawal: "Resgate de principal",
+                                      withdrawn_yield: "Rendimento resgatado",
+                                      withholding_tax: "Imposto retido",
+                                      confirmed_yield: "Rendimento conciliado",
+                                      adjustment: "Ajuste conciliado",
+                                    } as Record<string, string>
+                                  )[str(m, "type")] || str(m, "type")}
+                                </td>
+                                <td>{pretty(str(m, "date"))}</td>
+                                <td>{brl(str(m, "amount"))}</td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
@@ -1143,7 +1454,7 @@ function Workspace({
               )}
               {current[0] === "investimentos" && (
                 <>
-                  <AssetSearch />
+                  <AssetSearch onSelect={(asset) => open("asset", asset)} />
                   <div className="stats three">
                     <Stat
                       label="Carteira em BRL"
@@ -1198,7 +1509,11 @@ function Workspace({
                               </td>
                               <td>{p.asset.asset_class}</td>
                               <td>{p.pos.quantity}</td>
-                              <td>{brl(p.pos.average)}</td>
+                              <td>
+                                {p.supported
+                                  ? brl(p.pos.average)
+                                  : `${Number(p.pos.average).toLocaleString("pt-BR")} ${str(p.asset, "currency")}`}
+                              </td>
                               <td>
                                 {p.supported
                                   ? brl(p.value)
@@ -1228,6 +1543,162 @@ function Workspace({
                     {!summary.positions.length && (
                       <Empty action={() => open("asset")} />
                     )}
+                  </Panel>
+                  <Panel
+                    title="Extrato de operações"
+                    subtitle="Compras, vendas e correções registradas. A correção recalcula caixa e posição; operações incompatíveis com eventos posteriores são recusadas."
+                    action={
+                      <label className="excluded-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showExcludedInvestments}
+                          onChange={(e) =>
+                            setShowExcludedInvestments(e.target.checked)
+                          }
+                        />
+                        Mostrar operações excluídas
+                      </label>
+                    }
+                  >
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Ativo</th>
+                            <th>Operação</th>
+                            <th>Data</th>
+                            <th>Quantidade</th>
+                            <th>Preço unitário</th>
+                            <th>Taxas</th>
+                            <th>Fluxo em caixa</th>
+                            <th>Status</th>
+                            <th className="transaction-actions">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows(
+                            snapshot,
+                            "investment_operations",
+                            showExcludedInvestments,
+                          )
+                            .filter(
+                              (o) =>
+                                str(o, "date") >= start &&
+                                str(o, "date") <= end,
+                            )
+                            .sort((a, b) =>
+                              str(b, "date").localeCompare(str(a, "date")),
+                            )
+                            .map((o) => (
+                              <tr key={str(o, "id")}>
+                                <td>
+                                  {rows(snapshot, "investment_assets").find(
+                                    (a) => a.id === o.asset_id,
+                                  )?.ticker || "—"}
+                                </td>
+                                <td>
+                                  {o.type === "buy"
+                                    ? "Compra / aporte"
+                                    : "Venda / resgate"}
+                                </td>
+                                <td>{pretty(str(o, "date"))}</td>
+                                <td>{o.quantity}</td>
+                                <td>{brl(str(o, "price"))}</td>
+                                <td>{brl(str(o, "fees") || "0")}</td>
+                                <td>
+                                  {brl(
+                                    money(
+                                      o.type === "buy"
+                                        ? D(str(o, "quantity"))
+                                            .mul(str(o, "price"))
+                                            .plus(str(o, "fees") || "0")
+                                            .neg()
+                                        : D(str(o, "quantity"))
+                                            .mul(str(o, "price"))
+                                            .minus(str(o, "fees") || "0"),
+                                    ),
+                                  )}
+                                </td>
+                                <td>
+                                  <span className="badge">
+                                    {o.status === "cancelled"
+                                      ? "Excluída"
+                                      : "Confirmada"}
+                                  </span>
+                                </td>
+                                <td className="transaction-actions">
+                                  {o.status !== "cancelled" && (
+                                    <div className="actions">
+                                      <button
+                                        onClick={() =>
+                                          setModal({
+                                            form: {
+                                              ...forms.investment,
+                                              action: undefined,
+                                              endpoint: "/api/investments",
+                                            },
+                                            initial: o,
+                                          })
+                                        }
+                                      >
+                                        Editar
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          setRemoval({
+                                            kind: "investment",
+                                            row: o,
+                                          })
+                                        }
+                                      >
+                                        Excluir
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {!rows(
+                      snapshot,
+                      "investment_operations",
+                      showExcludedInvestments,
+                    ).some(
+                      (o) => str(o, "date") >= start && str(o, "date") <= end,
+                    ) && (
+                      <p className="notice">
+                        Nenhuma operação no período. Posições iniciais
+                        existentes estão listadas abaixo.
+                      </p>
+                    )}
+                    <details className="opening-positions">
+                      <summary>
+                        Posições iniciais cadastradas (
+                        {rows(snapshot, "investment_opening_positions").length})
+                      </summary>
+                      {rows(snapshot, "investment_opening_positions").map(
+                        (o) => (
+                          <div className="list-row" key={str(o, "id")}>
+                            <strong>
+                              {
+                                rows(snapshot, "investment_assets").find(
+                                  (a) => a.id === o.asset_id,
+                                )?.ticker
+                              }
+                            </strong>
+                            <span>
+                              {o.quantity} unidades · custo{" "}
+                              {brl(str(o, "cost"))} · {pretty(str(o, "date"))}
+                            </span>
+                            <button onClick={() => open("opening", o)}>
+                              Conferir / editar
+                            </button>
+                          </div>
+                        ),
+                      )}
+                    </details>
                   </Panel>
                   <ImportPanel
                     snapshot={snapshot}
@@ -1261,30 +1732,76 @@ function Workspace({
                             <th>Data</th>
                             <th>Valor</th>
                             <th>Status</th>
+                            <th className="transaction-actions">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {rows(snapshot, "investment_income").map((p) => (
-                            <tr key={str(p, "id")}>
-                              <td>
-                                {
-                                  rows(snapshot, "investment_assets").find(
-                                    (a) => a.id === p.asset_id,
-                                  )?.ticker
-                                }
-                              </td>
-                              <td>{p.description}</td>
-                              <td>{pretty(str(p, "date"))}</td>
-                              <td>{brl(str(p, "amount"))}</td>
-                              <td>
-                                <span className="badge">
-                                  {p.status === "received"
-                                    ? "Recebido"
-                                    : "Anunciado"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                          {rows(snapshot, "investment_income", true)
+                            .filter(
+                              (p) =>
+                                str(p, "date") >= start &&
+                                str(p, "date") <= end,
+                            )
+                            .sort((a, b) =>
+                              str(b, "date").localeCompare(str(a, "date")),
+                            )
+                            .map((p) => (
+                              <tr key={str(p, "id")}>
+                                <td>
+                                  {
+                                    rows(snapshot, "investment_assets").find(
+                                      (a) => a.id === p.asset_id,
+                                    )?.ticker
+                                  }
+                                </td>
+                                <td>{p.description}</td>
+                                <td>{pretty(str(p, "date"))}</td>
+                                <td>{brl(str(p, "amount"))}</td>
+                                <td>
+                                  <span className="badge">
+                                    {p.status === "received"
+                                      ? "Recebido"
+                                      : p.status === "cancelled"
+                                        ? "Estornado / excluído"
+                                        : p.status === "reversed"
+                                          ? "Estornado"
+                                          : "Anunciado"}
+                                  </span>
+                                </td>
+                                <td className="transaction-actions">
+                                  {!["cancelled", "reversed"].includes(
+                                    str(p, "status"),
+                                  ) && (
+                                    <div className="actions">
+                                      <button
+                                        onClick={() =>
+                                          setModal({
+                                            form: {
+                                              ...forms.dividend,
+                                              action: undefined,
+                                              resource: undefined,
+                                              endpoint: "/api/income",
+                                            },
+                                            initial: p,
+                                          })
+                                        }
+                                      >
+                                        Editar
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          setRemoval({ kind: "income", row: p })
+                                        }
+                                      >
+                                        {p.status === "received"
+                                          ? "Estornar"
+                                          : "Excluir"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
@@ -1293,6 +1810,72 @@ function Workspace({
               )}
               {current[0] === "planejamento" && (
                 <>
+                  <FinancialPlanning snapshot={snapshot} today={today} />
+                  <Panel
+                    title="Agenda de compromissos"
+                    subtitle="Valores planejados ficam separados do caixa. Confirme somente os pagamentos efetivos."
+                  >
+                    {rows(snapshot, "financial_obligations")
+                      .filter((o) =>
+                        ["month", "previous"].includes(period)
+                          ? str(o, "due_date").slice(0, 7) === start.slice(0, 7)
+                          : str(o, "due_date") >= start &&
+                            str(o, "due_date") <= end,
+                      )
+                      .sort((a, b) =>
+                        str(a, "due_date").localeCompare(str(b, "due_date")),
+                      )
+                      .map((o) => (
+                        <div
+                          className="list-row obligation-row"
+                          key={str(o, "id")}
+                        >
+                          <div>
+                            <strong>{o.name}</strong>
+                            <small>
+                              Vence {pretty(str(o, "due_date"))}
+                              {o.liability_id ? " · dívida vinculada" : ""}
+                            </small>
+                          </div>
+                          <strong>{brl(str(o, "amount"))}</strong>
+                          <span
+                            className={`badge ${o.status === "paid" ? "green" : ""}`}
+                          >
+                            {o.status === "paid"
+                              ? "Pago"
+                              : o.status === "cancelled"
+                                ? "Cancelado"
+                                : str(o, "due_date") < today
+                                  ? "Pendente · vencido"
+                                  : "Pendente"}
+                          </span>
+                          {o.status === "pending" && (
+                            <div className="actions">
+                              <button onClick={() => open("obligation", o)}>
+                                Editar
+                              </button>
+                              <button
+                                onClick={() =>
+                                  open("payObligation", {
+                                    obligation_id: o.id,
+                                    date: today,
+                                    principal_reduction: "0",
+                                  })
+                                }
+                              >
+                                Confirmar pagamento
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    {!rows(snapshot, "financial_obligations").length && (
+                      <Empty
+                        message="Planeje os próximos vencimentos."
+                        action={() => open("obligation")}
+                      />
+                    )}
+                  </Panel>
                   <Panel
                     title="Dívidas e obrigações"
                     subtitle="Valores informados são descontados do patrimônio líquido, além das faturas."
@@ -1313,65 +1896,57 @@ function Workspace({
                     ))}
                   </Panel>
                   <div className="cards-grid">
-                    {rows(snapshot, "budgets").map((b) => {
-                      const month = str(b, "month").slice(0, 7),
-                        cash = sum(
-                          rows(snapshot, "transactions").filter(
-                            (t) =>
-                              t.status === "confirmed" &&
-                              t.type === "expense" &&
-                              str(t, "date").startsWith(month) &&
-                              (!b.category_id ||
-                                t.category_id === b.category_id),
-                          ),
-                          "amount",
-                        ).abs(),
-                        card = sum(
-                          rows(snapshot, "credit_card_purchases").filter(
-                            (t) =>
-                              str(t, "date").startsWith(month) &&
-                              (!b.category_id ||
-                                t.category_id === b.category_id),
-                          ),
-                          "amount",
-                        );
-                      const spent = cash.plus(card).toNumber();
-                      const progress = Math.min(
-                        100,
-                        (spent / Number(b.amount)) * 100,
-                      );
-                      return (
-                        <Panel
-                          key={str(b, "id")}
-                          title={str(b, "name")}
-                          subtitle={`Orçamento · ${str(b, "month").slice(0, 7)}`}
-                          action={
-                            <button onClick={() => open("budget", b)}>
-                              Editar
-                            </button>
-                          }
-                        >
-                          <div className="list-row">
-                            <strong>{brl(spent)}</strong>
-                            <span>de {brl(str(b, "amount"))}</span>
-                          </div>
-                          <div
-                            className={`progress ${spent > Number(b.amount) ? "danger" : ""}`}
-                          >
-                            <span style={{ width: progress + "%" }} />
-                          </div>
-                          <p
-                            className={
-                              spent > Number(b.amount) ? "negative" : ""
+                    {rows(snapshot, "budgets")
+                      .filter(
+                        (b) =>
+                          str(b, "month").slice(0, 7) >= start.slice(0, 7) &&
+                          str(b, "month").slice(0, 7) <= end.slice(0, 7),
+                      )
+                      .map((b) => {
+                        const metrics = budgetMetrics(snapshot, b);
+                        const spent = Number(metrics.spent),
+                          progress = Math.min(100, Number(metrics.percent));
+                        return (
+                          <Panel
+                            key={str(b, "id")}
+                            title={str(b, "name")}
+                            subtitle={`Orçamento · ${invoiceMonthLabel(str(b, "month").slice(0, 7))}`}
+                            action={
+                              <div className="actions">
+                                <button onClick={() => open("budget", b)}>
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setRemoval({ kind: "budget", row: b })
+                                  }
+                                >
+                                  Excluir
+                                </button>
+                              </div>
                             }
                           >
-                            {spent > Number(b.amount)
-                              ? "Limite ultrapassado"
-                              : "Continue acompanhando suas escolhas."}
-                          </p>
-                        </Panel>
-                      );
-                    })}
+                            <div className="list-row">
+                              <strong>{brl(spent)}</strong>
+                              <span>de {brl(str(b, "amount"))}</span>
+                            </div>
+                            <div
+                              className={`progress ${spent > Number(b.amount) ? "danger" : ""}`}
+                            >
+                              <span style={{ width: progress + "%" }} />
+                            </div>
+                            <p
+                              className={
+                                spent > Number(b.amount) ? "negative" : ""
+                              }
+                            >
+                              {spent > Number(b.amount)
+                                ? "Limite ultrapassado"
+                                : "Continue acompanhando suas escolhas."}
+                            </p>
+                          </Panel>
+                        );
+                      })}
                     {rows(snapshot, "financial_goals").map((g) => {
                       const actual =
                         g.kind === "investment"
@@ -1383,6 +1958,20 @@ function Workspace({
                         <Panel
                           key={str(g, "id")}
                           title={str(g, "name")}
+                          action={
+                            <div className="actions">
+                              <button onClick={() => open("financialGoal", g)}>
+                                Editar
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setRemoval({ kind: "financialGoal", row: g })
+                                }
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          }
                           subtitle={
                             g.target_date
                               ? `Até ${pretty(str(g, "target_date"))}`
@@ -1415,6 +2004,7 @@ function Workspace({
               )}
               {current[0] === "relatorios" && (
                 <>
+                  <CategoryExpensesReport snapshot={snapshot} expenses={periodExpenses} today={today} />
                   <Panel
                     title="Evolução patrimonial registrada"
                     subtitle="Posições registradas por dia, sem fabricar histórico anterior. Preços ausentes usam custo de aquisição identificado."
@@ -1438,6 +2028,10 @@ function Workspace({
                   >
                     <WealthChart
                       data={rows(snapshot, "net_worth_snapshots")
+                        .filter(
+                          (r) =>
+                            str(r, "date") >= start && str(r, "date") <= end,
+                        )
                         .sort((a, b) =>
                           str(a, "date").localeCompare(str(b, "date")),
                         )
@@ -1483,13 +2077,35 @@ function Workspace({
                   </Panel>
                   <Panel
                     title="Relatório financeiro do período"
-                    subtitle={`${pretty(start)} a ${pretty(end)}`}
+                    subtitle={`${pretty(start)} a ${pretty(end)} · despesas e parcelas por vencimento; compras integrais no histórico geral`}
                     action={
                       <div className="actions">
                         {(["csv", "xlsx", "pdf"] as const).map((f) => (
                           <button
                             key={f}
-                            onClick={() => exportData(filteredTx, f)}
+                            onClick={() =>
+                              exportData(
+                                exportReportRows(
+                                  snapshot,
+                                  start,
+                                  end,
+                                  ["month", "previous"].includes(period),
+                                ),
+                                f,
+                                {
+                                  title: "Relatório financeiro mensal",
+                                  period: `${pretty(start)} a ${pretty(end)}`,
+                                  summary: {
+                                    Receitas: periodSummary?.income || "0",
+                                    Gastos: periodSummary?.expenses || "0",
+                                    "Rendimentos recebidos":
+                                      periodSummary?.yields || "0",
+                                    "Resultado líquido":
+                                      periodSummary?.net || "0",
+                                  },
+                                },
+                              )
+                            }
                           >
                             <Download size={15} />
                             {f.toUpperCase()}
@@ -1501,7 +2117,23 @@ function Workspace({
                     <div className="report-grid">
                       {[
                         ["Entradas", summary.income],
-                        ["Saídas", summary.expense],
+                        ["Gastos e parcelas", periodSummary?.expenses || "0"],
+                        [
+                          "Parcelas do cartão",
+                          periodSummary?.cardExpense || "0",
+                        ],
+                        [
+                          "Despesas nas contas",
+                          periodSummary?.cashExpense || "0",
+                        ],
+                        [
+                          "Resultado líquido do período",
+                          periodSummary?.net || "0",
+                        ],
+                        [
+                          "Resultado efetivo em caixa",
+                          periodSummary?.cashNet || "0",
+                        ],
                         ["Rendimentos recebidos", summary.yields],
                         ["Patrimônio bruto atual", summary.assets],
                         ["Patrimônio líquido atual", summary.netWorth],
@@ -1512,6 +2144,20 @@ function Workspace({
                           <strong>{brl(value)}</strong>
                         </div>
                       ))}
+                    </div>
+                    <div className="actions">
+                      <button
+                        aria-pressed={chartMode === "monthly"}
+                        onClick={() => setChartMode("monthly")}
+                      >
+                        Por dia
+                      </button>
+                      <button
+                        aria-pressed={chartMode === "annual"}
+                        onClick={() => setChartMode("annual")}
+                      >
+                        Por mês
+                      </button>
                     </div>
                     <FlowChart data={flowData} />
                   </Panel>
@@ -1527,14 +2173,9 @@ function Workspace({
                       <div>
                         <span>Caixinhas · bruto estimado</span>
                         <strong>
-                          {brl(
-                            money(
-                              summary.goals.reduce(
-                                (a, g) => a.plus(g.gross),
-                                D(0),
-                              ),
-                            ),
-                          )}
+                          {summary.goals.some(g => g.estimateComplete === false)
+                            ? "Conciliação por lote pendente"
+                            : brl(money(summary.goals.reduce((a, g) => a.plus(g.gross), D(0))))}
                         </strong>
                       </div>
                       <div>
@@ -1555,61 +2196,31 @@ function Workspace({
               )}
               {current[0] === "configuracoes" && (
                 <>
+                  <DataConfidence snapshot={snapshot} today={today} />
+                  <ReconciliationPanel
+                    snapshot={snapshot}
+                    today={today}
+                    onSave={async (action, payload) => {
+                      await post("/api/operations", {
+                        action,
+                        payload,
+                        request_id: crypto.randomUUID(),
+                      });
+                      refresh();
+                      setNotice("Conciliação registrada e totais atualizados.");
+                    }}
+                  />
                   <Panel
-                    title="Integrações financeiras"
-                    subtitle="A taxa CDI não conecta sua conta bancária."
+                    title="Preferências do planejamento"
+                    subtitle="A meta de reserva usa somente as caixinhas marcadas como reserva de emergência."
                   >
-                    <div className="integration-grid">
-                      {[
-                        ["bcb", "Banco Central", "CDI diário · SGS 12"],
-                        ["cvm", "CVM", "Cadastro e cotas de fundos"],
-                        ["brapi", "brapi", "Cotações conforme cobertura"],
-                      ].map(([provider, label, detail]) => {
-                        const state = rows(
-                            snapshot,
-                            "provider_sync_states",
-                          ).find((s) => s.provider === provider),
-                          log = rows(snapshot, "provider_sync_logs")
-                            .filter((l) => l.provider === provider)
-                            .sort((a, b) =>
-                              str(b, "started_at").localeCompare(
-                                str(a, "started_at"),
-                              ),
-                            )[0];
-                        return (
-                          <div className="integration" key={provider}>
-                            <span className="asset-icon">
-                              {label.slice(0, 2)}
-                            </span>
-                            <h3>{label}</h3>
-                            <p>{detail}</p>
-                            <span className={`badge ${state ? "green" : ""}`}>
-                              {log?.status === "error"
-                                ? "Falha na última tentativa"
-                                : state
-                                  ? "Histórico disponível"
-                                  : "Ainda não sincronizado"}
-                            </span>
-                            <small>
-                              Último sucesso:{" "}
-                              {state?.last_success
-                                ? new Date(
-                                    str(state, "last_success"),
-                                  ).toLocaleString("pt-BR")
-                                : "—"}
-                            </small>
-                            {log?.message && (
-                              <p className="error">{str(log, "message")}</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="notice">
-                      Atualizações automáticas exigem um agendador no servidor.
-                      Fontes indisponíveis mantêm apenas o histórico válido, com
-                      sua data-base.
-                    </p>
+                    <button
+                      onClick={() =>
+                        open("preferences", rows(snapshot, "user_settings")[0])
+                      }
+                    >
+                      Ajustar meses da reserva
+                    </button>
                   </Panel>
                   <Panel
                     title="Segurança da conta"
@@ -1642,16 +2253,25 @@ function Workspace({
           }}
         />
       )}
-      {removal && <DeleteDialog
-        {...removal}
-        onClose={() => setRemoval(null)}
-        onSaved={() => { setNotice("Registro excluído. Totais atualizados."); refresh(); }}
-      />}
+      {removal && (
+        <DeleteDialog
+          {...removal}
+          onClose={() => setRemoval(null)}
+          onSaved={() => {
+            setNotice("Alteração concluída. Totais atualizados.");
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
   function renderCard(card: Row) {
     const month = section === "cartoes" ? invoiceMonth : today.slice(0, 7);
-    const monthly = invoiceTotals(allInvoices.filter(invoice => invoice.cardId === card.id && invoice.month === month));
+    const monthly = invoiceTotals(
+      allInvoices.filter(
+        (invoice) => invoice.cardId === card.id && invoice.month === month,
+      ),
+    );
     const invoices = rows(snapshot!, "credit_card_invoices").filter(
         (i) => i.card_id === card.id,
       ),
@@ -1688,7 +2308,9 @@ function Workspace({
         <div className="card-monthly-invoice">
           <span>Total da fatura · {invoiceMonthLabel(month)}</span>
           <strong>{brl(monthly.total)}</strong>
-          <small>Pago: {brl(monthly.paid)} · a pagar: {brl(monthly.pending)}</small>
+          <small>
+            Pago: {brl(monthly.paid)} · a pagar: {brl(monthly.pending)}
+          </small>
         </div>
         <div className="card-values">
           <div>
@@ -1725,7 +2347,11 @@ function Workspace({
     g: NonNullable<typeof summary>["goals"][number],
     detail: boolean,
   ) {
-    const yieldMetrics = snapshot ? savingsMetrics(snapshot, today).details.find(m => m.goalId === g.goal.id) : null;
+    const yieldMetrics = goalYieldMetrics?.details.find(
+      (m) => m.goalId === g.goal.id,
+    );
+    const pendingLotReconciliation = g.estimateComplete === false;
+    const estimateValue = (value: string) => pendingLotReconciliation ? "Conciliação por lote pendente" : brl(value);
     const progress = Math.min(
       100,
       D(g.principal).div(str(g.goal, "target")).mul(100).toNumber(),
@@ -1757,23 +2383,33 @@ function Workspace({
           <>
             <div className="list-row">
               <span>Saldo estimado</span>
-              <strong>{brl(g.estimated)}</strong>
+              <strong>{estimateValue(g.estimated)}</strong>
             </div>
             <div className="list-row">
               <span>Rendimento bruto estimado</span>
-              <strong>{brl(g.gross)}</strong>
+              <strong>{estimateValue(g.gross)}</strong>
             </div>
-            <div className="list-row"><span>Último dia útil disponível · bruto estimado</span><strong>{brl(yieldMetrics?.daily ?? "0")}</strong></div>
-            <div className="list-row"><span>Rendimento do mês atual · bruto estimado</span><strong>{brl(yieldMetrics?.monthly ?? "0")}</strong></div>
             <div className="list-row">
-              <span>Líquido estimado</span>
+              <span>Último dia útil disponível · bruto estimado</span>
+              <strong>{estimateValue(yieldMetrics?.daily ?? "0")}</strong>
+            </div>
+            <div className="list-row">
+              <span>Rendimento do mês atual · bruto estimado</span>
+              <strong>{estimateValue(yieldMetrics?.monthly ?? "0")}</strong>
+            </div>
+            <div className="list-row">
+              <span>Rendimento líquido estimado</span>
               <strong>
-                {g.net === null ? "Produto tributário pendente" : brl(g.net)}
+                {pendingLotReconciliation ? "Conciliação por lote pendente" : g.net === null ? "Produto tributário pendente" : brl(g.net)}
               </strong>
             </div>
             <div className="list-row">
-              <span>Ganhos conciliados</span>
+              <span>Rendimento confirmado ainda na caixinha</span>
               <strong>{brl(g.confirmed)}</strong>
+            </div>
+            <div className="list-row">
+              <span>Saldo registrado · principal e valores confirmados</span>
+              <strong>{brl(g.registeredBalance)}</strong>
             </div>
             {snapshot &&
               rows(snapshot, "savings_reconciliations")
@@ -1789,13 +2425,13 @@ function Workspace({
                   </div>
                 ))}
             <p className="notice">
-              {!g.supported
+              {pendingLotReconciliation ? g.estimateLimitation : !g.supported
                 ? "Metodologia contratual pendente; rendimento automático indisponível."
                 : yieldMetrics?.waitingForRate
                   ? `Aguardando primeira taxa publicada desde ${pretty(yieldMetrics.waitingSince ?? "")}. A taxa anterior ao aporte não gera rendimento.`
-                : g.asOf
-                  ? `Data-base CDI: ${pretty(g.asOf)}. Estimativa não é saldo confirmado pelo banco.`
-                  : "Sem taxas históricas disponíveis. Nenhuma taxa foi inventada."}
+                  : g.asOf
+                    ? `Data-base do rendimento: ${pretty(g.asOf)}. Estimativa não é saldo confirmado pelo banco.`
+                    : "Sem taxas históricas disponíveis. Nenhuma taxa foi inventada."}
             </p>
           </>
         )}
@@ -1949,6 +2585,15 @@ function PasswordForm() {
     </form>
   );
 }
+type ImportDecision = {
+  classification: string;
+  force_new?: boolean;
+  category_id?: string;
+  counter_account_id?: string;
+  invoice_id?: string;
+  goal_id?: string;
+  transaction_id?: string;
+};
 function ImportPanel({
   snapshot,
   onSaved,
@@ -1960,34 +2605,108 @@ function ImportPanel({
 }) {
   const [text, setText] = useState(""),
     [format, setFormat] = useState("csv"),
-    [account, setAccount] = useState(""),
-    [preview, setPreview] = useState<Row[]>([]),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [account, setAccount] = useState("");
+  const [confirmationId, setConfirmationId] = useState(() => crypto.randomUUID());
+  const [preview, setPreview] = useState<Row[]>([]),
+    [decisions, setDecisions] = useState<Record<string, ImportDecision>>({});
+  const [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false),
+    [page, setPage] = useState(0);
+  const identity = (row: Row, index: number) =>
+    str(row, "row_id") ||
+    str(row, "request_id") ||
+    str(row, "source_id") ||
+    String(index);
+  const update = (id: string, patch: Partial<ImportDecision>) =>
+    setDecisions((d) => ({ ...d, [id]: { ...d[id], ...patch } }));
+  const resetPreview = () => {
+    setConfirmationId(crypto.randomUUID());
+    setPreview([]);
+    setDecisions({});
+    setPage(0);
+  };
   async function run(confirm: boolean) {
     setBusy(true);
     setMessage("");
     try {
+      const choices = preview.map((row, index) => ({
+        row_id: identity(row, index),
+        ...Object.fromEntries(
+          Object.entries(decisions[identity(row, index)] || {}).filter(
+            ([, value]) => value !== "",
+          ),
+        ),
+      }));
       const res = await post("/api/import", {
         text,
         format,
         account_id: account,
         confirm,
         target,
+        ...(confirm ? { decisions: choices, request_id: confirmationId } : {}),
       });
       if (confirm) {
         setMessage(
-          `${res.imported} transações importadas; ${res.duplicates} duplicidades ignoradas.`,
+          `${res.imported} registros importados; ${res.duplicates ?? 0} duplicidades ignoradas${res.matched ? `; ${res.matched} conciliados com lançamentos existentes` : ""}.`,
         );
-        setPreview([]);
+        resetPreview();
         onSaved();
-      } else setPreview(res.rows);
+      } else {
+        const items = res.rows as Row[];
+        setPreview(items);
+        setPage(0);
+        setDecisions(
+          Object.fromEntries(
+            items.map((row, index) => [
+              identity(row, index),
+              {
+                classification: row.duplicate
+                  ? "skip"
+                  : row.requires_review
+                    ? ""
+                    : target === "investments"
+                      ? "keep"
+                      : str(row, "suggested_classification") ||
+                        str(row, "type"),
+                category_id: str(row, "category_id"),
+              },
+            ]),
+          ),
+        );
+        if (!items.length)
+          setMessage("O arquivo não contém registros para importar.");
+      }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Falha ao importar");
     } finally {
       setBusy(false);
     }
   }
+  const complete = preview.every((row, index) => {
+    const d = decisions[identity(row, index)];
+    if (!d?.classification) return false;
+    return d.classification === "transfer"
+      ? !!d.counter_account_id
+      : d.classification === "invoice_payment"
+        ? !!d.invoice_id
+        : ["savings_deposit", "savings_withdraw"].includes(d.classification)
+          ? !!d.goal_id
+          : d.classification === "match"
+            ? !!d.transaction_id
+            : true;
+  });
+  const cashTypes = [
+    ["income", "Receita"],
+    ["expense", "Despesa"],
+    ["yield", "Rendimento confirmado"],
+    ["adjustment", "Ajuste"],
+    ["transfer", "Transferência própria"],
+    ["invoice_payment", "Pagamento de fatura"],
+    ["savings_deposit", "Aporte em caixinha"],
+    ["savings_withdraw", "Resgate de caixinha"],
+    ["match", "Já registrado · conciliar"],
+    ["skip", "Ignorar"],
+  ];
   return (
     <Panel
       title={
@@ -1997,18 +2716,19 @@ function ImportPanel({
       }
       subtitle={
         target === "transactions"
-          ? "CSV: description,date,amount,source_id. Valores negativos são despesas. Revise antes de confirmar."
-          : "CSV: ticker,type (buy/sell),quantity,price,fees,date,broker,source_id. Ativos devem estar cadastrados. Confirmação atômica, com deduplicação."
+          ? "Revise o tipo de cada movimento. Transferências, faturas e aportes não devem virar novas receitas ou despesas."
+          : "CSV com ticker,type,quantity,price,fees,date,broker,source_id. Confira quantidade, taxas e valor total antes de confirmar."
       }
     >
       <div className="import-controls">
         <label>
-          Conta
+          Conta do arquivo
           <select
+            aria-label="Conta do arquivo"
             value={account}
             onChange={(e) => {
               setAccount(e.target.value);
-              setPreview([]);
+              resetPreview();
             }}
           >
             <option value="">Selecione</option>
@@ -2022,10 +2742,10 @@ function ImportPanel({
           </select>
         </label>
         <label>
-          Arquivo CSV ou OFX
+          Arquivo {target === "investments" ? "CSV" : "CSV ou OFX"}
           <input
             type="file"
-            accept=".csv,.ofx"
+            accept={target === "investments" ? ".csv" : ".csv,.ofx"}
             onChange={async (e) => {
               const f = e.target.files?.[0];
               if (f) {
@@ -2033,45 +2753,266 @@ function ImportPanel({
                 setFormat(
                   f.name.toLowerCase().endsWith(".ofx") ? "ofx" : "csv",
                 );
-                setPreview([]);
+                resetPreview();
+                setMessage("");
               }
             }}
           />
         </label>
         <button disabled={!text || !account || busy} onClick={() => run(false)}>
-          Pré-visualizar
+          {busy ? "Processando…" : "Pré-visualizar"}
         </button>
       </div>
-      {preview.length > 0 && (
+      {!!preview.length && (
         <>
+          <p className="notice">
+            {preview.length} registros ·{" "}
+            {preview.filter((r) => r.duplicate).length} duplicados
+            identificados.{" "}
+            {preview.some((r) => r.requires_review)
+              ? "Há movimentos que exigem sua classificação antes de confirmar."
+              : "Confira a prévia antes de confirmar."}
+          </p>
+          {target === "transactions" && (
+            <label className="bulk-category">
+              Aplicar categoria aos novos registros
+              <CategoryPicker categories={rows(snapshot, "categories")} label="Categoria dos novos registros importados" onChange={(categoryId) => setDecisions((d) => Object.fromEntries(Object.entries(d).map(([key, value]) => [key, { ...value, category_id: categoryId }])))} />
+            </label>
+          )}
           <div className="table-wrap">
-            <table>
+            <table className="import-preview">
               <thead>
                 <tr>
-                  <th>Descrição</th>
+                  <th>Descrição / ativo</th>
                   <th>Data</th>
-                  <th>Valor</th>
-                  <th>Conciliação</th>
+                  {target === "investments" ? (
+                    <>
+                      <th>Quantidade</th>
+                      <th>Preço unitário</th>
+                      <th>Taxas</th>
+                      <th>Total em caixa</th>
+                    </>
+                  ) : (
+                    <th>Movimento em caixa</th>
+                  )}
+                  <th>Classificação e conciliação</th>
+                  {target === "transactions" && <th>Categoria</th>}
                 </tr>
               </thead>
               <tbody>
-                {preview.slice(0, 100).map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.description}</td>
-                    <td>{r.date}</td>
-                    <td>{r.amount}</td>
-                    <td>
-                      {r.duplicate ? "Duplicada — ignorar" : "Novo lançamento"}
-                    </td>
-                  </tr>
-                ))}
+                {preview
+                  .slice(page * 50, (page + 1) * 50)
+                  .map((row, offset) => {
+                    const id = identity(row, page * 50 + offset),
+                      d = decisions[id] || { classification: "" };
+                    return (
+                      <tr key={id}>
+                        <td>
+                          {row.description}
+                          <small>
+                            {d.force_new
+                              ? "Outro lançamento confirmado por você"
+                              : row.duplicate
+                              ? "Duplicado identificado · será ignorado"
+                              : row.possible_duplicate
+                                ? "Possível duplicidade · confira o registro existente"
+                                : row.requires_review
+                                  ? "Revisão necessária"
+                                  : "Novo registro"}
+                          </small>
+                        </td>
+                        <td>{pretty(str(row, "date"))}</td>
+                        {target === "investments" ? (
+                          <>
+                            <td>{row.quantity}</td>
+                            <td>{brl(str(row, "price") || "0")}</td>
+                            <td>{brl(str(row, "fees") || "0")}</td>
+                            <td>
+                              {brl(str(row, "amount") || "0")}
+                              <small>
+                                {row.type === "buy"
+                                  ? "Compra: saída incluindo taxas"
+                                  : "Venda: entrada após taxas"}
+                              </small>
+                            </td>
+                          </>
+                        ) : (
+                          <td>
+                            {brl(
+                              str(row, "signed_amount") || str(row, "amount"),
+                            )}
+                          </td>
+                        )}
+                        <td>
+                          {Boolean(row.duplicate && row.can_force_new) && (
+                            <label className="import-force-new">
+                              <input type="checkbox" checked={Boolean(d.force_new)}
+                                aria-label={`Confirmo outro lançamento de ${str(row, "description")}`}
+                                onChange={(e) => update(id, {
+                                  force_new: e.target.checked,
+                                  classification: e.target.checked
+                                    ? target === "investments" ? "keep" : str(row, "suggested_classification") || str(row, "type")
+                                    : "skip",
+                                })} />
+                              É outro lançamento real, com os mesmos dados
+                            </label>
+                          )}
+                          <select
+                            aria-label={`Classificação de ${str(row, "description")}`}
+                            value={d.classification}
+                            disabled={Boolean(row.duplicate) && !d.force_new}
+                            onChange={(e) =>
+                              update(id, { classification: e.target.value })
+                            }
+                          >
+                            <option value="">Revisar e selecionar</option>
+                            {(target === "investments"
+                              ? [
+                                  ["keep", "Importar operação"],
+                                  ["skip", "Ignorar"],
+                                ]
+                              : cashTypes
+                            ).map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                          {d.classification === "transfer" && (
+                            <select
+                              aria-label={`Outra conta de ${str(row, "description")}`}
+                              value={d.counter_account_id || ""}
+                              onChange={(e) =>
+                                update(id, {
+                                  counter_account_id: e.target.value,
+                                })
+                              }
+                            >
+                              <option value="">Selecione a outra conta</option>
+                              {rows(snapshot, "financial_accounts")
+                                .filter(
+                                  (a) =>
+                                    a.id !== account &&
+                                    a.kind !== "savings" &&
+                                    !a.archived,
+                                )
+                                .map((a) => (
+                                  <option
+                                    key={str(a, "id")}
+                                    value={str(a, "id")}
+                                  >
+                                    {a.name}
+                                  </option>
+                                ))}
+                            </select>
+                          )}
+                          {d.classification === "invoice_payment" && (
+                            <select
+                              aria-label={`Fatura de ${str(row, "description")}`}
+                              value={d.invoice_id || ""}
+                              onChange={(e) =>
+                                update(id, { invoice_id: e.target.value })
+                              }
+                            >
+                              <option value="">Selecione a fatura</option>
+                              {cardInvoices(snapshot, localDate()).map((i) => (
+                                <option key={i.id} value={i.id}>
+                                  {i.cardName} · vence {pretty(i.due)} ·{" "}
+                                  {brl(i.pending)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {["savings_deposit", "savings_withdraw"].includes(
+                            d.classification,
+                          ) && (
+                            <select
+                              aria-label={`Caixinha de ${str(row, "description")}`}
+                              value={d.goal_id || ""}
+                              onChange={(e) =>
+                                update(id, { goal_id: e.target.value })
+                              }
+                            >
+                              <option value="">Selecione a caixinha</option>
+                              {rows(snapshot, "savings_goals").map((g) => (
+                                <option key={str(g, "id")} value={str(g, "id")}>
+                                  {g.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {d.classification === "match" && (
+                            <select
+                              aria-label={`Lançamento existente de ${str(row, "description")}`}
+                              value={d.transaction_id || ""}
+                              onChange={(e) =>
+                                update(id, { transaction_id: e.target.value })
+                              }
+                            >
+                              <option value="">
+                                Selecione o movimento já registrado
+                              </option>
+                              {rows(snapshot, "transactions")
+                                .filter(
+                                  (t) =>
+                                    t.account_id === account &&
+                                    t.status === "confirmed",
+                                )
+                                .map((t) => (
+                                  <option
+                                    key={str(t, "id")}
+                                    value={str(t, "id")}
+                                  >
+                                    {t.description} · {pretty(str(t, "date"))} ·{" "}
+                                    {brl(str(t, "amount"))}
+                                  </option>
+                                ))}
+                            </select>
+                          )}
+                        </td>
+                        {target === "transactions" && (
+                          <td>
+                            <CategoryPicker categories={rows(snapshot, "categories")} label={`Categoria de ${str(row, "description")}`} value={d.category_id || ""} onChange={(categoryId) => update(id, { category_id: categoryId })} />
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
-          <p>{preview.length} linhas no arquivo.</p>
-          <button className="primary" disabled={busy} onClick={() => run(true)}>
+          {preview.length > 50 && (
+            <div className="pagination">
+              <button
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Página anterior
+              </button>
+              <span>
+                Página {page + 1} de {Math.ceil(preview.length / 50)}
+              </span>
+              <button
+                disabled={(page + 1) * 50 >= preview.length}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima página
+              </button>
+            </div>
+          )}
+          <button
+            className="primary"
+            disabled={busy || !complete}
+            onClick={() => run(true)}
+          >
             Confirmar importação
           </button>
+          {!complete && (
+            <p role="status">
+              Classifique os movimentos e preencha os vínculos necessários para
+              confirmar.
+            </p>
+          )}
         </>
       )}
       {message && (

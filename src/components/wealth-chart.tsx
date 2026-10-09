@@ -13,8 +13,18 @@ export function WealthChart({
 }: {
   data: { date: string; net: number; assets: number }[];
 }) {
+  if (!data.length)
+    return (
+      <p className="notice" role="status">
+        Nenhuma posição patrimonial registrada no período. Registre posições em
+        dias diferentes para acompanhar a evolução.
+      </p>
+    );
   return (
-    <div className="chart">
+    <div
+      className="chart"
+      aria-label="Evolução do patrimônio bruto e líquido registrado"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 5" vertical={false} />
@@ -33,12 +43,14 @@ export function WealthChart({
             }
           />
           <Line
+            isAnimationActive={false}
             dataKey="net"
             name="Patrimônio líquido registrado"
             stroke="#5B35D5"
             strokeWidth={2}
           />
           <Line
+            isAnimationActive={false}
             dataKey="assets"
             name="Patrimônio bruto registrado"
             stroke="#a58cd9"

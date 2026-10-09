@@ -17,6 +17,7 @@ export function ProventEvents({
   onSaved: () => void;
 }) {
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
   const events = rows(snapshot, "asset_cash_events")
     .flatMap((event) =>
       rows(snapshot, "investment_assets")
@@ -103,7 +104,9 @@ export function ProventEvents({
                       "Registrado"
                     ) : (
                       <button
+                        disabled={busy !== null}
                         onClick={async () => {
+                          setBusy(e.source_id);
                           try {
                             await post("/api/data/investment_income", {
                               data: {
@@ -133,10 +136,14 @@ export function ProventEvents({
                                 ? error.message
                                 : "Falha ao registrar",
                             );
+                          } finally {
+                            setBusy(null);
                           }
                         }}
                       >
-                        Registrar anúncio
+                        {busy === e.source_id
+                          ? "Registrando…"
+                          : "Registrar anúncio"}
                       </button>
                     )}
                   </td>
