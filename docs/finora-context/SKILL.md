@@ -64,3 +64,7 @@ Dashboard: saldo, entradas, saídas, cartões, rendimentos, patrimônio bruto/l�
 ## Execução e validação
 
 Sequência original: 1 fundação; 2 finanças pessoais; 3 cartões; 4 CDI; 5 caixinhas; 6 provedores de mercado; 7 investimentos; 8 dashboard/relatórios; 9 refinamento. Cada etapa entrega código funcional validado. Rodar testes financeiros, CDI com casos independentes, investimentos/eventos, falhas/cache/correções e isolamento/RLS. Verificar persistência, interface desktop/mobile, fontes/datas e comportamento real. Não afirmar testes ou integrações não executados.
+
+## Histórico integrado de transações — 11/10/2026
+
+Transações reúne o ledger de contas e as parcelas de cartões em um modelo somente de apresentação (`transaction-history.ts`). Ordenação decrescente por data; parcelas usam o vencimento da fatura, UUID próprio com prefixo e vínculo à compra original. Filtros por conta/cartão, categoria/subcategoria, período, tipo, status e busca são combinados; o status da parcela segue o pagamento da fatura, sem presumir pagamento individual numa fatura parcial. Edição/exclusão no histórico de cartão abre a compra original. Compras Registradas mantém uma linha por compra, com total complementar, parcela(s) do mês da fatura selecionado e expansão de todos os valores/vencimentos reais. Nenhum novo lançamento bancário nem alteração de cálculos ou migration foi introduzido.

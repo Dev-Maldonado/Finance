@@ -47,10 +47,12 @@ test('hierarchy groups monthly cash and installments once, filters roots and chi
     await expect(distribution).toContainText('R$ 100,00');
     await page.goto('/transacoes');
     await page.getByLabel('Filtrar transações por categoria').selectOption(transport);
-    await expect(page.locator('.table-wrap tbody tr')).toHaveCount(3);
+    await expect(page.locator('.table-wrap tbody tr')).toHaveCount(4);
+    await expect(page.locator('.transaction-list')).toContainText('Passe parcelado');
+    await expect(page.locator('.transaction-list')).toContainText('Parcela 1 de 3');
     await expect(page.locator('.table-wrap')).toContainText('Transportes / Uber');
     await page.getByLabel('Filtrar transações por categoria').selectOption(uber);
-    await expect(page.locator('.table-wrap tbody tr')).toHaveCount(1);
+    await expect(page.locator('.table-wrap tbody tr')).toHaveCount(2);
     await page.goto('/categorias');
     const categoryPanel = page.locator('.category-management > .panel').filter({ has: page.getByRole('heading', { name: 'Transportes', exact: true }) });
     await expect(categoryPanel).toContainText('R$ 500,00');

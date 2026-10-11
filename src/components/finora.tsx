@@ -1,4 +1,5 @@
 "use client";
+import { transactionHistory, filterTransactionHistory } from "@/lib/transaction-history";
 import { PurchaseHistory } from "./purchase-history";
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
@@ -461,25 +462,9 @@ function Workspace({
     relatorios: [],
     configuracoes: [],
   };
-  const filteredTx = snapshot
-    ? rows(snapshot, "transactions")
-        .filter(
-          (r) =>
-            str(r, "date") >= start &&
-            (r.status !== "cancelled" ||
-              (section === "transacoes" && (showExcluded || txStatus === "cancelled"))) &&
-            str(r, "date") <= end &&
-            str(r, "description")
-              .toLowerCase()
-              .includes(search.toLowerCase()) &&
-            (!txAccount || r.account_id === txAccount) &&
-            (!txCategory ||
-              categoryMatches(rows(snapshot, "categories"), str(r, "category_id"), txCategory)) &&
-            (!txType || r.type === txType) &&
-            (!txStatus || r.status === txStatus),
-        )
-        .sort((a, b) => str(b, "date").localeCompare(str(a, "date")))
-    : [];
+  const filteredTx = snapshot ? filterTransactionHistory(snapshot,
+    section === "transacoes" ? transactionHistory(snapshot, today) : [...rows(snapshot, "transactions")].sort((a,b) => str(b,"date").localeCompare(str(a,"date"))),
+    { start, end, search, account: txAccount, category: txCategory, type: txType, status: txStatus, excluded: section === "transacoes" && showExcluded }) : [];
   const sum = (list: Row[], key: string) =>
     list.reduce((a, r) => a.plus(str(r, key) || 0), D(0));
   const flowData = periodSummary
@@ -537,7 +522,7 @@ function Workspace({
             <tr>
               <th>Descrição</th>
               <th>Categoria</th>
-              <th>Conta</th>
+              <th>Origem</th>
               <th>Data</th>
               <th>Status</th>
               <th className="right">Valor</th>
@@ -574,6 +559,7 @@ function Workspace({
                         )[str(t, "type")]
                       }
                     </small>
+                    {t.origin === "card" && <small className="installment-detail">Parcela {str(t, "number")} de {str(t, "installment_count")} · {brl(D(str(t, "amount")).abs().toFixed(2))}<br />Total da compra: {brl(str(t, "purchase_total"))} · Compra em {pretty(str(t, "purchase_date"))}</small>}
                     {t.type === "income" && t.status === "pending" && str(t, "date") < today && (
                       <small className="pending-receipt-warning" title="A data prevista passou. Edite o lançamento para confirmar o recebimento ou corrigir a data.">
                         <AlertTriangle size={13} aria-hidden="true" /> Recebimento em atraso
@@ -584,8 +570,8 @@ function Workspace({
                 <td data-label="Categoria">
                   {snapshot ? categoryLabel(rows(snapshot, "categories"), str(t, "category_id"), " / ") : "—"}
                 </td>
-                <td data-label="Conta">
-                  {(snapshot &&
+                <td data-label="Origem">
+                  {t.origin === "card" ? `Cartão · ${str(t, "card_name")}` : (snapshot &&
                     rows(snapshot, "financial_accounts").find(
                       (c) => c.id === t.account_id,
                     )?.name) ||
@@ -596,7 +582,7 @@ function Workspace({
                   <span
                     className={`badge ${t.status === "confirmed" ? "green" : ""}`}
                   >
-                    {t.status === "confirmed"
+                    {t.origin === "card" && t.status !== "cancelled" ? str(t, "invoice_status") : t.status === "confirmed"
                       ? "Confirmado"
                       : t.status === "cancelled"
                         ? "Excluído"
@@ -609,10 +595,14 @@ function Workspace({
                   {brl(str(t, "amount"))}
                 </td>
                 <td className="transaction-actions">
+                  {t.origin === "card" && t.status !== "cancelled" && (() => {
+                    const purchase = snapshot && rows(snapshot, "credit_card_purchases").find(p => p.id === t.purchase_id);
+                    return purchase ? <div className="actions"><button onClick={() => setModal({ form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: purchase })}>Editar compra</button><button onClick={() => setRemoval({ kind: "purchase", row: purchase })}>Excluir compra</button></div> : null;
+                  })()}
                   {["income", "expense", "yield", "adjustment"].includes(
                     str(t, "type"),
                   ) &&
-                    !t.group_id &&
+                    t.origin !== "card" && !t.group_id &&
                     t.status !== "cancelled" && (
                       <div className="actions">
                         <button
@@ -973,7 +963,7 @@ function Workspace({
                   </label>
                   <Panel
                     title="Histórico de transações"
-                    subtitle="Transferências e pagamentos são exibidos sem duplicar despesas."
+                    subtitle="Contas e parcelas por vencimento, da data mais recente à mais antiga. Pagamentos de fatura são movimentos de caixa, não novas despesas."
                     action={
                       <div className="actions">
                         <label className="search">
@@ -996,7 +986,7 @@ function Workspace({
                       aria-label="Filtrar transações"
                     >
                       <label>
-                        Conta
+                        Conta ou cartão
                         <select
                           aria-label="Filtrar transações por conta"
                           value={txAccount}
@@ -1008,6 +998,7 @@ function Workspace({
                               {a.name}
                             </option>
                           ))}
+                          {rows(snapshot, "credit_cards").map(c => <option key={`card:${c.id}`} value={`card:${c.id}`}>Cartão · {str(c, "name")}</option>)}
                         </select>
                       </label>
                       <label>
