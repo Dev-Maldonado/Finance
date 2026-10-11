@@ -32,6 +32,13 @@ function Delta({ current, previous, lowerBetter = false }: { current: string; pr
 function Metric({ label, value, display, detail, icon: Icon, current, previous, lowerBetter = false, tone = 'wealth' }: { label: string; value: string; display?: string; detail: string; icon: typeof Wallet; current?: string; previous?: string; lowerBetter?: boolean; tone?: FinancialTone }) {
   return <article className={`dashboard-metric financial-surface ${financialTone(value, tone)}`} aria-label={label}><div className="dashboard-metric-head"><span>{label}</span><Icon size={18} /></div><strong>{display ?? brl(value)}</strong><p>{detail}</p>{current !== undefined && previous !== undefined && <Delta current={current} previous={previous} lowerBetter={lowerBetter} />}</article>;
 }
+
+function DashboardChapter({ id, number, title, subtitle }: { id: string; number: string; title: string; subtitle: string }) {
+  return <div className="dashboard-v3-chapter" id={id}>
+    <span aria-hidden="true">{number}</span>
+    <div><h2>{title}</h2><p>{subtitle}</p></div>
+  </div>;
+}
 export function Dashboard({ snapshot, summary, start, end, period, today, onPay, onSaveWealth, wealthSaving, wealthFeedback }: {
   snapshot: Snapshot; summary: ReturnType<typeof financialSummary>; start: string; end: string; period: string; today: string;
   onPay: (invoice: CardInvoice) => void; onSaveWealth: () => void;
@@ -67,8 +74,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     { name: 'Caixinhas registradas', value: summary.savings, color: '#41b69b' },
     { name: 'Investimentos em BRL', value: summary.investments, color: '#e7b869' },
   ];
-  return <div className="premium-dashboard">
-    <EconomicIndicatorsCards />
+  return <div className="premium-dashboard dashboard-v3">
     <section className="dashboard-hero" aria-label="Panorama patrimonial">
       <div className="dashboard-hero-main"><span className="dashboard-overline"><ShieldCheck size={14} /> PATRIMÔNIO GERAL · HOJE</span><p>Uma visão completa do seu dinheiro.</p><span className="dashboard-hero-label">Patrimônio líquido geral</span><strong>{brl(summary.netWorth)}</strong><div className="dashboard-hero-breakdown"><div><span>Patrimônio bruto geral</span><b>{brl(summary.assets)}</b></div><div><span>Dívidas totais · todos os meses</span><b>{brl(summary.liability)}</b></div><div><span>Rendimento informado das caixinhas</span><b>{summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : brl(summary.goals.reduce((a,g)=>a.plus(g.gross),D(0)).toFixed(2))}</b></div></div><small>Contas e posições atuais. Caixinhas e investimentos usam valores informados por você.</small></div>
       <div className="dashboard-hero-result" aria-label="Resultado líquido do período"><span><CalendarDays size={15} /> {pretty(start)} — {pretty(end)}</span><p>{balanceLabel} · resultado líquido</p><strong className={D(current.net).lt(0) ? 'result-negative' : ''}>{brl(current.net)}</strong><small>Receitas + rendimentos recebidos − despesas e parcelas do período</small><div className="dashboard-saving-rate"><span>Taxa de economia</span><b>{current.savingRate === null ? 'Sem receitas' : pct(current.savingRate)}</b></div><Delta current={current.net} previous={previous.net} /><Link href="/relatorios">Explorar meus resultados <ArrowRight size={15} /></Link></div>
@@ -84,7 +90,19 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <Metric label="Investido em BRL" value={summary.investments} detail="Posições atuais · cotação ou custo identificado" icon={ChartNoAxesCombined} tone="investment" />
       <Metric label={monthly ? "Rendimento das caixinhas no mês" : "Rendimento das caixinhas no período"} value={periodSavings.value} display={periodSavings.partial && summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : undefined} detail={periodSavings.partial ? 'Atualizações manuais no período · há caixinhas sem atualização' : 'Variação dos saldos informados, excluindo depósitos e retiradas'} icon={PiggyBank} tone="income" />
     </div>
+    <nav className="dashboard-v3-quicknav" aria-label="Navegar pelos painéis financeiros">
+      <span>Explorar os dados</span>
+      <a href="#finora-planejamento">Planejamento</a>
+      <a href="#finora-geral">Resumo geral</a>
+      <a href="#finora-analise">Análise mensal</a>
+      <a href="#finora-compromissos">Faturas e caixa</a>
+      <a href="#finora-patrimonio">Patrimônio e metas</a>
+      <a href="#finora-atividade">Movimentações</a>
+      <a href="#finora-mercado">Selic e IPCA</a>
+    </nav>
+    <DashboardChapter id="finora-planejamento" number="01" title="Seu planejamento" subtitle="Disponibilidade, reserva, projeções de caixa e metas dos próximos meses." />
     <FinancialPlanning snapshot={snapshot} today={today} variant="compact" />
+    <DashboardChapter id="finora-geral" number="02" title="Resumo geral de compromissos" subtitle="Valores históricos e futuros, sem misturar o gasto do mês com o total comprometido." />
     <section className="dashboard-overall" aria-label="Gastos gerais e compromissos totais">
       <div className="dashboard-overall-title"><h2>Visão geral · todos os meses</h2><p>Histórico de gastos e dívida total, separados do saldo mensal.</p></div>
       <div><span>Gastos gerais registrados</span><strong>{brl(model.overall.expenses)}</strong><small>Despesas + compras integrais até hoje · histórico</small></div>
@@ -92,6 +110,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <div><span>Parcelas dos próximos meses</span><strong>{brl(model.overall.future)}</strong><small>Compromissos após {invoiceMonthLabel(model.month)}</small></div>
     </section>
     <div className="dashboard-premium-grid">
+      <DashboardChapter id="finora-analise" number="03" title="Análise de receitas e despesas" subtitle="Evolução, distribuição por categoria e comparação com o período anterior." />
       <Block title="Entradas, gastos e rendimentos" subtitle="Receitas/despesas até a data final · parcelas no mês do vencimento" wide>
         <div className="dashboard-chart-controls"><div className="chart-legend"><span><i className="income-dot" />Receitas</span><span><i className="pink-dot" />Gastos</span><span><i className="green-dot" />Rendimentos recebidos</span></div><div className="period-tabs"><button className={flowMode === 'six-months' ? 'selected' : ''} onClick={() => setFlowMode('six-months')}>6 meses</button><button className={flowMode === 'period' ? 'selected' : ''} onClick={() => setFlowMode('period')}>Período selecionado</button></div></div>
         {chart.some(r => r.income || r.expense || r.yield) ? <FlowChart data={chart} /> : <p className="dashboard-empty">Cadastre receitas e despesas para acompanhar sua evolução.</p>}
@@ -106,6 +125,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
         ].map(([label, value, old, lower]) => <div role="row" key={String(label)}><strong>{String(label)}</strong><span>{brl(String(old))}</span><b>{brl(String(value))}</b><Delta current={String(value)} previous={String(old)} lowerBetter={Boolean(lower)} /></div>)}</div>
         <p className="dashboard-note">Gastos mensais consideram apenas as parcelas que vencem no mês, mesmo que a compra tenha ocorrido antes. O pagamento da fatura não duplica o gasto. Saldo mensal é o resultado das receitas e despesas; não inclui patrimônio ou saldo trazido de outros meses.</p>
       </Block>
+      <DashboardChapter id="finora-compromissos" number="04" title="Disponibilidade e compromissos" subtitle="Dinheiro livre, faturas mensais, pagamentos e fluxo de caixa." />
       <Block title="Quanto fica livre?" subtitle="Saldo atual após compromissos registrados até o fim deste mês">
         <div className="dashboard-liquidity"><span>Disponível após compromissos</span><strong className={D(model.afterCommitments).lt(0) ? 'negative' : ''}>{brl(model.afterCommitments)}</strong></div>
         <div className="dashboard-key-values"><div><span>Saldo das contas</span><b>{brl(summary.cash)}</b></div><div><span>Faturas pendentes e atrasadas</span><b>− {brl(dueTotals.pending)}</b></div><div><span>Despesas pendentes</span><b>− {brl(model.pendingExpenses)}</b></div></div>
@@ -120,6 +140,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <Block title="Fluxo de caixa operacional" subtitle="Recebimentos e pagamentos efetivos no período">
         <div className="dashboard-liquidity"><span>Resultado em caixa</span><strong>{brl(current.cashNet)}</strong></div><div className="dashboard-key-values"><div><span>Receitas + rendimentos recebidos</span><b>{brl(current.receipts)}</b></div><div><span>Despesas pagas nas contas</span><b>− {brl(current.cashExpense)}</b></div><div><span>Pagamentos de fatura</span><b>− {brl(current.invoicePayments)}</b></div></div><p className="dashboard-note">Transferências próprias, aportes, resgates e operações de investimento ficam fora deste resultado.</p>
       </Block>
+      <DashboardChapter id="finora-patrimonio" number="05" title="Metas e patrimônio" subtitle="Caixinhas, orçamentos, evolução patrimonial e investimentos." />
       <Block title="Minhas caixinhas" subtitle="Capital guardado, metas e saldos informados manualmente" link="/caixinhas" wide>
         <div className="dashboard-goals-grid">{summary.goals.length ? summary.goals.map(g => { const metric=savings.details.find(d=>d.goalId===g.goal.id); const progress=D(str(g.goal,'target')||'0').gt(0)?D(g.manual.balance).div(str(g.goal,'target')).mul(100):D(0); return <Link key={str(g.goal,'id')} href={`/caixinhas/${g.goal.id}`} className="dashboard-goal"><div><span className="dashboard-goal-icon"><PiggyBank size={19}/></span><strong>{g.goal.name}</strong><ChevronRight size={15}/></div><b>{brl(g.manual.balance)}</b><span>Saldo registrado · {brl(g.manual.deposits)} depositados</span><div className="progress"><span style={{width:`${Math.max(0,Math.min(100,progress.toNumber()))}%`}}/></div><small>{pct(progress.toFixed(1))} da meta de {brl(str(g.goal,'target'))}</small><div className="dashboard-goal-yield"><span>Rendimento acumulado <b>{g.manual.profit===null?'Aguardando atualização':brl(g.manual.profit)}</b></span><span>No mês atual <b>{g.manual.known?brl(metric?.monthly??'0'):'—'}</b></span></div><small>Atualização manual · {g.asOf?pretty(g.asOf):'nenhum saldo mensal informado'}</small></Link>; }) : <p className="dashboard-empty">Crie uma caixinha e informe o saldo para acompanhar seu rendimento.</p>}</div>
       </Block>
@@ -135,6 +156,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <Block title="Minha carteira" subtitle="Posições em BRL e fontes de avaliação" link="/investimentos">
         <div className="dashboard-liquidity"><span>Valor atual da carteira</span><strong>{brl(summary.investments)}</strong></div>{summary.positions.length ? summary.positions.filter(p => D(p.pos.quantity).gt(0)).slice(0, 5).map(p => <div className="dashboard-position" key={str(p.asset, 'id')}><span className="asset-icon">{str(p.asset, 'ticker').slice(0, 2)}</span><div><strong>{str(p.asset, 'ticker')}</strong><small>{p.quote ? `${str(p.quote, 'source')} · ${pretty(str(p.quote, 'date'))}` : 'Sem cotação · custo de aquisição'}</small></div><b>{p.supported ? brl(p.value) : 'Moeda estrangeira'}</b></div>) : <p className="dashboard-empty">Sua carteira aparecerá após cadastrar os ativos e as posições.</p>}
       </Block>
+      <DashboardChapter id="finora-atividade" number="06" title="Atividades e atalhos" subtitle="Últimas movimentações registradas e próximos passos para manter tudo em dia." />
       <Block title="Últimas movimentações" subtitle="Receitas, despesas, compras e movimentações confirmadas no período" link="/transacoes" wide>
         {model.recent.length ? model.recent.map(t => <div className="dashboard-recent" key={t.id}><span className={`dashboard-recent-icon ${D(t.amount).lt(0) ? 'out' : ''}`}>{t.kind === 'card' ? <CreditCard size={17} /> : D(t.amount).lt(0) ? <ArrowUpRight size={17} /> : <ArrowDownLeft size={17} />}</span><div><strong>{t.description}</strong><small>{t.account} · {pretty(t.date)} · {({ income: 'Receita', expense: 'Despesa', yield: 'Rendimento', card: 'Compra no cartão', transfer: 'Transferência', invoice_payment: 'Pagamento de fatura', investment: 'Investimento', adjustment: 'Ajuste' } as Record<string, string>)[t.kind]}</small><small>{t.category}</small></div><b className={D(t.amount).lt(0) ? 'negative' : 'positive'}>{brl(t.amount)}</b></div>) : <p className="dashboard-empty">Não há movimentações confirmadas neste período.</p>}
       </Block>
@@ -143,6 +165,10 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       </Block>
     </div>
     <DataConfidence snapshot={snapshot} today={today} />
+    <div className="dashboard-v3-market" id="finora-mercado">
+      <DashboardChapter id="finora-mercado-titulo" number="07" title="Indicadores econômicos oficiais" subtitle="Selic e IPCA como referência macroeconômica, sem confundir esses índices com seus rendimentos." />
+      <EconomicIndicatorsCards />
+    </div>
 
   </div>;
 }
