@@ -11,7 +11,15 @@ export function useReadableAmounts(ref: RefObject<HTMLDivElement | null>) {
     const fit = () => {
       frame = 0;
       if (disposed) return;
-      const amounts = [...root.querySelectorAll<HTMLElement>('strong, b, dd')].filter(el => /^[-+−]?\s*R\$\s*[\d.,]+$/.test(el.textContent?.trim() ?? ''));
+      const amounts = [...root.querySelectorAll<HTMLElement>('strong, b, dd')].filter(el => {
+        if (/^[-+−]?\s*R\$\s*[\d.,]+$/.test(el.textContent?.trim() ?? '')) return true;
+        // React can reuse an amount node for a loading or insufficient-history label.
+        if (el.classList.contains('dashboard-amount')) {
+          el.classList.remove('dashboard-amount', 'long-currency', 'currency-negative');
+          el.style.removeProperty('font-size');
+        }
+        return false;
+      });
       for (const el of amounts) {
         el.classList.add('dashboard-amount');
         const text = el.textContent?.trim() ?? '';

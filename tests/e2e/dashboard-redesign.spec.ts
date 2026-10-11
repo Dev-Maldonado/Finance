@@ -36,6 +36,11 @@ test('redesign preserves twelve visible areas, eight indicators, errors, large n
    await page.evaluate(()=>window.scrollTo(0,0));
    await page.screenshot({path:`test-results/redesign-large-${width}.png`,fullPage:true});
   }
+  const previousDay=new Date(`${today}T12:00:00Z`);previousDay.setUTCDate(previousDay.getUTCDate()-1);const yesterday=previousDay.toISOString().slice(0,10);
+  const history=await admin.from('net_worth_snapshots').insert([{user_id:userId,date:yesterday,assets:'1000000000',liabilities:'0'},{user_id:userId,date:today,assets:'2000000000',liabilities:'0'}]);expect(history.error).toBeNull();
+  await page.reload();await page.getByRole('button',{name:'Personalizado',exact:true}).click();await page.getByLabel('Data inicial',{exact:true}).fill(yesterday);await page.getByLabel('Data final',{exact:true}).fill(today);
+  const growth=page.locator('.dashboard-wealth-top strong');await expect(growth).toContainText('R$ 1.000.000.000,00');await expect(growth).toHaveClass(/dashboard-amount/);
+  await page.getByLabel('Data inicial',{exact:true}).fill(today);await expect(growth).toHaveText('Histórico em formação');await expect(growth).not.toHaveClass(/dashboard-amount/);
   await page.getByRole('navigation',{name:'Navegar pelas áreas do dashboard'}).getByRole('link',{name:'Faturas',exact:true}).click();
   await expect(page).toHaveURL(/#dashboard-faturas$/);await expect(page.getByRole('heading',{name:'Cartões e faturas',exact:true})).toBeInViewport();
   const after=await (await page.request.get('/api/snapshot')).json();
