@@ -411,6 +411,8 @@
   .dashboard-v3 .dashboard-wide { grid-column:1/-1; }
 }
 @media (max-width:1023px) {
+  .dashboard-v3 .dashboard-overall { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .dashboard-v3 .dashboard-overall-title { grid-column: 1/-1; }
   .dashboard-v3 .dashboard-hero { grid-template-columns:1fr; }
   .dashboard-v3 .dashboard-hero-result { border-left:0; border-top:1px solid #ffffff1b; }
   .dashboard-v3 .dashboard-metric { padding:18px; }
