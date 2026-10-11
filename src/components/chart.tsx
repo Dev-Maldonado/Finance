@@ -4,6 +4,9 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  ComposedChart,
+  Bar,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -14,10 +17,13 @@ import {
 } from "recharts";
 export function FlowChart({
   data,
+  variant = 'area',
 }: {
   data: { name: string; income: number; expense: number; yield: number }[];
+  variant?: 'area' | 'reference';
 }) {
   const mobileChart = useMobileChart();
+  const Chart = variant === 'reference' ? ComposedChart : AreaChart;
   return (
     <>
     <div
@@ -25,7 +31,7 @@ export function FlowChart({
       aria-label="Gráfico de entradas, gastos e rendimentos recebidos"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
+        <Chart
           data={data}
           margin={{ left: 0, right: 8, top: 12, bottom: 0 }}
         >
@@ -52,7 +58,7 @@ export function FlowChart({
             fontSize={11}
             width={60}
             tickFormatter={(value) =>
-              new Intl.NumberFormat("pt-BR", {
+              (variant === 'reference' ? 'R$ ' : '') + new Intl.NumberFormat("pt-BR", {
                 notation: "compact",
                 maximumFractionDigits: 1,
               }).format(Number(value))
@@ -67,7 +73,12 @@ export function FlowChart({
               }).format(Number(v))
             }
           />
-          <Area
+          {variant === 'reference' ? <>
+            <Bar dataKey="income" name="Receitas" fill="#159b77" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
+            <Bar dataKey="expense" name="Gastos" fill="#d95370" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
+            <Bar dataKey="yield" name="Rendimentos recebidos" fill="#6940e6" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
+            <Line dataKey="income" name="Evolução das receitas" tooltipType="none" legendType="none" type="monotone" stroke="#6940e6" strokeWidth={1.8} dot={false} isAnimationActive={false} />
+          </> : <><Area
             isAnimationActive={false}
             type="monotone"
             dataKey="income"
@@ -93,8 +104,8 @@ export function FlowChart({
             stroke="#21a788"
             strokeWidth={2}
             fill="transparent"
-          />
-        </AreaChart>
+          /></>}
+        </Chart>
       </ResponsiveContainer>
     </div>
     <MobileChartData points={data.map(p=>({label:p.name,values:[{label:"Entradas",value:p.income},{label:"Saídas",value:p.expense},{label:"Rendimentos recebidos",value:p.yield}]}))}/>
@@ -112,9 +123,15 @@ export const palette = [
 export function CategoryChart({
   data,
   onSelect,
+  colors = palette,
+  compact = false,
+  center,
 }: {
   data: { id?: string; name: string; value: number }[];
   onSelect?: (id: string) => void;
+  colors?: string[];
+  compact?: boolean;
+  center?: { value: string; label: string };
 }) {
   return (
     <div className="donut" aria-label="Distribuição dos gastos por categoria">
@@ -124,14 +141,14 @@ export function CategoryChart({
             data={data}
             isAnimationActive={false}
             dataKey="value"
-            innerRadius={58}
-            outerRadius={84}
-            paddingAngle={4}
+            innerRadius={compact ? 49 : 58}
+            outerRadius={compact ? 72 : 84}
+            paddingAngle={compact ? 1 : 4}
             onClick={onSelect ? (_, index) => onSelect(data[index]?.id || '') : undefined}
             cursor={onSelect ? 'pointer' : 'default'}
           >
             {data.map((r, i) => (
-              <Cell key={r.name} fill={palette[i % palette.length]} />
+              <Cell key={r.name} fill={colors[i % colors.length]} />
             ))}
           </Pie>
           <Tooltip
@@ -144,6 +161,7 @@ export function CategoryChart({
           />
         </PieChart>
       </ResponsiveContainer>
+      {center && <div className="analysis-donut-total"><b>{center.value}</b><small>{center.label}</small></div>}
     </div>
   );
 }

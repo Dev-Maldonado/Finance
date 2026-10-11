@@ -6,12 +6,12 @@ import { ArrowDownLeft, ArrowUpRight, ArrowRight, Wallet, CreditCard, TrendingUp
 import { financialTone, type FinancialTone } from '@/lib/financial-tone';
 import { D, money } from '@/financial/engine';
 import { financialSummary, rows, str, type Snapshot } from '@/lib/summary';
-import { dashboardModel, changeMetric } from '@/lib/dashboard';
-import { invoiceMonthLabel, invoiceTotals, type CardInvoice } from '@/lib/card-invoices';
+import { dashboardModel, changeMetric, periodMetrics, monthEnd } from '@/lib/dashboard';
+import { invoiceMonthLabel, invoiceTotals, shiftInvoiceMonth, type CardInvoice } from '@/lib/card-invoices';
 import { savingsMetrics, savingsPeriodMetrics } from '@/lib/savings-metrics';
 import { cardColors } from '@/lib/card-color';
 import { FlowChart, palette } from './chart';
-import { CategoryBreakdown } from './category-breakdown';
+import { DashboardCategoryAnalysis } from './dashboard-category-analysis';
 import { WealthChart } from './wealth-chart';
 import { WealthRegistrationFeedback, type WealthFeedback } from './wealth-registration-feedback';
 import { forms, fieldOptionLabel } from './forms';
@@ -24,8 +24,8 @@ const pct = (value: string) => `${Number(value).toLocaleString('pt-BR', { maximu
 function DashboardGroup({ id, index, title, subtitle, icon: Icon, children }: { id: string; index: string; title: string; subtitle: string; icon: typeof Wallet; children: React.ReactNode }) {
   return <div className="dashboard-section" id={`dashboard-${id}`} role="region" aria-labelledby={`dashboard-heading-${id}`}><header className="dashboard-section-heading"><span className="dashboard-section-mark"><Icon size={18} /></span><div><h2 id={`dashboard-heading-${id}`}>{title}</h2><p>{subtitle}</p></div><span className="dashboard-section-number" aria-hidden="true">{index}</span></header>{children}</div>;
 }
-function Block({ title, subtitle, link, children, wide = false }: { title: string; subtitle: string; link?: string; children: React.ReactNode; wide?: boolean }) {
-  return <section className={`panel dashboard-block ${wide ? 'dashboard-wide' : ''}`}><div className="panel-head"><div><h2>{title}</h2><p>{subtitle}</p></div>{link && <Link href={link} aria-label={`Abrir ${title}`} className="dashboard-block-link"><ArrowUpRight size={18} /></Link>}</div>{children}</section>;
+function Block({ title, subtitle, link, children, wide = false, className = '' }: { title: string; subtitle: string; link?: string; children: React.ReactNode; wide?: boolean; className?: string }) {
+  return <section className={`panel dashboard-block ${className} ${wide ? 'dashboard-wide' : ''}`}><div className="panel-head"><div><h2>{title}</h2><p>{subtitle}</p></div>{link && <Link href={link} aria-label={`Abrir ${title}`} className="dashboard-block-link"><ArrowUpRight size={18} /></Link>}</div>{children}</section>;
 }
 function Delta({ current, previous, lowerBetter = false }: { current: string; previous: string; lowerBetter?: boolean }) {
   const change = changeMetric(current, previous);
@@ -44,7 +44,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   const dashboardRef = useRef<HTMLDivElement>(null);
   const economicDockRef = useRef<HTMLDivElement>(null);
   useReadableAmounts(dashboardRef);
-  const [flowMode, setFlowMode] = useState<'six-months' | 'period'>('six-months');
+  const [flowMode, setFlowMode] = useState<'six-months' | 'twelve-months' | 'period'>('six-months');
   const model = useMemo(() => dashboardModel(snapshot, start, end, period, today), [snapshot, start, end, period, today]);
   const savings = useMemo(() => savingsMetrics(snapshot, today), [snapshot, today]);
   const periodSavings = useMemo(() => savingsPeriodMetrics(snapshot, start, end, today), [snapshot, start, end, today]);
@@ -52,7 +52,11 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   const monthly = ['month', 'previous'].includes(period);
   const spendingLabel = monthly ? 'Gastos do mês' : 'Gastos do período';
   const balanceLabel = monthly ? 'Saldo do mês' : 'Saldo do período';
-  const chart = (flowMode === 'six-months' ? model.history.map(m => ({ name: new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(`${m.month}-01T12:00:00Z`)), income: Number(m.income), expense: Number(m.expenses), yield: Number(m.yields) })) : (() => {
+  const chartHistory = flowMode === 'twelve-months' ? Array.from({ length: 12 }, (_, index) => {
+    const month = shiftInvoiceMonth(model.month, index - 11);
+    return { month, ...periodMetrics(snapshot, `${month}-01`, month === model.month ? end : monthEnd(month), true, today) };
+  }) : model.history;
+  const chart = (flowMode !== 'period' ? chartHistory.map(m => ({ name: new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(`${m.month}-01T12:00:00Z`)), income: Number(m.income), expense: Number(m.expenses), yield: Number(m.yields) })) : (() => {
     const length = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
     const byMonth = length > 62;
     const buckets = new Map<string, { name: string; income: ReturnType<typeof D>; expense: ReturnType<typeof D>; yield: ReturnType<typeof D> }>();
@@ -119,20 +123,25 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     </DashboardGroup>
     <DashboardGroup id="analises" index="05" title="Análises e gráficos" subtitle="Entenda os movimentos, as categorias e as mudanças entre períodos." icon={ChartNoAxesCombined}>
       <div className="dashboard-section-grid dashboard-analysis-grid">
-      <Block title="Entradas, gastos e rendimentos" subtitle="Receitas/despesas até a data final · parcelas no mês do vencimento" wide>
-        <div className="dashboard-chart-controls"><div className="chart-legend"><span><i className="income-dot" />Receitas</span><span><i className="pink-dot" />Gastos</span><span><i className="green-dot" />Rendimentos recebidos</span></div><div className="period-tabs"><button className={flowMode === 'six-months' ? 'selected' : ''} onClick={() => setFlowMode('six-months')}>6 meses</button><button className={flowMode === 'period' ? 'selected' : ''} onClick={() => setFlowMode('period')}>Período selecionado</button></div></div>
-        {chart.some(r => r.income || r.expense || r.yield) ? <FlowChart data={chart} /> : <p className="dashboard-empty">Cadastre receitas e despesas para acompanhar sua evolução.</p>}
-        <div className="dashboard-chart-foot"><span>Média diária de gastos <strong>{brl(model.dailyAverage)}</strong></span><span>Parcelas do cartão <strong>{brl(current.cardExpense)}</strong></span><span>Despesas nas contas <strong>{brl(current.cashExpense)}</strong></span></div>
+      <div className="analysis-left-column">
+      <Block className="analysis-flow-panel" title="Entradas, gastos e rendimentos" subtitle="Receitas/despesas até a data final · parcelas no mês do vencimento" wide>
+        <div className="dashboard-chart-controls"><div className="chart-legend"><span><i className="income-dot" />Receitas</span><span><i className="pink-dot" />Gastos</span><span><i className="analysis-yield-dot" />Rendimentos recebidos</span></div><div className="period-tabs"><button className={flowMode === 'six-months' ? 'selected' : ''} onClick={() => setFlowMode('six-months')}>6 meses</button><button className={flowMode === 'twelve-months' ? 'selected' : ''} onClick={() => setFlowMode('twelve-months')}>12 meses</button><button className={flowMode === 'period' ? 'selected' : ''} aria-label="Período selecionado" title="Exibir o período selecionado nos filtros do dashboard" onClick={() => setFlowMode('period')}>Outro período</button></div></div>
+        {chart.some(r => r.income || r.expense || r.yield) ? <FlowChart data={chart} variant="reference" /> : <p className="dashboard-empty">Cadastre receitas e despesas para acompanhar sua evolução.</p>}
+        <small className="analysis-line-note">Linha roxa: evolução das receitas nos mesmos pontos do gráfico.</small>
       </Block>
-      <Block title="Onde você mais gasta" subtitle="Despesas e parcelas do período, inclusive sem categoria" link="/categorias">
-        <CategoryBreakdown categories={rows(snapshot, 'categories')} expenses={[...current.tx.filter(t => t.type === 'expense'), ...current.installments]} />
+      <div className="dashboard-chart-foot" aria-label="Indicadores complementares da análise"><article><span className="analysis-summary-icon"><ChartNoAxesCombined size={17} /></span><div><span>Média diária de gastos</span><strong>{brl(model.dailyAverage)}</strong></div></article><article><span className="analysis-summary-icon"><CreditCard size={17} /></span><div><span>Parcelas do cartão</span><strong>{brl(current.cardExpense)}</strong></div></article><article><span className="analysis-summary-icon"><Wallet size={17} /></span><div><span>Despesas nas contas</span><strong>{brl(current.cashExpense)}</strong></div></article></div>
+      </div>
+      <div className="analysis-right-column">
+      <Block className="analysis-category-panel" title="Onde você mais gasta" subtitle="Despesas e parcelas do período, inclusive sem categoria" link="/categorias">
+        <DashboardCategoryAnalysis categories={rows(snapshot, 'categories')} expenses={[...current.tx.filter(t => t.type === 'expense'), ...current.installments]} previousExpenses={[...previous.tx.filter(t => t.type === 'expense'), ...previous.installments]} />
       </Block>
-      <Block title="Comparativo do período" subtitle={`${pretty(start)} a ${pretty(end)} vs. ${pretty(model.previousRange.start)} a ${pretty(model.previousRange.end)}`} wide>
+      <Block className="analysis-comparison-panel" title="Comparativo do período" subtitle={`${pretty(start)} a ${pretty(end)} vs. ${pretty(model.previousRange.start)} a ${pretty(model.previousRange.end)}`} wide>
         <div className="dashboard-comparison" role="table" aria-label="Comparativo financeiro"><div role="row" className="comparison-header"><span>Indicador</span><span>Anterior</span><span>Atual</span><span>Variação</span></div>{[
           ['Receitas', current.income, previous.income, false], ['Gastos', current.expenses, previous.expenses, true], ['Parcelas do cartão', current.cardExpense, previous.cardExpense, true], ['Rendimentos recebidos', current.yields, previous.yields, false], [balanceLabel, current.net, previous.net, false],
-        ].map(([label, value, old, lower]) => <div role="row" key={String(label)}><strong>{String(label)}</strong><span>{brl(String(old))}</span><b>{brl(String(value))}</b><Delta current={String(value)} previous={String(old)} lowerBetter={Boolean(lower)} /></div>)}</div>
+        ].map(([label, value, old, lower]) => <div role="row" key={String(label)}><strong>{String(label)}</strong><span><b>{brl(String(old))}</b></span><b>{brl(String(value))}</b><Delta current={String(value)} previous={String(old)} lowerBetter={Boolean(lower)} /></div>)}</div>
         <p className="dashboard-note">Gastos mensais consideram apenas as parcelas que vencem no mês, mesmo que a compra tenha ocorrido antes. O pagamento da fatura não duplica o gasto. Saldo mensal é o resultado das receitas e despesas; não inclui patrimônio ou saldo trazido de outros meses.</p>
       </Block>
+      </div>
       </div>
     </DashboardGroup>
     <DashboardGroup id="caixa" index="06" title="Disponibilidade e fluxo de caixa" subtitle="Saldo registrado, compromissos e pagamentos efetivos." icon={Wallet}>
