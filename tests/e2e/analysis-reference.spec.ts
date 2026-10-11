@@ -43,6 +43,13 @@ test('reference analysis preserves values, category hierarchy, real comparisons,
    await flow.getByRole('button',{name:'6 meses',exact:true}).click();await expect(flow.locator('.mobile-chart-data li')).toHaveCount(6);await expect(flow.locator('.mobile-chart-data')).not.toContainText('R$ 333,00');
    await flow.getByRole('button',{name:'Período selecionado',exact:true}).click();await expect(flow.locator('.mobile-chart-data li')).toHaveCount(1);await expect(flow.locator('.mobile-chart-data')).toContainText('R$ 1.000,00');
    await flow.getByRole('button',{name:'6 meses',exact:true}).click();
+   if(width>=1100) {
+    const donut=category.locator('.donut'),box=await donut.boundingBox();
+    await page.mouse.move(box!.x+140,box!.y+70);
+    const tooltip=category.locator('.analysis-donut-tooltip');await expect(tooltip).toBeVisible();await expect(tooltip).toContainText('Transportes');await expect(tooltip).toContainText('R$ 250,00');
+    const detail=await tooltip.boundingBox(),chart=await donut.locator('.recharts-wrapper').boundingBox(),total=await category.locator('.analysis-donut-total').boundingBox();
+    expect(detail!.y).toBeGreaterThanOrEqual(chart!.y+chart!.height);expect(detail!.y).toBeGreaterThan(total!.y+total!.height);expect(detail!.x+detail!.width).toBeLessThanOrEqual(box!.x+box!.width+1);expect(detail!.y+detail!.height).toBeLessThanOrEqual(box!.y+box!.height+1);
+   }
    expect(await page.locator('.dashboard-metric').allTextContents()).toEqual(original);
    await analysis.screenshot({path:`test-results/analysis-reference-${width}.png`});
   }

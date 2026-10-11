@@ -508,8 +508,11 @@
 .dashboard-v2 .analysis-category-tabs button.selected { background:#6235e5; color:#fff; }
 .dashboard-v2 .analysis-category-tabs button:disabled { opacity:.55; }
 .dashboard-v2 .analysis-category-content { display:grid; grid-template-columns:150px minmax(0,1fr); align-items:center; gap:10px; }
-.dashboard-v2 .analysis-category-content .donut { position:relative; width:150px; height:160px; margin:0; }
-.dashboard-v2 .analysis-donut-total { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:88px; text-align:center; pointer-events:none; }
+.dashboard-v2 .analysis-category-content .donut { position:relative; width:150px; height:216px; margin:0; }
+.dashboard-v2 .analysis-donut-total { position:absolute; top:80px; left:50%; transform:translate(-50%,-50%); width:88px; text-align:center; pointer-events:none; }
+.dashboard-v2 .analysis-donut-tooltip { padding:6px 8px; border:1px solid var(--dash-border); border-radius:8px; background:#faf9ff; color:var(--dash-ink); font-size:10px; line-height:1.5; text-align:center; }
+.dashboard-v2 .analysis-donut-tooltip > span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dashboard-v2 .analysis-donut-tooltip > b { display:block; font-size:12px; margin-top:2px; }
 .dashboard-v2 .analysis-donut-total b { display:block; font-size:12px; color:#242638; font-weight:650; letter-spacing:-.2px; }
 .dashboard-v2 .analysis-donut-total small { display:block; font-size:9px; color:#596174; margin-top:4px; line-height:1.4; }
 .dashboard-v2 .analysis-category-table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:10px; white-space:normal; }

@@ -133,9 +133,10 @@ export function CategoryChart({
   compact?: boolean;
   center?: { value: string; label: string };
 }) {
+  const mobileChart = useMobileChart();
   return (
     <div className="donut" aria-label="Distribuição dos gastos por categoria">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={center ? 160 : '100%'}>
         <PieChart>
           <Pie
             data={data}
@@ -152,6 +153,16 @@ export function CategoryChart({
             ))}
           </Pie>
           <Tooltip
+            trigger={center && mobileChart ? 'click' : 'hover'}
+            isAnimationActive={center ? false : undefined}
+            position={center ? { x: 0, y: 164 } : undefined}
+            allowEscapeViewBox={center ? { x: false, y: true } : undefined}
+            wrapperStyle={center ? { width: '100%', pointerEvents: 'none' } : undefined}
+            content={center ? ({ active, payload }) => {
+              const item = payload?.[0];
+              if (!active || !item) return null;
+              return <div className="analysis-donut-tooltip" role="status"><span title={String(item.name)}>{String(item.name)}</span><b>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.value))}</b></div>;
+            } : undefined}
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
                 style: "currency",

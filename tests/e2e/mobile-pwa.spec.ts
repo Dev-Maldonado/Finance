@@ -49,6 +49,9 @@ test('iPhone receives Safari installation steps and touch tablet keeps app navig
   await expect(page.getByRole('navigation',{name:'Navegação rápida'})).toBeVisible();await page.getByRole('button',{name:'Abrir menu',exact:true}).click();await page.getByRole('button',{name:'Instalar aplicativo',exact:false}).click();await expect(page.getByRole('dialog',{name:'Instalar FINORA'})).toContainText('Safari');await expect(page.getByRole('dialog',{name:'Instalar FINORA'})).toContainText('Compartilhar');await page.getByRole('button',{name:'Entendi'}).click();await page.locator('.chart .recharts-surface').first().tap({position:{x:150,y:100}});
   const tooltip=page.locator('.recharts-tooltip-wrapper').filter({visible:true}).first();
   await expect(tooltip).toContainText('Receitas');await expect(tooltip).toContainText('Gastos');await expect(tooltip).toContainText('Rendimentos recebidos');await expect(tooltip.locator('.recharts-tooltip-item')).toHaveCount(3);
+  const donut=page.locator('.analysis-category-panel .donut');await donut.tap({position:{x:140,y:70}});
+  const detail=donut.locator('.analysis-donut-tooltip');await expect(detail).toBeVisible();await expect(detail).toContainText('Sem categoria');await expect(detail).toContainText('R$ 10,00');
+  const detailBox=await detail.boundingBox(),totalBox=await donut.locator('.analysis-donut-total').boundingBox();expect(detailBox!.y).toBeGreaterThan(totalBox!.y+totalBox!.height);
   await page.setViewportSize({width:1366,height:1024});await expect(page.getByRole('navigation',{name:'Navegação rápida'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
  finally {await admin.auth.admin.deleteUser(id);await context.close();}
 });
