@@ -25,6 +25,18 @@ test('complete dashboard distinguishes results, bills and cash; savings stay man
     await page.getByLabel('Senha', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
     await expect(page.getByText('Saldo disponível', { exact: true })).toBeVisible();
+    // A revisão visual não pode remover indicadores, painéis ou resumos.
+    await expect(page.locator('.dashboard-v3 .dashboard-metric')).toHaveCount(8);
+    await expect(page.locator('.dashboard-v3 .dashboard-block')).toHaveCount(12);
+    await expect(page.locator('.dashboard-v3 .dashboard-v3-chapter')).toHaveCount(7);
+    await expect(page.locator('.dashboard-v3 .dashboard-overall')).toHaveCount(1);
+    await expect(page.locator('.dashboard-v3 .financial-planning')).toHaveCount(1);
+    await expect(page.locator('.dashboard-v3 .data-confidence')).toHaveCount(1);
+    await expect(page.locator('.dashboard-v3 .economic-indicators')).toHaveCount(1);
+    const quickNav = page.getByRole('navigation', { name: 'Navegar pelos painéis financeiros' });
+    await expect(quickNav.getByRole('link')).toHaveCount(7);
+    await quickNav.getByRole('link', { name: 'Selic e IPCA' }).click();
+    await expect(page).toHaveURL(/#finora-mercado$/);
     const op = async (action: string, payload: Record<string, unknown>) => {
       const response = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action, payload, request_id: randomUUID() } });
       expect(response.ok(), await response.text()).toBe(true);
