@@ -68,3 +68,7 @@ Sequência original: 1 fundação; 2 finanças pessoais; 3 cartões; 4 CDI; 5 ca
 ## Histórico integrado de transações — 11/10/2026
 
 Transações reúne o ledger de contas e as parcelas de cartões em um modelo somente de apresentação (`transaction-history.ts`). Ordenação decrescente por data; parcelas usam o vencimento da fatura, UUID próprio com prefixo e vínculo à compra original. Filtros por conta/cartão, categoria/subcategoria, período, tipo, status e busca são combinados; o status da parcela segue o pagamento da fatura, sem presumir pagamento individual numa fatura parcial. Edição/exclusão no histórico de cartão abre a compra original. Compras Registradas mantém uma linha por compra, com total complementar, parcela(s) do mês da fatura selecionado e expansão de todos os valores/vencimentos reais. Nenhum novo lançamento bancário nem alteração de cálculos ou migration foi introduzido.
+
+## Dashboard visual — 11/10/2026
+
+Dashboard organizado em 12 áreas abertas, com navegação por âncoras, composição própria e Inter auto-hospedada. Inventário completo e preservação em [DASHBOARD-REDESIGN.md](../DASHBOARD-REDESIGN.md). Estilos isolados em `dashboard-redesign.css`; `use-readable-amounts.ts` adapta somente a fonte/grade, sem modificar valores. Fontes/premissas e compromissos abertos inicialmente apenas no dashboard. Oito indicadores, 12 blocos originais, cálculos, gráficos, filtros, ações e demais módulos permanecem preservados. Não substituir informações reais por exemplos nem ocultar resumos no redesign.

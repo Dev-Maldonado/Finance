@@ -64,6 +64,7 @@ test('complete dashboard distinguishes results, bills and cash; savings stay man
     const balanceAfter = await admin.from('account_balances').select('balance').eq('id', account.data!.id).single();
     expect(D(balanceBefore.data!.balance).eq(balanceAfter.data!.balance)).toBe(true);
     const inventedYield = await admin.from('savings_movements').select('id').eq('user_id', userId).eq('type', 'confirmed_yield'); expect(inventedYield.data).toEqual([]);
+    await page.evaluate(() => window.scrollTo(0,0));
     await page.screenshot({ path: 'test-results/dashboard-desktop.png', fullPage: true });
     await page.getByRole('button', { name: 'Período selecionado', exact: true }).click();
     await page.getByRole('button', { name: 'Mês anterior', exact: true }).click();
@@ -82,6 +83,7 @@ test('complete dashboard distinguishes results, bills and cash; savings stay man
     await page.getByRole('button', { name: 'Este mês', exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.evaluate(() => window.scrollTo(0,0));
     await page.screenshot({ path: 'test-results/dashboard-mobile.png', fullPage: true });
     const nextBill = page.locator('.dashboard-next-bills a').first(); const nextMonth = new URL((await nextBill.getAttribute('href'))!, 'http://localhost:3000').searchParams.get('month')!;
     await nextBill.click(); await expect(page.getByLabel('Mês das faturas')).toHaveValue(nextMonth);

@@ -770,7 +770,7 @@ function Workspace({
           </div>
         </header>
         <main className="content">
-          <div className="page-head">
+          <div className={`page-head ${current[0] === "dashboard" ? "dashboard-page-head" : ""}`}>
             <div>
               <span className="eyebrow">
                 {current[0] === "dashboard"
@@ -802,7 +802,7 @@ function Workspace({
             </div>
           </div>
           {!["cartoes", "investimentos"].includes(current[0]) && (
-            <div className="period-bar">
+            <div className={`period-bar ${current[0] === "dashboard" ? "dashboard-page-controls" : ""}`}>
               <div className="period-tabs">
                 {[
                   ["month", "Este mês"],

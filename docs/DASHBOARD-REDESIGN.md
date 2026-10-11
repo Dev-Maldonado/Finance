@@ -1,0 +1,31 @@
+# Dashboard FINORA — inventário e redesign
+
+Escopo: apresentação do dashboard, sem alterar serviços financeiros, fórmulas, APIs, autenticação, banco ou filtros. Referência anterior: commit 6f4595e. A versão anterior foi capturada no desktop e celular antes das mudanças. Tipografia Inter auto-hospedada, licença OFL em public/fonts/Inter-OFL.txt; outras telas preservam sua tipografia.
+
+## Inventário de preservação
+
+| Área | Conteúdo e comportamento preservados |
+| --- | --- |
+| Panorama | Patrimônio líquido, bruto, dívidas totais, rendimento informado das caixinhas, notas de origem; resultado do período, intervalo, taxa de economia, variação monetária/percentual, acesso aos relatórios. |
+| Oito indicadores | Saldo disponível; receitas; gastos do mês/período; faturas do mês; faturas a pagar; rendimentos recebidos; investido em BRL; rendimento manual das caixinhas no mês/período. Mantidos ícones, detalhes, estados, comparação com anterior e ausência de base percentual. |
+| Planejamento | Disponível para gastar, valor diário, entradas/saídas previstas, saldo final, déficit; reserva, essenciais, cobertura, objetivo, falta, amostra; links para categorias/caixinhas/configurações; projeções 30/60/90 dias, abertura, entradas, saídas, mínimo/data, eventos, alertas; metas e aporte mensal. Componente financeiro original, compromissos abertos inicialmente no dashboard. |
+| Compromissos | Gastos gerais históricos, compras integrais identificadas, saldo comprometido de todas as faturas e parcelas dos próximos meses. |
+| Análises | Três séries (entradas, gastos, rendimentos), modos 6 meses/período, média diária, parcelas e despesas de conta; categorias e subcategorias com detalhamento/retorno e percentuais; comparativo anterior/atual/variação de receitas, gastos, parcelas, rendimentos e resultado; nota explicando competência e caixa. |
+| Disponibilidade/caixa | Disponibilidade após compromissos, saldo, faturas pendentes/atrasadas, despesas pendentes; resultado de caixa, recebimentos, despesas pagas, pagamentos de faturas e suas notas. |
+| Faturas | Total, pago, pendente; cartão, identidade/cor, vencimento, status, saldo, total individual e pagamento; próximas três janelas registradas com links; alerta de atraso e acesso a Cartões. |
+| Caixinhas/orçamentos | Todas as caixinhas, saldo, depósitos, alvo, progresso, rendimento acumulado/mensal, data/estado manual e link individual; todos os orçamentos, utilizado, limite, restante/excedente e progresso. |
+| Patrimônio/carteira | Histórico registrado, variação, registrar posição, loading/sucesso/erro, gráfico líquido/bruto e posição única; alocação contas/caixinhas/investimentos; valor da carteira, posições, moeda, fontes e datas, ausência de avaliação e link aos investimentos. |
+| Movimentações/ações | Registros recentes do modelo original: descrição, tipo, conta/cartão, categoria, data, valor e direção; links para transações e atalhos de organizar, planejar e reservas. |
+| Economia | Selic/IPCA oficiais, referências, origens/links, atualização, carregamento, falha independente/indisponibilidade. Mesmo componente/API. |
+| Confiabilidade | Cobertura/score, verificações, pendências, referências/coleta, observações, links, fontes e limitações. Fontes e premissas abertas inicialmente no dashboard, controles mantidos. |
+| Controles externos | Novo lançamento; período mensal/anterior/7/30/ano/personalizado; início/fim; atualização global e navegação desktop/mobile/PWA. Nenhuma mudança de comportamento. |
+
+## Estrutura visual
+
+Doze áreas sempre renderizadas, com títulos e navegação por âncoras. Patrimônio e resultado têm contextos separados; indicadores em grade; análises, disponibilidade, reservas, patrimônio e movimentações têm composição própria, em vez da grade anterior contínua. Projeções no celular usam linhas completas. Nenhum resumo financeiro foi transferido para aba ou seção inicialmente oculta.
+
+CSS isolado em dashboard-redesign.css com escopo dashboard-v2 e cabeçalho/filtros exclusivos do dashboard. Os componentes compartilhados recebem apenas opções de expansão inicial, mantendo os padrões originais nas outras telas. A adaptação de valores por largura atua apenas na fonte exibida e preserva integralmente texto, sinal e centavos.
+
+## Verificação
+
+Os 12 blocos analíticos originais foram preservados integralmente e reagrupados; as oito chamadas de indicadores e a construção do modelo/chart permaneceram iguais. A comparação executável do inventário e as regressões financeiras/browser são registradas em STATUS.md. Testes usam usuários temporários no Supabase local, nunca lançamentos reais.
