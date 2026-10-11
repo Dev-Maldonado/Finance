@@ -642,7 +642,7 @@ function Workspace({
     );
   }
   return (
-    <div className={`workspace ${collapsed ? "collapsed" : ""}`}>
+    <div className={`workspace ${collapsed ? "collapsed" : ""} ${current[0] === "dashboard" ? "dashboard-workspace" : ""}`}>
       {mobile && (
         <button
           className="navigation-backdrop"

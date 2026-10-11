@@ -29,3 +29,9 @@ CSS isolado em dashboard-redesign.css com escopo dashboard-v2 e cabeçalho/filtr
 ## Verificação
 
 Os 12 blocos analíticos originais foram preservados integralmente e reagrupados; as oito chamadas de indicadores e a construção do modelo/chart permaneceram iguais. A comparação executável do inventário e as regressões financeiras/browser são registradas em STATUS.md. Testes usam usuários temporários no Supabase local, nunca lançamentos reais.
+
+## Refinamento com referência visual — 11/10/2026
+
+Panorama em três cards: patrimônio roxo, resultado líquido e taxa de economia com anel proporcional ao índice real (apenas a extensão visual fica limitada a 0–100%; o número continua integral, inclusive negativo). Indicadores em grade mais compacta, títulos numerados, superfícies discretas e comparação financeira em largura completa para evitar espaço vazio e preservar a leitura de valores/comparativos. Todos os blocos, séries, métricas e filtros do inventário acima continuam presentes.
+
+Selic e IPCA ganham uma faixa que permanece visível ao rolar o dashboard. Ela mostra valor, referência, indisponibilidade, atualização e acesso aos detalhes. Os cards completos com origem oficial permanecem na área de economia. A faixa é um portal de apresentação da mesma instância/consulta de EconomicIndicatorsCards: sem segunda consulta, cache ou integração independente. No celular respeita o cabeçalho/área segura; com teclado aberto volta ao fluxo normal. Não se estende às outras telas.

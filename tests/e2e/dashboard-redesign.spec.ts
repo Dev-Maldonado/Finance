@@ -29,6 +29,8 @@ test('redesign preserves twelve visible areas, eight indicators, errors, large n
    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
    await expect.poll(()=>page.evaluate(()=>[...document.querySelectorAll<HTMLElement>('.dashboard-v2 .dashboard-amount')].filter(e=>e.getBoundingClientRect().width>0 && e.scrollWidth>e.clientWidth+2).map(e=>e.textContent))).toEqual([]);
    expect(await page.locator('.dashboard-metric').allTextContents()).toEqual(original);
+   await expect(page.getByLabel('Resumo fixo dos indicadores econômicos')).toContainText('Indisponível');
+   await expect(page.locator('.dashboard-hero-rate')).toContainText('Taxa de economia');
    for(const region of await page.locator('.dashboard-section').all()) await expect(region).toBeVisible();
    await expect(page.locator('.dashboard-hero-main > strong')).toHaveClass(/negative/);
    await expect(page.locator('.forecast-horizons button')).toHaveCount(3);

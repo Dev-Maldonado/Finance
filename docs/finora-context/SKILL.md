@@ -72,3 +72,5 @@ Transações reúne o ledger de contas e as parcelas de cartões em um modelo so
 ## Dashboard visual — 11/10/2026
 
 Dashboard organizado em 12 áreas abertas, com navegação por âncoras, composição própria e Inter auto-hospedada. Inventário completo e preservação em [DASHBOARD-REDESIGN.md](../DASHBOARD-REDESIGN.md). Estilos isolados em `dashboard-redesign.css`; `use-readable-amounts.ts` adapta somente a fonte/grade, sem modificar valores. Fontes/premissas e compromissos abertos inicialmente apenas no dashboard. Oito indicadores, 12 blocos originais, cálculos, gráficos, filtros, ações e demais módulos permanecem preservados. Não substituir informações reais por exemplos nem ocultar resumos no redesign.
+
+Refinamento posterior usa a referência enviada: panorama com patrimônio roxo/resultado/taxa separados, densidade compacta e faixa econômica sticky. A faixa e os cards completos usam uma única instância de consulta via portal visual; índices, datas, fontes, erros e atualização preservados. Não adicionar gráficos decorativos com dados fictícios.

@@ -2,7 +2,7 @@
 import { useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useReadableAmounts } from './use-readable-amounts';
-import { ArrowDownLeft, ArrowUpRight, ArrowRight, Wallet, CreditCard, TrendingUp, PiggyBank, ChartNoAxesCombined, Target, CalendarDays, ShieldCheck, ChevronRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ArrowRight, Wallet, CreditCard, TrendingUp, PiggyBank, ChartNoAxesCombined, Target, CalendarDays, ShieldCheck, ChevronRight, Percent } from 'lucide-react';
 import { financialTone, type FinancialTone } from '@/lib/financial-tone';
 import { D, money } from '@/financial/engine';
 import { financialSummary, rows, str, type Snapshot } from '@/lib/summary';
@@ -42,6 +42,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   wealthSaving: boolean; wealthFeedback: WealthFeedback | null;
 }) {
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const economicDockRef = useRef<HTMLDivElement>(null);
   useReadableAmounts(dashboardRef);
   const [flowMode, setFlowMode] = useState<'six-months' | 'period'>('six-months');
   const model = useMemo(() => dashboardModel(snapshot, start, end, period, today), [snapshot, start, end, period, today]);
@@ -75,11 +76,13 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   ];
   return <div className="premium-dashboard dashboard-v2" ref={dashboardRef}>
     <nav className="dashboard-section-nav" aria-label="Navegar pelas áreas do dashboard">{[['panorama','Panorama'],['planejamento','Planejamento'],['analises','Análises'],['faturas','Faturas'],['patrimonio','Patrimônio'],['movimentacoes','Movimentações']].map(([id,label]) => <a key={id} href={`#dashboard-${id}`}>{label}<ArrowRight size={12} /></a>)}</nav>
+    <div className="dashboard-economic-dock" ref={economicDockRef} />
     <DashboardGroup id="panorama" index="01" title="Panorama financeiro" subtitle="O que você possui hoje e o que o período gerou." icon={Wallet}>
 
     <section className="dashboard-hero" aria-label="Panorama patrimonial">
       <div className="dashboard-hero-main"><span className="dashboard-overline"><ShieldCheck size={14} /> PATRIMÔNIO GERAL · HOJE</span><p>Uma visão completa do seu dinheiro.</p><span className="dashboard-hero-label">Patrimônio líquido geral</span><strong className={D(summary.netWorth).lt(0) ? 'negative' : undefined}>{brl(summary.netWorth)}</strong><div className="dashboard-hero-breakdown"><div><span>Patrimônio bruto geral</span><b>{brl(summary.assets)}</b></div><div><span>Dívidas totais · todos os meses</span><b>{brl(summary.liability)}</b></div><div><span>Rendimento informado das caixinhas</span><b>{summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : brl(summary.goals.reduce((a,g)=>a.plus(g.gross),D(0)).toFixed(2))}</b></div></div><small>Contas e posições atuais. Caixinhas e investimentos usam valores informados por você.</small></div>
-      <div className="dashboard-hero-result" aria-label="Resultado líquido do período"><span><CalendarDays size={15} /> {pretty(start)} — {pretty(end)}</span><p>{balanceLabel} · resultado líquido</p><strong className={D(current.net).lt(0) ? 'result-negative' : ''}>{brl(current.net)}</strong><small>Receitas + rendimentos recebidos − despesas e parcelas do período</small><div className="dashboard-saving-rate"><span>Taxa de economia</span><b>{current.savingRate === null ? 'Sem receitas' : pct(current.savingRate)}</b></div><Delta current={current.net} previous={previous.net} /><Link href="/relatorios">Explorar meus resultados <ArrowRight size={15} /></Link></div>
+      <div className="dashboard-hero-result" aria-label="Resultado líquido do período"><span><CalendarDays size={15} /> {pretty(start)} — {pretty(end)}</span><p>{balanceLabel} · resultado líquido</p><strong className={D(current.net).lt(0) ? 'result-negative' : ''}>{brl(current.net)}</strong><small>Receitas + rendimentos recebidos − despesas e parcelas do período</small><Delta current={current.net} previous={previous.net} /><Link href="/relatorios">Explorar meus resultados <ArrowRight size={15} /></Link></div>
+      <div className={`dashboard-hero-rate ${current.savingRate !== null && D(current.savingRate).lt(0) ? 'rate-negative' : ''}`} aria-label="Taxa de economia do período"><span className="dashboard-rate-icon"><Percent size={18} /></span><div className="dashboard-saving-rate"><span>Taxa de economia</span><b>{current.savingRate === null ? 'Sem receitas' : pct(current.savingRate)}</b></div><div className={`dashboard-rate-ring ${current.savingRate === null ? 'rate-unknown' : ''}`} style={{ '--saving-rate': `${Math.max(0, Math.min(100, Number(current.savingRate ?? 0)))}%` } as React.CSSProperties} aria-hidden="true"><Percent size={22} /></div><small>{current.savingRate === null ? 'Registre receitas confirmadas para calcular a taxa.' : 'Parcela das receitas e rendimentos recebidos que ficou após os gastos do período.'}</small><span className="dashboard-rate-context">Mesmo período do resultado líquido</span></div>
     </section>
     <div className="dashboard-period-note"><span><span className="live-dot" /> Dados reais dos seus registros</span><span>Comparativo: {pretty(model.previousRange.start)} a {pretty(model.previousRange.end)} · receitas/despesas na mesma janela; parcelas no mês de vencimento</span></div>
 
@@ -189,7 +192,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     </DashboardGroup>
     <DashboardGroup id="economia" index="11" title="Indicadores econômicos" subtitle="Referências oficiais para acompanhar o cenário econômico." icon={CalendarDays}>
 
-    <EconomicIndicatorsCards />
+    <EconomicIndicatorsCards dockTarget={economicDockRef} />
 
     </DashboardGroup>
     <DashboardGroup id="confiabilidade" index="12" title="Confiabilidade dos dados" subtitle="Cobertura, fontes e pendências dos seus registros." icon={ShieldCheck}>
