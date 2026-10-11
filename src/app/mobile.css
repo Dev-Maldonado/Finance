@@ -75,10 +75,10 @@
   .mobile-chart-data { display:block;margin-top:12px;border-top:1px solid #eeebf5;padding-top:12px; }
   .mobile-chart-data summary { min-height:40px;font-size:12px;color:#5b35db;cursor:pointer; }
   .mobile-chart-data > p { font-size:11px;color:#746e87;line-height:1.5; }
-  .mobile-chart-data ul { list-style:none;padding:0;max-height:280px;overflow:auto; }
+  .mobile-chart-data ul { list-style:none;padding:0;max-height:none;overflow:visible; }
   .mobile-chart-data li { padding:12px 0;border-bottom:1px solid #eeebf5;font-size:12px; }
   .mobile-chart-data li > strong { display:block;margin-bottom:7px; }
-  .mobile-chart-data li > span { display:flex;justify-content:space-between;gap:12px;padding:3px 0;color:#746e87; }
+  .mobile-chart-data li > span { display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;padding:3px 0;color:#746e87; }
   .mobile-chart-data b { color:#25243d; }
   .table-wrap { max-width:100%;overscroll-behavior-x:contain; }
   .transaction-list table,.transaction-list tbody { display:block;width:100%;min-width:0; }
@@ -107,6 +107,7 @@
   .dialog-head { margin-bottom:22px;gap:12px; }
   .dialog-head button { min-width:44px;min-height:44px; }
   .dialog-head h2 { font-size:21px;line-height:1.4; }
+  .dialog { scroll-padding-block: 16px calc(90px + env(safe-area-inset-bottom,0px)); }
   .dialog-footer { position:sticky;bottom:calc(-24px - env(safe-area-inset-bottom,0px));background:white;padding:16px 0 calc(5px + env(safe-area-inset-bottom,0px));margin-top:22px;z-index:3; }
   .dialog-footer button { min-height:48px;flex:1;justify-content:center;border-radius:13px; }
   .form-grid { gap:18px; }

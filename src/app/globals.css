@@ -1290,7 +1290,7 @@ footer small {
 }
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
 .checkbox {
@@ -2122,3 +2122,27 @@ td small { font-size: 10px !important; color: #716981 !important; line-height: 1
 .purchase-installments small, .installment-detail { color: var(--muted); font-size: 11px; line-height: 1.7; }
 .purchase-installments summary { cursor: pointer; color: var(--primary); margin-top: 10px; font-size: 11px; }
 .installment-detail { display: block; margin-top: 6px; white-space: normal; }
+
+/* Intrinsic sizing: content grows vertically; only wide tables and dialogs scroll internally. */
+.main, .content, .panel, .form-grid > *, .table-wrap, .dialog fieldset { min-width: 0; }
+.panel-head, .page-head, .dialog-head, .dialog-footer { flex-wrap: wrap; }
+.panel-head > div, .page-head > div, .dialog-head > div { min-width: 0; }
+.panel-head > div:first-child { flex: 1 1 160px; }
+.panel h2, .panel h3, .panel-head p, .dialog-head h2, .notice, .error { overflow-wrap: anywhere; }
+.form-grid :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+.dialog { overflow-y: auto; overflow-x: auto; overscroll-behavior: contain; }
+.sidebar { overflow-y: auto; }
+.sidebar > * { flex-shrink: 0; }
+.forecast-events { max-height: none; overflow: visible; padding-right: 0; }
+.bank-card > strong { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.bank-card > div { min-width: 0; gap: 8px; }
+@media (max-width: 600px) {
+  .invoice-totals { grid-template-columns: minmax(0, 1fr); }
+  .invoice-totals > div { min-width: 0; }
+  .invoice-totals strong { font-size: clamp(14px, 4vw, 18px); white-space: nowrap; }
+}
+@media (max-width: 380px) {
+  .manual-investment-values { grid-template-columns: minmax(0, 1fr); }
+  .manual-investment-return { align-items: flex-start; flex-wrap: wrap; }
+  .manual-investment-return span { text-align: left; }
+}
