@@ -530,6 +530,14 @@ button.primary:hover {
   font-weight: 500;
 }
 .bank-card {
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 1.586;
+  box-sizing: border-box;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   background: linear-gradient(120deg, #3b2288, #6134d6 70%, #8652eb);
   border-radius: 13px;
   padding: 20px;
@@ -559,14 +567,18 @@ button.primary:hover {
 }
 .bank-card > strong {
   display: block;
-  margin-top: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0;
   font-size: 12px;
   font-weight: 500;
 }
 .bank-card .card-digits {
-  margin: 20px 0;
-  font-size: 14px;
-  letter-spacing: 2px;
+  margin: 0;
+  font-size: clamp(11px, 2.8vw, 14px);
+  letter-spacing: 1px;
+  white-space: nowrap;
   justify-content: flex-start;
 }
 .bank-card b {

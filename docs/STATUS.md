@@ -254,3 +254,9 @@ Compras Registradas mantém uma linha por compra, ordenada pela data da compra. 
 Validação local: 145 testes unitários, 20 verificações de integração, TypeScript e build passaram. A suíte de navegador validou os 28 cenários: 26 na execução completa e os dois testes com expectativas antigas (contagem sem parcelas e rótulo Conta) passaram após a atualização e repetição isolada. Não foram alterados dados reais, schema ou cálculos de dashboard/relatórios. Publicação segue via novo commit no main e deploy automático.
 
 Publicação confirmada: commit `53a2eee93215517efc625b31b1fe2334d531b01c` enviado ao `main`; Vercel `dpl_Ecyx21fjWK2E3qxF4MJjG9XSm5gm` READY em https://finance-two-lake.vercel.app/. GitHub Actions `38134273730` concluído com success (suite completa, integrações, restauração de backup e upgrade incremental). A versão do service worker em produção corresponde ao commit; manifest, estilos, autenticação e isolamento/RLS continuam válidos. Nenhuma migration necessária para este ajuste; não há pendência desta implementação.
+
+## 11/10/2026 — Proporção visual dos cartões
+
+A ilustração do cartão agora mantém proporção 1,586:1, largura máxima de 380px, centralização e distribuição vertical do conteúdo. Número e elementos internos acompanham telas menores; nomes longos não deformam o cartão. Ajuste restrito ao CSS, mantendo informações, cores e operações financeiras.
+
+Validação: 145 testes unitários, 20 verificações de integração, TypeScript e build aprovados. Testes de navegador de faturas mensais e navegação mobile aprovados, com conferência das capturas desktop/mobile. Publicação por novo commit no main.
