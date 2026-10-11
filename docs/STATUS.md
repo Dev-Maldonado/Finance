@@ -306,3 +306,13 @@ Regressões agora medem os retângulos do tooltip, gráfico, total e contêiner 
 Validação local final: TypeScript/build aprovados; três cenários de navegador aprovados (35,3s), incluindo consulta por mouse, geometria sem sobreposição, toque em tablet emulado e hierarquia de categorias. Captura com tooltip ativo revisada no desktop; ausência de overflow e valores preservados em 320/390/820/1280/1440px. Publicação via novo commit no main e deploy automático; CI completo será acompanhado após o envio.
 
 Publicação confirmada: commit `f281b5bedf41f53ed4c00f9cbf92e2a38870e032` no main, Vercel `dpl_7GJ9BNvaK9pC171oZ7tFwcjHYdYy` READY em https://finance-two-lake.vercel.app/. Verificações locais requeridas concluídas; CI automático `38155538015` ainda em execução na última consulta, sem afirmar conclusão da suíte completa dessa revisão. Nenhuma alteração em dados reais ou backend. Apenas apresentação do tooltip, área reservada e regressões específicas modificadas.
+
+## 11/10/2026 — Rolagem lateral no celular
+
+Regressão com viewport móvel real (toque, `isMobile`, escala 3), dados locais preenchidos, nomes/descrições longas, valores negativos e compra parcelada reproduziu uma página de 759px em tela de 320px. Comparar apenas com `innerWidth` podia deixar passar a ampliação interna do navegador; a nova regressão compara a largura da página e do body com o viewport configurado.
+
+Correção exclusivamente mobile: nomes/descrições podem quebrar dentro do conteúdo; barra inferior e avisos fixos limitados à largura CSS do viewport; root com `overflow-x:clip` e contenção do deslocamento lateral. A quebra de texto corrige a origem do transbordamento, enquanto a contenção não cria novo scroll container que prejudique elementos sticky. Desktop, valores monetários completos e rolagem interna de tabelas/filtros preservados. Nenhum serviço/banco/cálculo/dado real alterado.
+
+Regressão preenchida passou em Dashboard, Cartões, Transações e Categorias nas larguras 320/360/375/390/412/430/768px, inclusive após rolar seções e tocar no gráfico (56,1s). 145 unitários, 20 verificações integradas, TypeScript e build aprovados. Captura mobile revisada. Regressões adicionais de navegação, formulários, PWA, teclado e desktop em andamento antes da publicação.
+
+Validação pré-publicação concluída: sete cenários adicionais de navegador passaram (53,5s), totalizando oito cenários relevantes aprovados localmente. Desktop, oito indicadores/12 áreas, quantias grandes/negativas, todos os módulos pelo menu, formulário, gráficos por toque, instalação/atualização/offline e teclado virtual preservados. Correção segue em novo commit no main, sem mudanças financeiras ou alterações em aparelhos reais.
