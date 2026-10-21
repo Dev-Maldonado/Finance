@@ -49,7 +49,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   const savings = useMemo(() => savingsMetrics(snapshot, today), [snapshot, today]);
   const periodSavings = useMemo(() => savingsPeriodMetrics(snapshot, start, end, today), [snapshot, start, end, today]);
   const { current, previous } = model;
-  const monthly = ['month', 'previous'].includes(period);
+  const monthly = ['month', 'previous', 'calendar'].includes(period);
   const spendingLabel = monthly ? 'Gastos do mês' : 'Gastos do período';
   const balanceLabel = monthly ? 'Saldo do mês' : 'Saldo do período';
   const chartHistory = flowMode === 'twelve-months' ? Array.from({ length: 12 }, (_, index) => {

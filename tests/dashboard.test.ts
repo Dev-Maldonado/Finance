@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { comparisonRange, dashboardModel, periodMetrics, changeMetric } from '../src/lib/dashboard';
-import type { Snapshot } from '../src/lib/summary';
+import { rows, type Snapshot } from '../src/lib/summary';
 const sample = (): Snapshot => ({
   user: { id: 'u', email: '' },
   categories: [{ id: 'food', name: 'Alimentação' }],
@@ -77,4 +77,23 @@ test('payment and cancellation change commitments without duplicating monthly ex
   expect(paid.overall.committed).toBe('200.01');
   snapshot.credit_card_purchases = [{ id: 'purchase', date: '2026-10-01', amount: '300.01', status: 'cancelled' }];
   expect(dashboardModel(snapshot, '2026-10-01', '2026-10-08', 'month', '2026-10-08').current.expenses).toBe('50.00');
+});
+
+test('calendar navigation compares full adjacent months across year and leap boundaries', () => {
+  expect(comparisonRange('2026-01-01', '2026-01-31', 'calendar')).toEqual({ start: '2025-12-01', end: '2025-12-31' });
+  expect(comparisonRange('2024-03-01', '2024-03-31', 'calendar')).toEqual({ start: '2024-02-01', end: '2024-02-29' });
+  expect(comparisonRange('2026-02-01', '2026-02-28', 'calendar')).toEqual({ start: '2026-01-01', end: '2026-01-31' });
+});
+
+test('future calendar months show only their installments and keep pending income out of received results', () => {
+  const s = sample();
+  rows(s, 'transactions').push({ id: 'planned', type: 'income', date: '2026-11-01', amount: '5000', status: 'pending' });
+  const november = dashboardModel(s, '2026-11-01', '2026-11-30', 'calendar', '2026-10-08');
+  expect(november.current).toMatchObject({ income: '0.00', cardExpense: '100.00', expenses: '100.00' });
+  expect(november.invoiceTotals.total).toBe('100.00');
+  expect(november.previousRange).toEqual({ start: '2026-10-01', end: '2026-10-31' });
+  expect(november.history.at(-1)?.month).toBe('2026-11');
+  const december = dashboardModel(s, '2026-12-01', '2026-12-31', 'calendar', '2026-10-08');
+  expect(december.current.cardExpense).toBe('100.01');
+  expect(december.invoiceTotals.total).toBe('100.01');
 });

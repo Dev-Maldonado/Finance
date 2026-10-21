@@ -10,10 +10,10 @@ import { categoryLabel } from '@/lib/categories';
 const brl = (value: string) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
 const dateLabel = (value: string) => value ? value.split("-").reverse().join("/") : "—";
 
-export function InvoiceMonthPicker({ month, today, onChange }: { month: string; today: string; onChange: (month: string) => void }) {
+export function InvoiceMonthPicker({ month, today, onChange, label = "Mês das faturas", previousLabel = "Mês anterior" }: { month: string; today: string; onChange: (month: string) => void; label?: string; previousLabel?: string }) {
   return <div className="invoice-month-picker">
-    <button aria-label="Mês anterior" onClick={() => onChange(shiftInvoiceMonth(month, -1))}><ChevronLeft size={18} /></button>
-    <input aria-label="Mês das faturas" type="month" value={month} onChange={event => {
+    <button aria-label={previousLabel} onClick={() => onChange(shiftInvoiceMonth(month, -1))}><ChevronLeft size={18} /></button>
+    <input aria-label={label} type="month" value={month} onChange={event => {
       if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) onChange(event.target.value);
     }} />
     <button aria-label="Próximo mês" onClick={() => onChange(shiftInvoiceMonth(month, 1))}><ChevronRight size={18} /></button>

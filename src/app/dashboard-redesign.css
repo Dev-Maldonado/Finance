@@ -569,3 +569,17 @@
  .dashboard-v2 #dashboard-analises .analysis-comparison-panel .dashboard-comparison > div:has(.long-currency) { grid-template-columns:minmax(0,1fr); }
  .dashboard-v2 .analysis-comparison-panel .dashboard-comparison > div:has(.long-currency) > * { grid-column:1; }
 }
+
+/* Calendar navigation shares the existing period state and invoice month control. */
+.dashboard-page-controls { flex-wrap:wrap; }
+.dashboard-month-navigation { display:flex; flex:1 1 100%; align-items:center; flex-wrap:wrap; gap:10px 14px; padding-top:10px; border-top:1px solid #eceaf3; min-width:0; }
+.dashboard-month-navigation > span:first-child { font-size:11px; color:#596174; }
+.dashboard-selected-month { font-size:12px; font-weight:600; color:#352080; display:inline-block; }
+.dashboard-selected-month::first-letter { text-transform:uppercase; }
+.dashboard-month-navigation .invoice-month-picker button { min-width:44px; min-height:44px; padding:8px; }
+.dashboard-month-context { font-size:11px; line-height:1.7; color:#596174; margin:-6px 0 18px; }
+@media(max-width:600px) {
+ .dashboard-month-navigation .invoice-month-picker { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; width:100%; }
+ .dashboard-month-navigation .invoice-month-picker input { width:100%; min-width:0; }
+ .dashboard-month-navigation .invoice-month-picker button:last-child { grid-column:1/-1; }
+}

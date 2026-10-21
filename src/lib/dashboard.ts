@@ -7,11 +7,11 @@ import { aggregateCategories, categoryMatches, categoryLabel } from './categorie
 export const dateShift = (date: string, days: number) => new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 export const monthEnd = (month: string) => dateShift(`${shiftInvoiceMonth(month, 1)}-01`, -1);
 export function comparisonRange(start: string, end: string, period: string) {
-  if (['month', 'previous', 'year'].includes(period)) {
+  if (['month', 'previous', 'calendar', 'year'].includes(period)) {
     const previousMonth = shiftInvoiceMonth(start.slice(0, 7), period === 'year' ? -12 : -1);
     const previousStart = `${previousMonth}-${start.slice(8)}`;
     const endMonth = shiftInvoiceMonth(end.slice(0, 7), period === 'year' ? -12 : -1);
-    const previousEnd = period === 'previous' ? monthEnd(endMonth)
+    const previousEnd = ['previous', 'calendar'].includes(period) ? monthEnd(endMonth)
       : `${endMonth}-${String(Math.min(Number(end.slice(8)), Number(monthEnd(endMonth).slice(8)))).padStart(2, '0')}`;
     return { start: previousStart, end: previousEnd };
   }
@@ -62,7 +62,7 @@ export function budgetMetrics(s: Snapshot, budget: Record<string, string | boole
   return { spent: money(spent), limit, remaining: money(D(limit).minus(spent)), percent: D(limit).gt(0) ? spent.div(limit).mul(100).toFixed(1) : '0.0' };
 }
 export function dashboardModel(s: Snapshot, start: string, end: string, period: string, today: string) {
-  const fullInvoiceMonths = ['month', 'previous'].includes(period);
+  const fullInvoiceMonths = ['month', 'previous', 'calendar'].includes(period);
   const current = periodMetrics(s, start, end, fullInvoiceMonths, today);
   const previousRange = comparisonRange(start, end, period);
   const previous = periodMetrics(s, previousRange.start, previousRange.end, fullInvoiceMonths, today);

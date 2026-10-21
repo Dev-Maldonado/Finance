@@ -49,7 +49,7 @@ import { DeleteDialog, type RemovalKind } from "./delete-dialog";
 import { FinancialPlanning } from "./financial-planning";
 import { DataConfidence } from "./data-confidence";
 import { ReconciliationPanel } from "./reconciliation-panel";
-import { periodMetrics, budgetMetrics } from "@/lib/dashboard";
+import { periodMetrics, budgetMetrics, monthEnd } from "@/lib/dashboard";
 import { cardColors } from "@/lib/card-color";
 import {
   cardInvoices,
@@ -327,7 +327,7 @@ function Workspace({
             snapshot,
             start,
             end,
-            ["month", "previous"].includes(period),
+            ["month", "previous", "calendar"].includes(period),
             today,
           )
         : null,
@@ -382,6 +382,11 @@ function Workspace({
     } finally {
       setWealthSaving(false);
     }
+  }
+  function selectDashboardMonth(month: string) {
+    setPeriod("calendar");
+    setStart(`${month}-01`);
+    setEnd(monthEnd(month));
   }
   function changePeriod(value: string) {
     setPeriod(value);
@@ -821,6 +826,13 @@ function Workspace({
                   </button>
                 ))}
               </div>
+              {current[0] === "dashboard" && (
+                <div className="dashboard-month-navigation" role="group" aria-label="Navegação mensal do dashboard">
+                  <span>Visualizar mês</span>
+                  <InvoiceMonthPicker month={start.slice(0, 7)} today={today} label="Mês do dashboard" previousLabel="Voltar um mês" onChange={selectDashboardMonth} />
+                  <span className="dashboard-selected-month" aria-live="polite">{invoiceMonthLabel(start.slice(0, 7))}</span>
+                </div>
+              )}
               <div className="date-range">
                 <CalendarDays size={15} />
                 {period === "custom" ? (
@@ -854,6 +866,9 @@ function Workspace({
                 )}
               </div>
             </div>
+          )}
+          {current[0] === "dashboard" && period === "calendar" && end > today && (
+            <p className="dashboard-month-context">Faturas e parcelas futuras são compromissos registrados. Receitas previstas não são recebimentos; saldo e patrimônio mostram a posição atual.</p>
           )}
           {notice && (
             <div role="status" className="notice dismissible-notice"><span>{notice}</span><button className="icon-button" aria-label="Fechar aviso" onClick={() => setNotice("")}><X size={16} /></button></div>
@@ -1241,7 +1256,7 @@ function Workspace({
                   >
                     {rows(snapshot, "financial_obligations")
                       .filter((o) =>
-                        ["month", "previous"].includes(period)
+                        ["month", "previous", "calendar"].includes(period)
                           ? str(o, "due_date").slice(0, 7) === start.slice(0, 7)
                           : str(o, "due_date") >= start &&
                             str(o, "due_date") <= end,
@@ -1506,7 +1521,7 @@ function Workspace({
                                   snapshot,
                                   start,
                                   end,
-                                  ["month", "previous"].includes(period),
+                                  ["month", "previous", "calendar"].includes(period),
                                   today,
                                 ),
                                 f,
