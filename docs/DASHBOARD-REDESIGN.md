@@ -47,3 +47,21 @@ A rosca conserva seleção por gráfico, detalhamento de categorias, lançamento
 Comparação de código: oito indicadores idênticos, 12 títulos/blocos presentes, nove blocos originais idênticos e três apresentações de análise adaptadas. Construção do modelo financeiro, serviços, regras, API, banco e migrations preservados. Regressão de navegador confere barras/linha, totais e detalhamento, comparação real, filtros 6/12/período, dados financeiros inalterados e ausência de overflow em 320/390/820/1280/1440px.
 
 Tooltip da rosca usa uma área reservada abaixo do gráfico, mantendo o total central e a tabela livres. Desktop consulta por hover; dispositivos de toque consultam por clique/toque. A posição é aplicada sem animação para não atravessar o total. As regressões verificam nome/valor, ausência de interseção e contenção, incluindo consulta por toque. Outras roscas mantêm o comportamento anterior.
+
+## Referência mobile e organização do desktop — 20/10/2026
+
+Topo com carteira decorativa em CSS, atalhos e períodos com ícones, navegação mensal
+preservada e faixa econômica em dois cards. Não há séries históricas fictícias
+para Selic ou IPCA: a faixa mantém taxas oficiais, referências, fontes e atualização.
+Panorama apresenta patrimônio, resultado, taxa de economia e comparação visual de
+receitas/despesas/resultado. O novo gráfico resumido usa os mesmos seis meses já
+calculados pelo dashboard; o gráfico analítico completo com rendimentos permanece.
+
+A evolução patrimonial existente e o registro de posição foram movidos para o
+Panorama, sem duplicar a ação ou o histórico. A composição foi agrupada com a
+carteira na seção Patrimônio e investimentos. Os oito indicadores, doze seções,
+filtros, gráficos analíticos, faturas, previsões, metas, orçamentos, rendimentos,
+movimentações e confiabilidade seguem renderizados. Nenhum cálculo, API, schema ou
+dado armazenado foi modificado. Valores grandes reorganizam a grade sem cortes;
+regras de safe area e navegação mobile permanecem. Somente a ilustração decorativa
+usa contenção de pintura, sem recortar conteúdo financeiro.

@@ -1,5 +1,6 @@
 "use client";
 import { transactionHistory, filterTransactionHistory } from "@/lib/transaction-history";
+import { DashboardWalletArt } from "./dashboard-overview";
 import { PurchaseHistory } from "./purchase-history";
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
@@ -775,7 +776,7 @@ function Workspace({
           </div>
         </header>
         <main className="content">
-          <div className={`page-head ${current[0] === "dashboard" ? "dashboard-page-head" : ""}`}>
+          <div className={`page-head ${current[0] === "dashboard" ? "dashboard-page-head dashboard-welcome" : ""}`}>
             <div>
               <span className="eyebrow">
                 {current[0] === "dashboard"
@@ -793,6 +794,7 @@ function Workspace({
                   : "Organize, acompanhe e decida com informações transparentes."}
               </p>
             </div>
+            {current[0] === "dashboard" && <DashboardWalletArt/>}
             <div className="actions">
               {(controls[current[0]] ?? []).map(([key, label], i, all) => (
                 <button
@@ -822,7 +824,7 @@ function Workspace({
                     className={period === v ? "selected" : ""}
                     onClick={() => changePeriod(v)}
                   >
-                    {l}
+                    {current[0] === "dashboard" && <CalendarDays size={16} aria-hidden="true"/>}<span>{l}</span>
                   </button>
                 ))}
               </div>
