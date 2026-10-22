@@ -22,32 +22,15 @@ export function financialSummary(
     timeZone: "America/Sao_Paulo",
   }).format(new Date()),
 ) {
-  const tx = rows(s, "transactions").filter(
-    (t) =>
-      str(t, "date") >= start &&
-      str(t, "date") <= end &&
-      str(t, "date") <= asOf &&
-      t.status === "confirmed",
-  );
+  const monthly = periodMetrics(s, start, end, false, asOf);
+  const tx = monthly.tx;
   const sum = (items: Row[], key: string) =>
     items.reduce((a, r) => a.plus(str(r, key) || "0"), D(0));
-  const purchases = rows(s, "credit_card_purchases").filter(
-    (t) => str(t, "date") >= start && str(t, "date") <= end && str(t, "date") <= asOf,
-  );
-  const income = sum(
-    tx.filter((t) => t.type === "income"),
-    "amount",
-  );
-  const cashExpense = sum(
-    tx.filter((t) => t.type === "expense"),
-    "amount",
-  ).abs();
-  const monthly = periodMetrics(s, start, end, false, asOf);
+  const purchases = monthly.purchases;
+  const income = D(monthly.income);
+  const cashExpense = D(monthly.cashExpense);
   const cardExpense = D(monthly.cardExpense);
-  const yields = sum(
-    tx.filter((t) => t.type === "yield"),
-    "amount",
-  );
+  const yields = D(monthly.yields);
   const accounts = rows(s, "account_balances");
   const cash = sum(
     accounts.filter((a) => a.kind !== "savings"),

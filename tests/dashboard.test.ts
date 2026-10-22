@@ -38,7 +38,7 @@ test('dashboard distinguishes full purchases, monthly installments, outstanding 
   expect(model.overall).toMatchObject({ expenses: '350.01', purchaseTotal: '300.01', committed: '275.01', future: '200.01' });
   expect(model.current.net).toBe('860.00');
   expect(model.categories).toEqual([{ id: 'uncategorized', name: 'Sem categoria', value: '100.00', percent: '66.7' }, { id: 'food', name: 'Alimentação', value: '50.00', percent: '33.3' }]);
-  expect(model.budgets[0]).toMatchObject({ spent: '150.00', remaining: '150.00' });
+  expect(model.budgets[0]).toMatchObject({ spent: '180.00', remaining: '120.00' });
 });
 test('comparison matches elapsed month/year, complete previous month and exact custom duration at year and leap boundaries', () => {
   expect(comparisonRange('2026-01-01', '2026-01-08', 'month')).toEqual({ start: '2025-12-01', end: '2025-12-08' });
@@ -85,11 +85,11 @@ test('calendar navigation compares full adjacent months across year and leap bou
   expect(comparisonRange('2026-02-01', '2026-02-28', 'calendar')).toEqual({ start: '2026-01-01', end: '2026-01-31' });
 });
 
-test('future calendar months show only their installments and keep pending income out of received results', () => {
+test('future calendar months show scheduled income and installments without claiming cash receipts', () => {
   const s = sample();
   rows(s, 'transactions').push({ id: 'planned', type: 'income', date: '2026-11-01', amount: '5000', status: 'pending' });
   const november = dashboardModel(s, '2026-11-01', '2026-11-30', 'calendar', '2026-10-08');
-  expect(november.current).toMatchObject({ income: '0.00', cardExpense: '100.00', expenses: '100.00' });
+  expect(november.current).toMatchObject({ income: '5000.00', expectedIncome: '5000.00', receivedIncome: '0.00', cashNet: '0.00', cardExpense: '100.00', expenses: '100.00' });
   expect(november.invoiceTotals.total).toBe('100.00');
   expect(november.previousRange).toEqual({ start: '2026-10-01', end: '2026-10-31' });
   expect(november.history.at(-1)?.month).toBe('2026-11');

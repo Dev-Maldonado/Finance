@@ -26,7 +26,7 @@ test('dashboard month navigation updates invoices, monthly results and dates wit
     const bill = page.getByRole('article', { name: 'Faturas do mês', exact: true }), income = page.getByRole('article', { name: 'Receitas do período', exact: true });
     await expect(bill.locator('strong').first()).toHaveText('R$ 100,00');
     await nav.getByRole('button', { name: 'Próximo mês', exact: true }).click(); await expect(picker).toHaveValue(next);
-    await expect(bill.locator('strong').first()).toHaveText('R$ 100,00'); await expect(income.locator('strong').first()).toHaveText('R$ 0,00');
+    await expect(bill.locator('strong').first()).toHaveText('R$ 100,00'); await expect(income.locator('strong').first()).toHaveText('R$ 5.000,00'); await expect(income).toContainText('R$ 0,00 recebidos');
     await expect(page.locator('.dashboard-month-context')).toBeVisible();
     await nav.getByRole('button', { name: 'Próximo mês', exact: true }).click(); await expect(picker).toHaveValue(last); await expect(bill.locator('strong').first()).toHaveText('R$ 100,01');
     await nav.getByRole('button', { name: 'Voltar um mês', exact: true }).click(); await expect(picker).toHaveValue(next); await expect(bill.locator('strong').first()).toHaveText('R$ 100,00');

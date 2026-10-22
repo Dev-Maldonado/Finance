@@ -103,7 +103,7 @@ test("expense recurrence generates once, supports annual/end dates and excludes 
     const generated = rows(data, "transactions").filter(row => String(row.source_id).startsWith(`recurrence:${recurrence.id}:`));
     expect(generated).toHaveLength(1);
     expect(generated[0]).toMatchObject({ status: "pending", amount: "-59.90", date: today });
-    expect(periodMetrics(data, `${month}-01`, today).expenses).toBe("0.00");
+    expect(periodMetrics(data, `${month}-01`, today)).toMatchObject({ expenses: "59.90", expectedExpense: "59.90", paidExpense: "0.00", cashNet: "0.00" });
     expect(forecastItems(data, today, endDate).filter(item => item.description === "Assinatura mensal prevista")).toHaveLength(3);
     for (let attempt = 0; attempt < 2; attempt++) {
       const response = await page.request.post("/api/recurring", { headers: { Origin: "http://localhost:3000" }, data: {} });

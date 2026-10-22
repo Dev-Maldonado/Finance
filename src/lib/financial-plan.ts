@@ -99,7 +99,7 @@ export function financialPlan(snapshot: Snapshot, today: string) {
   let essentialTotal = D(0), missingCategories = 0;
   for (const month of recordedMonths) {
     const metrics = periodMetrics(snapshot, `${month}-01`, monthEnd(month), false);
-    for (const expense of [...metrics.tx.filter(t => t.type === 'expense'), ...metrics.installments]) {
+    for (const expense of [...metrics.settledTx.filter(t => t.type === 'expense'), ...metrics.installments]) {
       const kind = categoryKind(snapshot, str(expense,'category_id'));
       if (kind === 'essential') essentialTotal = essentialTotal.plus(D(str(expense,'amount')).abs());
       else if (kind === 'unclassified') missingCategories++;

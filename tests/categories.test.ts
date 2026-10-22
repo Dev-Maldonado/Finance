@@ -76,13 +76,13 @@ it('dashboard, budgets, exports and emergency reserve use the same monthly categ
     credit_card_invoices: [{ id: 'oct', card_id: 'card', due_date: '2026-10-10' }, { id: 'nov', card_id: 'card', due_date: '2026-11-10' }],
     credit_card_installments: [{ id: 'oct-part', purchase_id: 'purchase', invoice_id: 'oct', amount: '100', number: '1' }, { id: 'nov-part', purchase_id: 'purchase', invoice_id: 'nov', amount: '100', number: '2' }],
   };
-  expect(periodMetrics(snapshot, '2026-10-01', '2026-10-31').expenses).toBe('150.00');
-  expect(periodCategoryTotals(snapshot, '2026-10-01', '2026-10-31')).toEqual([{ id: 'transport', name: 'Transportes', value: '150.00', percent: '100.0' }]);
-  expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '200', category_id: 'transport' }).spent).toBe('150.00');
+  expect(periodMetrics(snapshot, '2026-10-01', '2026-10-31').expenses).toBe('650.00');
+  expect(periodCategoryTotals(snapshot, '2026-10-01', '2026-10-31')).toEqual([{ id: 'transport', name: 'Transportes', value: '650.00', percent: '100.0' }]);
+  expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '200', category_id: 'transport' }).spent).toBe('650.00');
   expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '200', category_id: 'uber' }).spent).toBe('150.00');
-  expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '200', category_id: 'bus' }).spent).toBe('0.00');
-  expect(dashboardModel(snapshot, '2026-10-01', '2026-10-31', 'month', '2026-10-08').categories[0].value).toBe('150.00');
-  expect(exportReportRows(snapshot, '2026-10-01', '2026-10-31').map(row => row.category)).toEqual(['Transportes / Uber', 'Transportes / Uber']);
-  // September has the original purchase but no installment due; October has 150.
+  expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '200', category_id: 'bus' }).spent).toBe('500.00');
+  expect(dashboardModel(snapshot, '2026-10-01', '2026-10-31', 'month', '2026-10-08').categories[0].value).toBe('650.00');
+  expect(exportReportRows(snapshot, '2026-10-01', '2026-10-31').map(row => row.category)).toEqual(['Transportes / Uber', 'Transportes / Ônibus', 'Transportes / Uber']);
+  // Reserve coverage uses historical settled expenses, excluding the pending 500.
   expect(financialPlan(snapshot, '2026-11-08').essentials).toMatchObject({ monthly: '75.00', sampleMonths: 2 });
 });

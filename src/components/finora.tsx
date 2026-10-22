@@ -273,7 +273,7 @@ function Workspace({
   const [chartMode, setChartMode] = useState("monthly");
   const [period, setPeriod] = useState("month"),
     [start, setStart] = useState(localDate().slice(0, 7) + "-01"),
-    [end, setEnd] = useState(localDate());
+    [end, setEnd] = useState(monthEnd(localDate().slice(0, 7)));
   useEffect(() => {
     if (!configured) {
       setSession(false);
@@ -394,7 +394,10 @@ function Workspace({
     const today = localDate(),
       date = new Date(today + "T12:00:00Z");
     setEnd(today);
-    if (value === "month") setStart(today.slice(0, 7) + "-01");
+    if (value === "month") {
+      setStart(today.slice(0, 7) + "-01");
+      setEnd(monthEnd(today.slice(0, 7)));
+    }
     if (value === "year") setStart(today.slice(0, 4) + "-01-01");
     if (value === "previous") {
       const prev = new Date(
@@ -869,8 +872,8 @@ function Workspace({
               </div>
             </div>
           )}
-          {current[0] === "dashboard" && period === "calendar" && end > today && (
-            <p className="dashboard-month-context">Faturas e parcelas futuras são compromissos registrados. Receitas previstas não são recebimentos; saldo e patrimônio mostram a posição atual.</p>
+          {current[0] === "dashboard" && ["month", "calendar"].includes(period) && end > today && (
+            <p className="dashboard-month-context">Receitas e despesas incluem lançamentos pendentes e finalizados nas datas deste mês. Previstos não são recebimentos ou pagamentos efetivos; saldo disponível e patrimônio mostram a posição atual.</p>
           )}
           {notice && (
             <div role="status" className="notice dismissible-notice"><span>{notice}</span><button className="icon-button" aria-label="Fechar aviso" onClick={() => setNotice("")}><X size={16} /></button></div>
@@ -1511,7 +1514,7 @@ function Workspace({
                   </Panel>
                   <Panel
                     title="Relatório financeiro do período"
-                    subtitle={`${pretty(start)} a ${pretty(end)} · despesas e parcelas por vencimento; compras integrais no histórico geral`}
+                    subtitle={`${pretty(start)} a ${pretty(end)} · receitas/despesas incluem pendentes e finalizadas; caixa apenas efetivo; parcelas por vencimento`}
                     action={
                       <div className="actions">
                         {(["csv", "xlsx", "pdf"] as const).map((f) => (

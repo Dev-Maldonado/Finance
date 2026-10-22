@@ -6,7 +6,7 @@ import { exportReportRows } from '../src/components/exports';
 import { savingsPeriodMetrics } from '../src/lib/savings-metrics';
 import { savingsHistory } from '../src/financial/savings-history';
 import type { Lot } from '../src/financial/engine';
-test('future confirmed entries stay in forecast, not receipts, monthly cash spending, budgets or exports', () => {
+test('future confirmed entries count in their period, budgets and exports while remaining out of actual cash', () => {
   const today = '2026-10-08';
   const snapshot: Snapshot = { user: { id: 'u', email: '' }, account_balances: [{ id: 'bank', kind: 'bank', balance: '1090' }], transactions: [
     { id: 'received', description: 'Recebida', date: '2026-10-05', amount: '100', type: 'income', status: 'confirmed' },
@@ -19,10 +19,10 @@ test('future confirmed entries stay in forecast, not receipts, monthly cash spen
   ], credit_card_invoices: [{ id: 'invoice', card_id: 'card', due_date: '2026-10-10' }], credit_card_installments: [{ id: 'valid', purchase_id: 'old', invoice_id: 'invoice', amount: '100' }, { id: 'not-yet', purchase_id: 'future', invoice_id: 'invoice', amount: '90' }] };
   const model = dashboardModel(snapshot, '2026-10-01', '2026-10-31', 'custom', today);
   const summary = financialSummary(snapshot, '2026-10-01', '2026-10-31', today);
-  expect(model.current).toMatchObject({ income: '100.00', cashExpense: '10.00', cardExpense: '100.00', expenses: '110.00', net: '-10.00' });
-  expect(summary).toMatchObject({ income: '100.00', cashExpense: '10.00', cardExpense: '100.00', expense: '110.00' });
-  expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '500' }, today).spent).toBe('110.00');
-  expect(exportReportRows(snapshot, '2026-10-01', '2026-10-31', true, today).map(row => row.source_id)).toEqual(['export:received', 'export:spent', 'installment:valid']);
+  expect(model.current).toMatchObject({ income: '1100.00', cashExpense: '410.00', cardExpense: '100.00', expenses: '510.00', net: '590.00', receivedIncome: '100.00', paidExpense: '10.00', expectedIncome: '1000.00', expectedExpense: '400.00', cashNet: '90.00' });
+  expect(summary).toMatchObject({ income: '1100.00', cashExpense: '410.00', cardExpense: '100.00', expense: '510.00', cash: '1090.00' });
+  expect(budgetMetrics(snapshot, { month: '2026-10-01', amount: '500' }, today).spent).toBe('510.00');
+  expect(exportReportRows(snapshot, '2026-10-01', '2026-10-31', true, today).map(row => row.source_id)).toEqual(['export:received', 'export:spent', 'installment:valid', 'export:future-income', 'export:future-expense']);
   expect(forecastItems(snapshot, today, '2026-10-31').filter(item => item.source === 'transaction').map(item => item.id)).toEqual(['transaction:future-expense', 'transaction:future-income']);
 });
 test('a recorded savings lot starts its chart even without published rates, without inventing a return', () => {
