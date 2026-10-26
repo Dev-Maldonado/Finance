@@ -3,6 +3,7 @@ import { transactionHistory, filterTransactionHistory } from "@/lib/transaction-
 import { DashboardWalletArt } from "./dashboard-overview";
 import { PurchaseHistory } from "./purchase-history";
 import { RecurringBills } from "./recurring-bills";
+import { DesktopNavigation } from "./desktop-navigation";
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
@@ -681,34 +682,12 @@ function Workspace({
           )}
         </Link>
         <span className="nav-label">SEU ESPAÇO FINANCEIRO</span>
-        <nav>
-          {nav.map(([path, label, Icon]) => (
-            <Link
-              key={path}
-              href={path === "dashboard" ? "/" : `/${path}`}
-              className={current[0] === path ? "active" : ""}
-              onClick={() => setMobile(false)}
-              title={label}
-            >
-              <Icon size={20} />
-              {!collapsed && <span>{label}</span>}
-              {!collapsed && path === "caixinhas" && (
-                <small className="new">Manual</small>
-              )}
-            </Link>
-          ))}
-        </nav>
+        <DesktopNavigation items={nav} current={current[0]} collapsed={collapsed} onNavigate={() => setMobile(false)} />
         {!collapsed && (
-          <div className="sidebar-note">
-            <span>
-              <ShieldCheck size={22} />
-            </span>
-            <strong>Mais clareza, mais liberdade.</strong>
-            <p>Seu futuro começa nas escolhas de hoje.</p>
-          </div>
+          <div className="sidebar-privacy"><ShieldCheck size={14} /><span>Ambiente privado</span></div>
         )}
         <button
-          className="collapse"
+          className="sidebar-collapse"
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           aria-expanded={!collapsed}
@@ -729,7 +708,7 @@ function Workspace({
           {!collapsed && (
             <div>
               <strong>Minha conta</strong>
-              <small>{snapshot?.user.email}</small>
+              <small title={snapshot?.user.email}>{snapshot?.user.email}</small>
             </div>
           )}
           <button

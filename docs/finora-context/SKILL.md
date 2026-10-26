@@ -84,3 +84,7 @@ Receitas e despesas pendentes ou confirmadas entram nos indicadores, categorias,
 ## Contas Recorrentes — 26/10/2026
 
 Seção `/recorrentes` centraliza parcelas ainda a pagar, gastos fixos e programados por mês. Consulta utiliza os registros existentes, sem ledger paralelo; a projeção de recorrências é compartilhada com o planejamento. Escopos por ocorrência e a partir dela preservam pagamentos e meses anteriores. Migration 26 adiciona `recurring_transactions.series_id` para trechos da mesma série e RPC autenticada/idempotente; ocorrências isoladas reutilizam o source_id do gerador, inclusive cancelamentos. Resumo de cartão usa saldo pendente da fatura, sem atribuir pagamento parcial a parcelas arbitrárias. Ver [RECURRING-BILLS.md](../RECURRING-BILLS.md).
+
+## Navegação desktop e uso prático — 26/10/2026
+
+Menu desktop agrupado, com grade compartilhada pela página e sem scroll interno; em janelas baixas acompanha a rolagem natural. `sidebar-collapse` evita a utility `collapse` do Tailwind que escondia o botão. Todos os módulos, recolher/expandir e navegação mobile preservados. Pendente não desconta do saldo; confirmado conta somente com data até hoje. Sugestões futuras e limites atuais em [UX-PRACTICAL-REVIEW.md](../UX-PRACTICAL-REVIEW.md); não foram automaticamente implementadas. Comparações de preservação em testes usam IDs estáveis para ignorar somente a ordem SQL, mantendo todos os registros e campos.

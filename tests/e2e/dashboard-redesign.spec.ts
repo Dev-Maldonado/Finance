@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
+import { rowsById } from '../helpers/snapshot';
 if (!['localhost','127.0.0.1'].includes(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname)) throw Error('Redesign checks require local data');
 const admin=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!,{auth:{persistSession:false}});
 test('redesign preserves twelve visible areas, eight indicators, errors, large negative money and financial records across desktop/tablet/mobile',async({page})=>{
@@ -54,7 +55,7 @@ test('redesign preserves twelve visible areas, eight indicators, errors, large n
   await expect(page).toHaveURL(/#dashboard-faturas$/);await expect(page.getByRole('heading',{name:'Cartões e faturas',exact:true})).toBeInViewport();
   const after=await (await page.request.get('/api/snapshot')).json();
   expect(errors).toEqual([]);
-  expect(after.account_balances).toEqual(before.account_balances);expect(after.transactions).toEqual(before.transactions);expect(after.credit_card_installments).toEqual(before.credit_card_installments);
+  expect(rowsById(after.account_balances)).toEqual(rowsById(before.account_balances));expect(rowsById(after.transactions)).toEqual(rowsById(before.transactions));expect(rowsById(after.credit_card_installments)).toEqual(rowsById(before.credit_card_installments));
  } finally {expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull();}
 });
 
@@ -85,6 +86,6 @@ test('reference overview keeps real totals, wealth history and all navigation on
   }
   await page.locator('.dashboard-section-nav a[href="#dashboard-patrimonio"]').click();await expect(page.locator('.dashboard-section-nav a[href="#dashboard-patrimonio"]')).toHaveAttribute('aria-current','location');await expect(page.getByRole('heading',{name:'Composição do patrimônio',exact:true})).toBeInViewport();
   const headingBox=await page.locator('#dashboard-heading-patrimonio').boundingBox(),dockBox=await page.locator('.dashboard-economic-dock').boundingBox();expect(headingBox!.y).toBeGreaterThanOrEqual(dockBox!.y+dockBox!.height);
-  const after=await(await page.request.get('/api/snapshot')).json();expect(after.transactions).toEqual(before.transactions);expect(after.net_worth_snapshots).toEqual(before.net_worth_snapshots);
+  const after=await(await page.request.get('/api/snapshot')).json();expect(rowsById(after.transactions)).toEqual(rowsById(before.transactions));expect(rowsById(after.net_worth_snapshots)).toEqual(rowsById(before.net_worth_snapshots));
  } finally {expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();}
 });

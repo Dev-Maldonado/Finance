@@ -29,7 +29,7 @@ export function RecurringBills({ snapshot, today, onSaved, onNew, onEditTransact
   const model = useMemo(() => monthlyCommitments(snapshot, month, today), [snapshot, month, today]);
   return <div className="recurring-bills" ref={root}>
     <section className="panel commitments-toolbar" aria-label="Navegação mensal de contas recorrentes">
-      <div><span className="eyebrow">SEUS COMPROMISSOS, MÊS A MÊS</span><h2>{invoiceMonthLabel(month)}</h2><p>Somente valores ainda a pagar. Cada compromisso aparece uma única vez.</p></div>
+      <div><span className="eyebrow">SEUS COMPROMISSOS, MÊS A MÊS</span><h2>{invoiceMonthLabel(month)}</h2><p>Contas a pagar neste mês, sem duplicações. Pendentes não descontam do saldo disponível.</p></div>
       <InvoiceMonthPicker month={month} today={today} onChange={changeMonth} label="Mês das contas recorrentes" previousLabel="Voltar um mês" />
       <div className="actions"><button onClick={() => onNew('recurring', month)}><Repeat2 size={16} /> Novo gasto fixo</button><button className="primary" onClick={() => onNew('transaction', month)}><Plus size={16} /> Gasto programado</button><Link href="/transacoes">Gerenciar recorrências</Link></div>
     </section>

@@ -1,0 +1,42 @@
+/* A desktop sidebar shares the page grid, so short windows can scroll naturally
+   without clipping navigation or creating an independent menu scrollbar. */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .workspace { display: grid; grid-template-columns: 230px minmax(0,1fr); align-items: start; transition: grid-template-columns .16s ease; }
+  .workspace.collapsed { grid-template-columns: 80px minmax(0,1fr); }
+  .workspace > .sidebar { position: sticky; inset: 0 auto auto 0; grid-column: 1; grid-row: 1; width: 100%; height: auto; min-height: 100dvh; padding: 20px 14px 12px; overflow: visible; gap: 0; }
+  .workspace > .main, .workspace.collapsed > .main { grid-column: 2; grid-row: 1; width: auto; margin-left: 0; min-width: 0; }
+  .workspace .sidebar .brand { padding: 0 10px; font-size: 34px; }
+  .workspace .sidebar .brand span { font-size: 20px; }
+  .workspace .sidebar .nav-label { margin: 14px 10px 12px; font-size: 8px; line-height: 12px; }
+  .workspace .sidebar nav { gap: 10px; }
+  .sidebar-group { display: grid; gap: 2px; min-width: 0; }
+  .sidebar-group-label { padding: 0 10px 4px; color: #756c83; text-transform: uppercase; font-size: 9px; line-height: 12px; font-weight: 600; letter-spacing: .7px; }
+  .workspace .sidebar nav a { min-height: 36px; padding: 7px 10px; font-size: 11.5px; line-height: 16px; gap: 10px; }
+  .workspace .sidebar nav a > svg { flex-shrink: 0; }
+  .workspace .sidebar nav a.active { box-shadow: inset 3px 0 #6335df; }
+  .sidebar-settings { border-top: 1px solid #eeebf4; padding-top: 7px; margin-top: 2px; }
+  .sidebar-privacy { display: flex; align-items: center; gap: 7px; color: #787085; padding: 12px 10px 4px; font-size: 10px; line-height: 16px; }
+  .sidebar-privacy svg { color: #5b35d5; flex-shrink: 0; }
+  .workspace .sidebar .sidebar-collapse { min-height: 30px; margin-top: auto; padding: 7px 10px; line-height: 16px; }
+  .workspace .sidebar .profile { padding-top: 10px; margin-top: 5px; min-width: 0; }
+  .workspace .sidebar .profile .avatar { width: 30px; height: 30px; }
+  .workspace .sidebar .profile small { margin-top: 3px; }
+  .workspace.collapsed > .sidebar { padding: 20px 10px 12px; }
+  .workspace.collapsed .sidebar .brand { padding: 0; justify-content: center; }
+  .workspace.collapsed .sidebar .nav-label { display: none; }
+  .workspace.collapsed .sidebar nav { margin-top: 22px; gap: 10px; }
+  .workspace.collapsed .sidebar nav a { justify-content: center; }
+  .workspace.collapsed .sidebar .profile { gap: 6px; }
+  @media (max-height: 799px) {
+    .workspace > .sidebar { padding-top: 14px; padding-bottom: 10px; }
+    .workspace .sidebar .nav-label { margin-top: 10px; margin-bottom: 10px; }
+    .workspace .sidebar nav { gap: 8px; }
+    .workspace .sidebar nav a { min-height: 32px; padding-block: 6px; }
+    .sidebar-group-label { padding-bottom: 2px; }
+    .sidebar-privacy { padding-top: 8px; }
+  }
+  @media (max-height: 679px) {
+    .workspace > .sidebar { position: static; }
+  }
+}
+@media (prefers-reduced-motion: reduce) { .workspace { transition: none; } }

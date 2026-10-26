@@ -174,7 +174,7 @@ button.primary:hover {
   margin: 0;
   color: #9690ac;
 }
-.collapse {
+.sidebar-collapse {
   margin-top: auto;
   background: none;
   border: 0;
@@ -1698,7 +1698,7 @@ footer small {
 }
 .sidebar-note p,
 .profile small,
-.collapse {
+.sidebar-collapse {
   color: #70657e;
 }
 .page-head p,

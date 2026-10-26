@@ -55,3 +55,28 @@ test('monthly bills combine installments, fixed and scheduled expenses; scoped e
     await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Mais opções',exact:true}).click();await expect(page.getByRole('dialog',{name:'Todos os recursos'}).getByRole('link',{name:'Contas Recorrentes',exact:true})).toBeVisible();
   }finally{expect((await admin.auth.admin.deleteUser(uid)).error).toBeNull();}
 });
+
+test('fixed and scheduled pending expenses do not debit cash; only confirmed entries dated through today do',async({page})=>{
+  test.setTimeout(90000);
+  const email=`cash-rules-${randomUUID()}@example.test`,password=randomUUID()+'Aa1!';
+  const created=await admin.auth.admin.createUser({email,password,email_confirm:true});expect(created.error).toBeNull();const uid=created.data.user!.id;
+  try{
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date()),next=shiftInvoiceMonth(today.slice(0,7),1);
+    const account=await admin.from('financial_accounts').insert({user_id:uid,name:'Conta do saldo',kind:'bank',initial_balance:'1000'}).select('id').single();expect(account.error).toBeNull();
+    const rec=await admin.from('recurring_transactions').insert({user_id:uid,account_id:account.data!.id,description:'Internet pendente',type:'expense',amount:'100',frequency:'monthly',next_date:today}).select('id').single();expect(rec.error).toBeNull();
+    await page.goto('/recorrentes');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
+    const total=page.getByRole('article',{name:'Total previsto a pagar',exact:true}).locator('strong');await expect(total).toHaveText('R$ 100,00');
+    const balance=async(expected:string)=>{const r=await admin.from('account_balances').select('balance').eq('id',account.data!.id).single();expect(r.error).toBeNull();expect(r.data!.balance).toBe(expected);};
+    await balance('1000.00');
+    await page.getByRole('button',{name:'Gasto programado',exact:true}).click();const dialog=page.getByRole('dialog');await expect(dialog.getByLabel('Status',{exact:true})).toHaveValue('pending');await dialog.getByLabel('Descrição',{exact:true}).fill('Gasto programado pendente');await dialog.getByLabel('Valor (R$)',{exact:true}).fill('50');await dialog.getByLabel('Conta',{exact:true}).selectOption(account.data!.id);await dialog.getByRole('button',{name:'Salvar',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(total).toHaveText('R$ 150,00');await balance('1000.00');
+    const request=async(url:string,data:Record<string,unknown>)=>{const r=await page.request.post(url,{headers:{Origin:'http://localhost:3000'},data});expect(r.ok(),await r.text()).toBe(true);};
+    await request('/api/operations',{action:'transaction',request_id:randomUUID(),payload:{account_id:account.data!.id,description:'Confirmado com data futura',type:'expense',amount:'25',date:`${next}-01`,status:'confirmed'}});await balance('1000.00');
+    const data=await(await page.request.get('/api/snapshot')).json();
+    for(const [description,amount,expected] of [['Gasto programado pendente','50','950.00'],['Internet pendente','100','850.00']]){
+      const tx=data.transactions.find((t:{description:string})=>t.description===description);expect(tx.status).toBe('pending');
+      await request('/api/transactions',{transaction_id:tx.id,replacement:{account_id:account.data!.id,description,type:'expense',amount,date:today,status:'confirmed'}});await balance(expected);
+    }
+    await page.getByRole('button',{name:'Atualizar dados',exact:true}).click();await expect(total).toHaveText('R$ 0,00');
+    await page.getByLabel('Mês das contas recorrentes').fill(next);await expect(page.getByRole('article',{name:'Gastos programados',exact:true}).locator('strong')).toHaveText('R$ 25,00');await balance('850.00');
+  }finally{expect((await admin.auth.admin.deleteUser(uid)).error).toBeNull();}
+});

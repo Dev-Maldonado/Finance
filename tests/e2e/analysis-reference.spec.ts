@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
+import { rowsById } from '../helpers/snapshot';
 import { shiftInvoiceMonth } from '../../src/lib/card-invoices';
 if (!['localhost','127.0.0.1'].includes(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname)) throw Error('Analysis checks require local data');
 const admin=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!,{auth:{persistSession:false}});
@@ -53,6 +54,6 @@ test('reference analysis preserves values, category hierarchy, real comparisons,
    expect(await page.locator('.dashboard-metric').allTextContents()).toEqual(original);
    await analysis.screenshot({path:`test-results/analysis-reference-${width}.png`});
   }
-  const after=await (await page.request.get('/api/snapshot')).json();expect(after.transactions).toEqual(before.transactions);expect(after.account_balances).toEqual(before.account_balances);expect(errors).toEqual([]);
+  const after=await (await page.request.get('/api/snapshot')).json();expect(rowsById(after.transactions)).toEqual(rowsById(before.transactions));expect(rowsById(after.account_balances)).toEqual(rowsById(before.account_balances));expect(errors).toEqual([]);
  } finally {expect((await admin.auth.admin.deleteUser(userId)).error).toBeNull();}
 });
