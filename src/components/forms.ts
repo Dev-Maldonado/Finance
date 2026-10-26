@@ -35,6 +35,9 @@ export const forms: Record<string, FormDef> = {
     editTitle: "Preferências financeiras",
     resource: "user_settings",
     fields: [
+      { key: 'default_account_id', label: 'Conta padrão', source: 'accounts', required: false },
+      { key: 'default_expense_category_id', label: 'Categoria padrão de despesas', source: 'categories', required: false },
+      { key: 'default_income_category_id', label: 'Categoria padrão de receitas', source: 'categories', required: false },
       {
         key: "emergency_months_target",
         label: "Meses de despesas essenciais para a reserva",
@@ -234,7 +237,8 @@ export const forms: Record<string, FormDef> = {
         ],
       },
       amount,
-      date,
+      { ...date, help: 'Vencimento / competência: define o mês da receita ou despesa, mesmo quando o pagamento acontece em outra data.' },
+      { key: 'settled_on', label: 'Data efetiva do pagamento/recebimento', type: 'date', required: false, help: 'Opcional. Mantém a data do lançamento como vencimento; o caixa usa a data efetiva. Em branco, mantém a regra de data do lançamento.' },
       account,
       category,
       {

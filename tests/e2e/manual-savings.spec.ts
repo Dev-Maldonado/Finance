@@ -29,15 +29,16 @@ test('official economic indicators handle one unavailable provider and mobile di
  const email=`macro-ui-${randomUUID()}@example.test`,password=randomUUID()+'Aa1!';const created=await admin.auth.admin.createUser({email,password,email_confirm:true});expect(created.error).toBeNull();
  try {
   let available=false,requests=0;
-  await page.route('**/api/economic-indicators',route=>{requests++;return route.fulfill({json:{checkedAt:'2026-10-09T12:00:00Z',selic:{value:available?'13.75':null,reference:available?'2026-10-09':null,source:'Banco Central',url:'https://www.bcb.gov.br',error:'Fonte oficial indisponível'},ipca:{value:'4.58',reference:'2026-09',source:'IBGE',url:'https://www.ibge.gov.br',error:null}}});});
+  await page.route('**/api/economic-indicators*',route=>{requests++;return route.fulfill({json:{checkedAt:'2026-10-09T12:00:00Z',selic:{value:available?'13.75':null,reference:available?'2026-10-09':null,source:'Banco Central',url:'https://www.bcb.gov.br',error:'Fonte oficial indisponível'},ipca:{value:'4.58',reference:'2026-09',source:'IBGE',url:'https://www.ibge.gov.br',error:null},usd:{value:'5.1234',reference:'2026-10-09',source:'Banco Central',url:'https://www.bcb.gov.br',error:null}}});});
   await page.setViewportSize({width:320,height:760});await page.goto('/');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
   const cards=page.getByLabel('Indicadores econômicos oficiais');await expect(cards).toContainText('Indisponível');await expect(cards).toContainText('4,58%');await expect(cards).toContainText('09/2026');await expect(cards).toContainText('IBGE');
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/economic-indicators-mobile.png',fullPage:true});
   const ticker=page.getByLabel('Resumo fixo dos indicadores econômicos');
   await expect(ticker).toContainText('Indisponível');await expect(ticker).toContainText('4,58%');await expect(ticker).toContainText('09/2026');
+  await expect(ticker).toContainText('R$ 5,1234');await expect(cards).toContainText('PTAX de venda diária');
   available=true;
   await cards.getByRole('button',{name:'Atualizar indicadores econômicos'}).click();await expect(cards.getByRole('button',{name:'Atualizar indicadores econômicos'})).toBeEnabled();
-  await expect(cards).toContainText('13,75%ao ano');await expect(ticker).toContainText('13,75% a.a.');await expect(ticker).toContainText('09/10/2026');
+  await expect(cards).toContainText('13,75% a.a.');await expect(ticker).toContainText('13,75% a.a.');await expect(ticker).toContainText('09/10/2026');
   await ticker.getByRole('link',{name:'Consultar fontes e detalhes dos indicadores econômicos'}).click();await expect(page).toHaveURL(/#dashboard-economia$/);await expect(cards).toBeInViewport();
   await expect(ticker).toBeInViewport();
   await expect.poll(()=>ticker.evaluate(el=>{const box=el.getBoundingClientRect();const header=document.querySelector('.mobile-app-header')?.getBoundingClientRect();return box.top>=(header?.bottom??0)-1;})).toBe(true);
@@ -47,5 +48,6 @@ test('official economic indicators handle one unavailable provider and mobile di
   for(const width of [320,390,768,1440]) {await page.setViewportSize({width,height:844});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await cards.locator('strong').evaluateAll(elements=>elements.every(e=>e.scrollWidth<=e.clientWidth))).toBe(true);await expect(ticker).toBeInViewport();expect(await ticker.evaluate(el=>{const r=el.getBoundingClientRect();return document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.dashboard-economic-ticker')===el;})).toBe(true);}
   expect(requests).toBe(4);
   await cards.screenshot({path:'test-results/economic-indicators-available.png'});
+  await ticker.screenshot({path:'test-results/economic-ticker-desktop.png'});await page.setViewportSize({width:390,height:844});await ticker.screenshot({path:'test-results/economic-ticker-mobile.png'});
  }finally{expect((await admin.auth.admin.deleteUser(created.data.user!.id)).error).toBeNull();}
 });

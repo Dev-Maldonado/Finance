@@ -15,7 +15,7 @@ test('future pending and confirmed entries update their monthly indicators immed
   try {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()), month = today.slice(0, 7), next = shiftInvoiceMonth(month, 1);
     const account = await admin.from('financial_accounts').insert({ user_id: id, name: 'Conta de teste', kind: 'bank', initial_balance: '1000' }).select('id').single(); expect(account.error).toBeNull();
-    await page.route('**/api/economic-indicators', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
+    await page.route('**/api/economic-indicators*', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
     await page.goto('/'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
     const income = page.getByRole('article', { name: 'Receitas do período', exact: true }), expense = page.getByRole('article', { name: 'Gastos do mês', exact: true }), cash = page.getByRole('article', { name: 'Saldo disponível', exact: true });
     await expect(cash).toContainText('R$ 1.000,00');

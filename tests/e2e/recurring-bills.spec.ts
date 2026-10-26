@@ -14,7 +14,7 @@ test('monthly bills combine installments, fixed and scheduled expenses; scoped e
     const account=await admin.from('financial_accounts').insert({user_id:uid,name:'Conta principal',kind:'bank',initial_balance:'1000'}).select('id').single();expect(account.error).toBeNull();
     const recurring=await admin.from('recurring_transactions').insert({user_id:uid,account_id:account.data!.id,description:'Internet da família',type:'expense',amount:'59.90',frequency:'monthly',next_date:`${previous}-01`}).select('id').single();expect(recurring.error).toBeNull();
     const card=await admin.from('credit_cards').insert({user_id:uid,account_id:account.data!.id,name:'Cartão principal',credit_limit:'5000',closing_day:5,due_day:10}).select('id').single();expect(card.error).toBeNull();
-    await page.route('**/api/economic-indicators',r=>r.fulfill({status:503,json:{error:'Unavailable test source'}}));
+    await page.route('**/api/economic-indicators*',r=>r.fulfill({status:503,json:{error:'Unavailable test source'}}));
     await page.goto('/recorrentes');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
     await expect(page.getByRole('heading',{name:'Contas Recorrentes',exact:true})).toBeVisible();
     const generated=await page.request.post('/api/recurring',{headers:{Origin:'http://localhost:3000'},data:{}});expect(generated.ok(),await generated.text()).toBe(true);

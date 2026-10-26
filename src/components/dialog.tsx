@@ -43,11 +43,15 @@ export function Dialog({
   const [purchaseCard, setPurchaseCard] = useState(str(initial ?? {}, "card_id"));
   const [recurringExpense, setRecurringExpense] = useState(false);
   const [transactionType, setTransactionType] = useState(str(initial ?? {}, "type") || "expense");
+  const [transactionStatus, setTransactionStatus] = useState(str(initial ?? {}, 'status') || 'confirmed');
+  const isTransactionForm = form.action === 'transaction' || form.endpoint === '/api/transactions';
+  const [transactionCategory,setTransactionCategory]=useState(str(initial??{},'category_id'));
+  const [categoryTouched,setCategoryTouched]=useState(false);
   const purchaseTotalValue = form.purchaseCalculator ? purchaseTotal(entryValue.replace(",", "."), parcelCount, entryMethod) : null;
   const selectedCard = rows(snapshot, "credit_cards").find(card => card.id === purchaseCard);
   const preview = purchaseTotalValue && selectedCard ? installmentPreview(purchaseTotalValue, parcelCount, purchaseDate, Number(selectedCard.closing_day), Number(selectedCard.due_day)) : [];
   const canCreateRecurring = form.action === "transaction" && !initial?.id && transactionType === "expense";
-  const activeFields = form.fields.filter(field => !(recurringExpense && canCreateRecurring && ["status", "notes"].includes(field.key)));
+  const activeFields = form.fields.filter(field => !(recurringExpense && canCreateRecurring && ["status", "notes", 'settled_on'].includes(field.key)) && !(field.key === 'settled_on' && (transactionStatus !== 'confirmed' || !['income','expense'].includes(transactionType) || !!initial?.group_id || !!initial?.linked_income_id)));
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
   }).format(new Date());
@@ -103,6 +107,7 @@ export function Dialog({
     setError("");
     const fd = new FormData(event.currentTarget);
     const data: Record<string, unknown> = {};
+    if(isTransactionForm&&transactionStatus==='pending')data.settled_on=null;
     for (const f of activeFields) {
       const v = fd.get(f.key);
       data[f.key] =
@@ -212,14 +217,14 @@ export function Dialog({
               className={f.type === "checkbox" ? "checkbox" : ""}
             >
               {form.purchaseCalculator && f.key === "amount" ? (entryMethod === "total" ? "Valor total da compra (R$)" : "Valor individual da parcela (R$)") : recurringExpense && f.key === "date" ? "Data de início" : f.label}
-              {f.source === 'categories' ? <CategoryPicker categories={rows(snapshot, 'categories')} name={f.key} label={f.label} defaultValue={str(initial ?? {}, f.key) || f.default || ''} required={f.required !== false} /> : f.source || f.options ? (
+              {f.source === 'categories' ? <CategoryPicker categories={rows(snapshot, 'categories')} name={f.key} label={f.label} defaultValue={str(initial ?? {}, f.key) || f.default || ''} value={f.key==='category_id'&&isTransactionForm?transactionCategory:undefined} onChange={f.key==='category_id'&&isTransactionForm?v=>{setTransactionCategory(v);setCategoryTouched(true);}:undefined} required={f.required !== false} /> : f.source || f.options ? (
                 <select
                   aria-label={f.label}
                   name={f.key}
                   required={f.required !== false}
                   defaultValue={str(initial ?? {}, f.key) || f.default || (f.key === "type" ? "expense" : "")}
                   onChange={
-                    form.purchaseCalculator && f.key === "card_id" ? event => setPurchaseCard(event.target.value) : f.key === "type" && form.action === "transaction" ? event => { setTransactionType(event.target.value); if (event.target.value !== "expense") setRecurringExpense(false); } : undefined
+                    form.purchaseCalculator && f.key === "card_id" ? event => setPurchaseCard(event.target.value) : f.key === "type" && isTransactionForm ? event => { setTransactionType(event.target.value); if (event.target.value !== "expense") setRecurringExpense(false); if(!initial?.id&&!categoryTouched){const preference=rows(snapshot,'user_settings')[0]??{};const category=str(preference,event.target.value==='income'?'default_income_category_id':'default_expense_category_id');setTransactionCategory(['income','expense'].includes(event.target.value)&&rows(snapshot,'categories').some(c=>c.id===category&&!c.archived&&!c.merged_into_id)?category:'');} } : f.key === 'status' && isTransactionForm ? event => setTransactionStatus(event.target.value) : undefined
                   }
                 >
                   <option value="">
@@ -243,7 +248,7 @@ export function Dialog({
                   defaultValue={
                     form.purchaseCalculator && f.key === "amount" ? undefined : f.type === "checkbox"
                       ? undefined
-                      : str(initial ?? {}, f.key) ||
+                      : (f.key==='settled_on'&&initial?.status==='confirmed'&&str(initial,'date')<=today?str(initial,'settled_on')||str(initial,'date'):str(initial ?? {}, f.key)) ||
                         f.default ||
                         (f.type === "date" && f.required !== false && !initial
                           ? today
@@ -257,7 +262,7 @@ export function Dialog({
                       : undefined
                   }
                   min={f.min ?? (f.type === "number" ? 1 : undefined)}
-                  max={f.max ?? (f.key === "installments" ? 120 : undefined)}
+                  max={f.key === "settled_on" ? today : f.max ?? (f.key === "installments" ? 120 : undefined)}
                 />
               )}
               {f.help && <small className="field-help">{f.help}</small>}

@@ -4,6 +4,8 @@ import { DashboardWalletArt } from "./dashboard-overview";
 import { PurchaseHistory } from "./purchase-history";
 import { RecurringBills } from "./recurring-bills";
 import { DesktopNavigation } from "./desktop-navigation";
+import { SettlementDialog, type SettlementTarget } from './settlement-dialog';
+import { isSettled, transactionStatus } from '@/lib/transaction-state';
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
@@ -205,6 +207,7 @@ function Workspace({
 }) {
   const qc = useQueryClient();
   const [wealthSaving, setWealthSaving] = useState(false);
+  const [settlement, setSettlement] = useState<SettlementTarget|null>(null);
   const [wealthFeedback, setWealthFeedback] = useState<WealthFeedback | null>(null);
   const [removal, setRemoval] = useState<{
     kind: RemovalKind;
@@ -360,8 +363,20 @@ function Workspace({
         : [],
     [periodSummary],
   );
-  const open = (key: string, initial?: Row) =>
-    setModal({ form: forms[key], initial });
+  function open(key: string, initial?: Row) {
+    const kind = ['income','expense'].includes(key) ? 'transaction' : key;
+    const form = forms[kind], seed:Row = {...initial};
+    if (key === 'income' || key === 'expense') seed.type = key;
+    if (!seed.id && snapshot) {
+      const preferences=rows(snapshot,'user_settings')[0]??{};
+      const preferred=str(preferences,'default_account_id');
+      if(!seed.account_id&&form.fields.some(f=>f.key==='account_id')&&rows(snapshot,'financial_accounts').some(a=>a.id===preferred&&['bank','cash'].includes(str(a,'kind'))&&!a.archived))seed.account_id=preferred;
+      if(kind==='transfer'&&!seed.from_account&&rows(snapshot,'financial_accounts').some(a=>a.id===preferred&&!a.archived&&a.kind!=='savings'))seed.from_account=preferred;
+      if(['transaction','recurring'].includes(kind)&&!seed.category_id){const type=str(seed,'type')||'expense';const preferredCategory=str(preferences,type==='income'?'default_income_category_id':'default_expense_category_id');if(['income','expense'].includes(type)&&rows(snapshot,'categories').some(c=>c.id===preferredCategory&&!c.archived&&!c.merged_into_id))seed.category_id=preferredCategory;}
+      for(const field of form.fields)if(field.type==='date'&&field.required!==false&&!seed[field.key])seed[field.key]=localDate();
+    }
+    setModal({form,initial:Object.keys(seed).length?seed:undefined});
+  }
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["snapshot"] });
   };
@@ -590,16 +605,12 @@ function Workspace({
                     )?.name) ||
                     "—"}
                 </td>
-                <td data-label="Data">{pretty(str(t, "date"))}</td>
+                <td data-label="Data">{pretty(str(t, "date"))}{t.origin!=='card'&&t.settled_on&&<small>{t.type==='income'?'Recebido':'Pago'}: {pretty(str(t,'settled_on'))}</small>}</td>
                 <td data-label="Status">
                   <span
                     className={`badge ${t.status === "confirmed" ? "green" : ""}`}
                   >
-                    {t.origin === "card" && t.status !== "cancelled" ? str(t, "invoice_status") : t.status === "confirmed"
-                      ? "Confirmado"
-                      : t.status === "cancelled"
-                        ? "Excluído"
-                        : "Pendente"}
+                    {t.origin === "card" && t.status !== "cancelled" ? str(t, "invoice_status") : transactionStatus(t,today)}
                   </span>
                 </td>
                 <td data-label="Valor"
@@ -618,6 +629,7 @@ function Workspace({
                     t.origin !== "card" && !t.group_id &&
                     t.status !== "cancelled" && (
                       <div className="actions">
+                        {['income','expense'].includes(str(t,'type'))&&!t.linked_income_id&&!isSettled(t,today)&&<button onClick={()=>setSettlement({transaction:t,description:str(t,'description'),amount:D(str(t,'amount')).abs().toFixed(2),due:str(t,'date'),accountId:str(t,'account_id'),type:t.type==='income'?'income':'expense'})}>{t.type==='income'?'Receber':'Pagar'}</button>}
                         <button
                           onClick={() =>
                             setModal({
@@ -784,6 +796,7 @@ function Workspace({
               {(controls[current[0]] ?? []).map(([key, label], i, all) => (
                 <button
                   key={key}
+                  disabled={!snapshot}
                   className={i === all.length - 1 ? "primary" : ""}
                   onClick={() => open(key)}
                 >
@@ -793,6 +806,7 @@ function Workspace({
               ))}
             </div>
           </div>
+          {['dashboard','transacoes','recorrentes','contas'].includes(current[0])&&<div className="quick-entry-actions" role="group" aria-label="Atalhos de lançamentos"><button disabled={!snapshot} className="financial-surface tone-income" onClick={()=>open('income')}><ArrowDownLeft size={16}/>Nova receita</button><button disabled={!snapshot} className="financial-surface tone-expense" onClick={()=>open('expense')}><ArrowUpRight size={16}/>Nova despesa</button><button disabled={!snapshot} onClick={()=>open('transfer')}><ArrowLeftRight size={16}/>Transferência</button></div>}
           {!["cartoes", "investimentos", "recorrentes"].includes(current[0]) && (
             <div className={`period-bar ${current[0] === "dashboard" ? "dashboard-page-controls" : ""}`}>
               <div className="period-tabs">
@@ -954,6 +968,7 @@ function Workspace({
                 </div>
               )}
               {current[0] === "recorrentes" && <RecurringBills snapshot={snapshot} today={today} onSaved={refresh}
+                onSettle={setSettlement}
                 onNew={(kind, month) => { const date = month === today.slice(0, 7) ? today : `${month}-01`; open(kind, kind === 'recurring' ? { type: 'expense', next_date: date, start_date: date } : { type: 'expense', date, status: 'pending' }); }}
                 onEditTransaction={row => setModal({ form: { ...forms.transaction, action: undefined, endpoint: '/api/transactions' }, initial: { ...row, amount: D(str(row, 'amount')).abs().toFixed(2) } })}
                 onRemoveTransaction={row => setRemoval({ kind: 'transaction', row })}
@@ -1636,15 +1651,15 @@ function Workspace({
                     }}
                   />
                   <Panel
-                    title="Preferências do planejamento"
-                    subtitle="A meta de reserva usa somente as caixinhas marcadas como reserva de emergência."
+                    title="Preferências financeiras"
+                    subtitle="Conta e categorias padrão para novos lançamentos. A meta de reserva usa as caixinhas marcadas como emergência."
                   >
                     <button
                       onClick={() =>
                         open("preferences", rows(snapshot, "user_settings")[0])
                       }
                     >
-                      Ajustar meses da reserva
+                      Ajustar preferências e meses da reserva
                     </button>
                   </Panel>
                   <Panel
@@ -1666,6 +1681,7 @@ function Workspace({
           </footer>
         </main>
       </div>
+      {settlement&&snapshot&&<SettlementDialog snapshot={snapshot} target={settlement} today={today} onClose={()=>setSettlement(null)} onSaved={()=>{refresh();setNotice('Pagamento/recebimento registrado. Vencimento preservado e saldo atualizado.');}}/>}
       {modal && snapshot && (
         <Dialog
           form={modal.form}

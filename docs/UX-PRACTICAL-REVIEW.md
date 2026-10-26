@@ -1,24 +1,45 @@
-# Uso prático — revisão de 26/10/2026
+# Uso prático — sugestões implementadas em 26/10/2026
 
-## Comportamento conferido
+## Pagar e receber sem editar o lançamento
 
-- Recorrências geram lançamentos pendentes. Programados criados em Contas Recorrentes também começam pendentes.
-- Pendente não altera o saldo disponível, mesmo após o vencimento. Compõe previsão e indicadores do período.
-- Confirmado com data até hoje altera o saldo. Confirmado com data futura passa a compor o saldo nessa data; não antecipa caixa.
-- Hoje existe uma única data no lançamento de conta, usada tanto na competência quanto no caixa. Para informar um pagamento feito em outro dia, é necessário corrigir essa data; não existe um campo independente de pagamento.
+Em Transações, as receitas e despesas ainda não efetivadas têm **Receber** ou **Pagar**. Em Contas Recorrentes, gastos fixos, programados e compromissos oferecem **Pagar**. Escolha a conta e a data efetiva; a atualização invalida o snapshot e recalcula os indicadores. Previsões recorrentes ainda sem lançamento são materializadas com o mesmo identificador de ocorrência do gerador, sem um ledger paralelo.
 
-## Ajustes entregues nesta revisão
+A baixa registra o valor integral. Faturas continuam usando seu fluxo de pagamento existente, que permite pagamentos parciais e mantém os vínculos das parcelas. Transferências e movimentos internos exigem suas operações próprias. Lançamentos já pagos/recebidos ou cancelados não oferecem outra baixa.
 
-Menu desktop agrupado por dinheiro, organização e patrimônio, com Configurações separada. Espaçamentos compactos para notebooks, perfil e privacidade discretos, 11 módulos preservados. Layout em grade, sem rolagem interna da barra lateral; em janelas muito baixas o menu acompanha a rolagem natural da página. Botão de recolher/expandir renomeado para evitar conflito com a utility `collapse` do Tailwind, que o tornava invisível. Mobile/PWA mantém sua navegação própria.
+## Competência e caixa em datas diferentes
 
-O início de Contas Recorrentes agora esclarece que pendentes não descontam o saldo. Novo teste de navegador confere o saldo persistido antes/depois de registrar e confirmar gastos fixos/programados. Comparações de preservação de snapshots foram ordenadas por ID, mantendo todos os campos, para evitar a falha do CI causada somente por ordem variável do SQL.
+- **Data** no formulário é o vencimento/competência: define o mês dos indicadores de receitas/despesas, categorias, orçamentos e comparativos.
+- **Data efetiva do pagamento/recebimento**, opcional para receitas/despesas confirmadas, define quando o saldo é movimentado. A baixa direta a preenche sem modificar o vencimento.
+- Pendente nunca altera o saldo, inclusive após vencer. Compõe previsão e indicadores do período.
+- Sem data efetiva, o comportamento anterior é mantido: confirmado só altera o caixa a partir da data do lançamento. Confirmado futuro é **Agendado**, não pago antecipadamente.
+- Registros antigos não recebem datas presumidas na migração. Uma correção explícita pode alterar as datas posteriormente; cancelamento mantém histórico e retira o efeito financeiro.
+- Fluxo de caixa operacional, saldo de conta, conciliação e previsões respeitam a data efetiva. Um pagamento antecipado não continua na previsão; um recebimento atrasado pertence ao caixa do mês recebido e à receita do mês original.
+- Importação reconhece possíveis correspondências pelo vencimento ou pela data efetiva, sempre exigindo revisão para conciliar; nunca duplica automaticamente uma baixa já registrada.
 
-## Sugestões prioritárias — ainda não implementadas
+Exclusões e alterações de séries continuam protegendo pagamentos anteriores. Baixas são transacionais, isoladas por usuário, idempotentes e protegidas contra repetição concorrente. A data efetiva não pode ser futura nem se aplicar a transferências, caixinhas ou ajustes internos.
 
-1. **Dar baixa diretamente na lista.** Ações “Pagar” e “Receber”, escolhendo conta e data, evitariam abrir a edição completa para trocar o status. Para uma previsão recorrente ainda sem lançamento, preservar seu identificador ao registrá-la.
-2. **Separar vencimento e pagamento.** Manter competência e vencimento originais e registrar o dia em que o dinheiro realmente entrou/saiu. Facilitaria antecipações e atrasos sem deslocar indevidamente os indicadores mensais. Exige evolução explícita do modelo e validação de parcelas/caixa, não apenas trocar rótulos.
-3. **Foco no que precisa de ação.** Filtros “Atrasadas”, “Próximos 7 dias” e “Este mês” em Contas Recorrentes, reaproveitando os alertas do planejamento e sem criar compromissos duplicados.
-4. **Saldo atual e após compromissos próximos.** Levar os indicadores já existentes de saldo/planejamento para perto das contas a pagar, com rótulos distintos, para reduzir a confusão entre dinheiro disponível e projeção.
-5. **Preencher menos campos.** Preferências por usuário para conta/categoria mais usadas e atalhos claros de Receita, Despesa e Transferência; sempre permitindo corrigir a escolha.
+## Foco nas próximas ações
 
-Também convém usar rótulos de status por tipo (“A pagar”, “Pago”, “A receber”, “Recebido”) e “Agendado” para confirmados futuros, respeitando a regra de data em vez de chamar todo confirmado de pagamento já efetivado.
+Contas Recorrentes mantém a navegação mensal e acrescenta **Atrasadas** e **Próximos 7 dias**. O intervalo de sete dias inclui hoje até a data indicada, inclusive quando atravessa o mês. Atrasadas consulta ocorrências registradas; não fabrica projeções retroativas de recorrências pausadas ou alteradas.
+
+**Saldo atual das contas** mostra caixa efetivo. **Saldo após contas previstas** desconta saídas previstas e pendências anteriores, sem antecipar entradas. A data final é explícita: fim do mês atual ou selecionado, limitado à projeção de 90 dias do planejamento. O resumo mensal continua separado por cartões, gastos fixos e programados.
+
+## Menos campos repetidos
+
+Em **Configurações → Preferências financeiras**, selecione uma conta padrão e categorias padrão de receita/despesa. Os novos formulários aplicam as preferências válidas, mantendo edição livre. Ao alternar o tipo no cadastro, a categoria padrão acompanha a escolha até que o usuário a selecione manualmente. Registros existentes preservam suas classificações.
+
+Atalhos **Nova receita**, **Nova despesa** e **Transferência** ficam no dashboard, Transações, Contas e Contas Recorrentes. Ações aguardam o carregamento inicial dos dados para não abrir cadastros sem as preferências. Todos os menus e ações anteriores permanecem disponíveis.
+
+## Indicadores oficiais
+
+- Selic: meta vigente, SGS 432 do Banco Central, em % a.a.
+- IPCA nacional acumulado em 12 meses: tabela 1737, variável 2265 do IBGE. SIDRA é a rota principal; o serviço de agregados do IBGE é alternativa. SGS 13522 do Banco Central é a última alternativa oficial, com fonte corretamente identificada.
+- Dólar USD/BRL: **PTAX de venda diária** do Banco Central, R$ por US$ 1, quatro casas decimais. Não representa câmbio em tempo real, turismo, spread ou IOF.
+
+Os três aparecem juntos na faixa discreta do dashboard e na seção completa com referência, fonte e atualização manual. Consulta automática a cada hora enquanto a tela está aberta e cache persistente no servidor; cada fonte falha independentemente. Em uma indisponibilidade, o último dado oficial validado permanece identificado como tal, com sua referência. Sem dado válido, mostrar indisponível. Nenhum índice calcula rendimento pessoal.
+
+O cache contém exclusivamente índices públicos, nunca dados financeiros privados. Somente o servidor com credencial de serviço grava; usuários autenticados podem consultar. Falha no cache não impede usar uma resposta oficial válida.
+
+## Preservação e validação
+
+Migration 27 acrescenta campos anuláveis, preferências e RPC de baixa, sem preencher ou reescrever datas/valores antigos. Teste de upgrade aplica a migração duas vezes sobre o esquema anterior e compara histórico, preferências, saldos e permissões. Testes de integração usam apenas usuários descartáveis no Supabase local. Evidências finais e publicação em STATUS.md.

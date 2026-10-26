@@ -9,7 +9,7 @@ test('desktop menu exposes every module without its own scroll, fits notebook he
   const email=`navigation-${randomUUID()}@example.test`,password=randomUUID()+'Aa1!';
   const created=await admin.auth.admin.createUser({email,password,email_confirm:true});expect(created.error).toBeNull();const uid=created.data.user!.id;
   try{
-    await page.route('**/api/economic-indicators',r=>r.fulfill({status:503,json:{error:'Unavailable test source'}}));
+    await page.route('**/api/economic-indicators*',r=>r.fulfill({status:503,json:{error:'Unavailable test source'}}));
     await page.goto('/recorrentes');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
     await expect(page.getByRole('article',{name:'Total previsto a pagar',exact:true})).toBeVisible();
     const sidebar=page.getByRole('complementary',{name:'Menu principal'}),nav=sidebar.getByRole('navigation',{name:'Navegação principal'});

@@ -17,7 +17,7 @@ test('dashboard month navigation updates invoices, monthly results and dates wit
       { date: `${previous}-01`, amount: '40', status: 'confirmed', description: 'Receita do mês anterior' },
       { date: `${next}-01`, amount: '5000', status: 'pending', description: 'Recebimento futuro pendente' },
     ].map(t => ({ ...t, user_id: id, account_id: account.data!.id, type: 'income' })))).error).toBeNull();
-    await page.route('**/api/economic-indicators', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
+    await page.route('**/api/economic-indicators*', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
     await page.goto('/'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
     await expect(page.getByRole('article', { name: 'Saldo disponível', exact: true })).toBeVisible();
     const purchase = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action: 'purchase', request_id: randomUUID(), payload: { card_id: card.data!.id, description: 'Compra em três meses', amount: '300.01', installments: 3, date: `${month}-01` } } }); expect(purchase.ok(), await purchase.text()).toBe(true);

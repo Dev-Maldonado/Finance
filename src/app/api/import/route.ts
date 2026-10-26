@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authenticatedDb } from "@/lib/server";
 import { fail, sameOrigin } from "@/lib/http";
 import { prepareImportRows, scopedSource, transactionFingerprint, importRequestId, forceNewImportSource } from "@/lib/import";
+import { cashDate } from '@/lib/transaction-state';
 import { D } from "@/financial/engine";
 import { z } from "zod";
 const decisionSchema = z.object({
@@ -22,11 +23,11 @@ export async function POST(req: Request) {
     if (parsed.length > 5000) throw new Error("Limite de 5000 linhas por arquivo");
     if (!parsed.length) return NextResponse.json(body.confirm ? { imported: 0, duplicates: 0, matched: 0 } : { rows: [] });
     const first = parsed.map(r => r.date).sort()[0], last = parsed.map(r => r.date).sort().at(-1)!;
-    const existing: { id: string; source_id: string | null; description: string; date: string; amount: string; type: string; group_id: string | null }[] = [];
+    const existing: { id: string; source_id: string | null; description: string; date: string; cash_date: string; amount: string; type: string; group_id: string | null }[] = [];
     for (let offset = 0; offset < 100000; offset += 1000) {
-      const { data, error } = await db.from("transactions").select("id,source_id,description,date,amount::text,type,group_id").eq("account_id", body.account_id).eq("status", "confirmed").gte("date", first).lte("date", last).order("id").range(offset, offset + 999);
+      const { data, error } = await db.from("transactions").select("id,source_id,description,date,settled_on,amount::text,type,group_id").eq("account_id", body.account_id).eq("status", "confirmed").or(`and(date.gte.${first},date.lte.${last}),and(settled_on.gte.${first},settled_on.lte.${last})`).order("id").range(offset, offset + 999);
       if (error) throw new Error(error.message);
-      existing.push(...data);
+      existing.push(...data.map(t=>({...t,cash_date:cashDate(t)})));
       if (data.length < 1000) break;
       if (offset === 99000) throw new Error("Divida o arquivo em períodos menores para revisar o histórico completo");
     }
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     const prepared = parsed.map(row => {
       const source_id = scopedSource(body.account_id, row.source_id);
       const duplicate = ids.has(source_id) || seen.has(source_id); seen.add(source_id);
-      const candidates = existing.filter(t => t.date === row.date && D(t.amount).eq(row.signed_amount) && (transactionFingerprint(t.description, t.date, t.amount) === row.fingerprint || !!t.group_id || ["invoice_payment", "investment", "redemption"].includes(t.type)));
+      const candidates = existing.filter(t => [t.date,t.cash_date].includes(row.date) && D(t.amount).eq(row.signed_amount) && (transactionFingerprint(t.description, row.date, t.amount) === row.fingerprint || !!t.group_id || ["invoice_payment", "investment", "redemption"].includes(t.type)));
       const possible_duplicate = !duplicate && (Boolean(row.possible_duplicate) || candidates.length > 0);
       return { ...row, source_id, duplicate, possible_duplicate, requires_review: !duplicate && (row.requires_review || possible_duplicate), matching_transactions: candidates.map(t => ({ id: t.id, description: t.description, date: t.date, amount: t.amount, type: t.type })) };
     });

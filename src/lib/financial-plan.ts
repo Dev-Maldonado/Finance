@@ -4,6 +4,7 @@ import { cardInvoices, shiftInvoiceMonth } from './card-invoices';
 import { dateShift, monthEnd, periodMetrics } from './dashboard';
 import { financialSummary, rows, str, type Row, type Snapshot } from './summary';
 import { categorySpendingKind } from './categories';
+import { cashDate, isSettled } from './transaction-state';
 
 export type ForecastItem = { id: string; date: string; description: string; amount: string; kind: 'income' | 'expense' | 'invoice' | 'obligation'; source: string; status: 'projected' };
 export type ConfidenceCheck = { id: string; label: string; status: 'ok' | 'attention' | 'unknown'; detail: string; referenceDate?: string; collectedAt?: string };
@@ -30,9 +31,9 @@ export function forecastItems(snapshot: Snapshot, today: string, endDate: string
   const savingsAccountIds = new Set([...rows(snapshot, 'financial_accounts').filter(a => a.kind === 'savings').map(a => str(a,'id')), ...rows(snapshot, 'savings_goals').map(g => str(g,'account_id'))].filter(Boolean));
   const item = (id: string, date: string, description: string, amount: string, kind: ForecastItem['kind'], source: string) => items.push({ id, date, description, amount: money(amount), kind, source, status: 'projected' });
   for (const t of tx) {
-    const date = str(t, 'date');
+    const date = t.status === 'confirmed' ? cashDate(t) : str(t, 'date');
     if (t.status === 'cancelled' || savingsAccountIds.has(str(t,'account_id')) || date > endDate) continue;
-    if (t.status === 'confirmed' && date <= today) continue; // Already in available cash.
+    if (isSettled(t,today)) continue; // Already in available cash, even when the due date is later.
     if (date < today && D(str(t, 'amount')).gt(0)) continue; // Overdue income is not promised.
     if (!['pending', 'confirmed'].includes(str(t, 'status'))) continue;
     item(`transaction:${t.id}`, date < today ? today : date, str(t, 'description'), str(t, 'amount'), D(str(t, 'amount')).gt(0) ? 'income' : 'expense', 'transaction');
@@ -51,7 +52,7 @@ export function forecastItems(snapshot: Snapshot, today: string, endDate: string
   for (const obligation of rows(snapshot, 'financial_obligations')) {
     if (obligation.status !== 'pending' || str(obligation, 'due_date') > endDate) continue;
     const linked = tx.find(t => t.id === obligation.transaction_id && t.status !== 'cancelled');
-    if (linked && (items.some(i => i.id === `transaction:${linked.id}`) || (linked.status === 'confirmed' && str(linked, 'date') <= today))) continue;
+    if (linked && (items.some(i => i.id === `transaction:${linked.id}`) || isSettled(linked,today))) continue;
     const date = str(obligation, 'due_date');
     item(`obligation:${obligation.id}`, date < today ? today : date, str(obligation, 'name'), D(str(obligation, 'amount')).neg().toString(), 'obligation', 'obligation');
   }

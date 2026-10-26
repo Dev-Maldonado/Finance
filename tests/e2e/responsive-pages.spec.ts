@@ -22,7 +22,7 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
       { type: 'expense', amount: '-250000.23', description: 'DescriçãoSemEspaços'.repeat(5), status: 'confirmed' },
       { type: 'expense', amount: '-29.08', description: 'Despesa prevista para o período', status: 'pending' },
     ].map(t => ({ ...t, date, user_id: id, account_id: account.data!.id, category_id: category.data!.id })))).error).toBeNull();
-    await page.route('**/api/economic-indicators', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
+    await page.route('**/api/economic-indicators*', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
     await page.goto('/'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
     await expect(page.getByRole('article', { name: 'Saldo disponível', exact: true })).toBeVisible();
     const purchase = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action: 'purchase', request_id: randomUUID(), payload: { card_id: card.data!.id, category_id: category.data!.id, description: 'Compra parcelada da família', amount: '1500.01', installments: 10, date } } }); expect(purchase.ok(), await purchase.text()).toBe(true);

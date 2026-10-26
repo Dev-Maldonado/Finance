@@ -23,7 +23,7 @@ export function exportReportRows(snapshot: Snapshot, start: string, end: string,
   const metrics = periodMetrics(snapshot, start, end, fullInvoiceMonths, asOf);
   const category = (id: unknown) => categoryLabel(rows(snapshot, 'categories'), String(id ?? ''), ' / ');
   return [
-    ...metrics.tx.map(t => ({ date: str(t, "date"), description: str(t, "description"), amount: str(t, "amount"), type: str(t, "type"), category: category(t.category_id), account: str(rows(snapshot, "financial_accounts").find(a => a.id === t.account_id) ?? {}, "name"), source_id: str(t, "source_id") || `export:${str(t, "id")}`, status: str(t, "status"), record_kind: "cash_ledger" })),
+    ...metrics.tx.map(t => ({ date: str(t, "date"), settled_on: str(t,'settled_on'), description: str(t, "description"), amount: str(t, "amount"), type: str(t, "type"), category: category(t.category_id), account: str(rows(snapshot, "financial_accounts").find(a => a.id === t.account_id) ?? {}, "name"), source_id: str(t, "source_id") || `export:${str(t, "id")}`, status: str(t, "status"), record_kind: "cash_ledger" })),
     ...metrics.installments.map(part => ({ date: str(part, "date"), description: `${str(part, "description")} · parcela ${str(part, "number")}/${str(part, "installments")}`, amount: money(D(str(part, "amount")).neg()), type: "card_installment", category: category(part.category_id), account: str(rows(snapshot, "credit_cards").find(c => c.id === part.card_id) ?? {}, "name"), source_id: `installment:${str(part, "id")}`, status: "scheduled_bill", record_kind: "monthly_competence" })),
   ].sort((a,b) => a.date.localeCompare(b.date));
 }

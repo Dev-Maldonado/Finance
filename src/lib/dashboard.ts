@@ -3,6 +3,7 @@ import { cardInvoices, invoiceTotals, shiftInvoiceMonth } from './card-invoices'
 import { rows, str, type Snapshot } from './summary';
 import { forecastItems } from './financial-plan';
 import { aggregateCategories, categoryMatches, categoryLabel } from './categories';
+import { cashDate, isSettled, transactionStatus } from './transaction-state';
 
 export const dateShift = (date: string, days: number) => new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 export const monthEnd = (month: string) => dateShift(`${shiftInvoiceMonth(month, 1)}-01`, -1);
@@ -38,10 +39,11 @@ export function installmentExpenses(s: Snapshot, start: string, end: string, ful
 export function periodMetrics(s: Snapshot, start: string, end: string, fullInvoiceMonths = true, asOf = end) {
   // Competence follows the registered date, even for pending or future entries.
   // Cash, received yields and internal operations still require actual settlement.
-  const settled = (t: ReturnType<typeof rows>[number]) => t.status === 'confirmed' && str(t, 'date') <= asOf;
+  const settled = (t: ReturnType<typeof rows>[number]) => isSettled(t, asOf);
   const tx = rows(s, 'transactions').filter(t => str(t, 'date') >= start && str(t, 'date') <= end &&
     (['income', 'expense'].includes(str(t, 'type')) ? ['pending', 'confirmed'].includes(str(t, 'status')) : settled(t)));
   const settledTx = tx.filter(settled);
+  const cashTx = rows(s, 'transactions').filter(t => settled(t) && cashDate(t) >= start && cashDate(t) <= end);
   const purchases = rows(s, 'credit_card_purchases').filter(t => str(t, 'date') >= start && str(t, 'date') <= end && str(t, 'date') <= asOf);
   const installments = installmentExpenses(s, start, end, fullInvoiceMonths, asOf);
   const sum = (list: typeof tx) => list.reduce((a, t) => a.plus(str(t, 'amount')), D(0));
@@ -50,15 +52,16 @@ export function periodMetrics(s: Snapshot, start: string, end: string, fullInvoi
   const cashExpense = sum(tx.filter(t => t.type === 'expense')).abs();
   const cardExpense = sum(installments);
   const receivedIncome = sum(settledTx.filter(t => t.type === 'income'));
-  const paidExpense = sum(settledTx.filter(t => t.type === 'expense')).abs();
+  const settledExpense = sum(settledTx.filter(t => t.type === 'expense')).abs();
+  const paidExpense = sum(cashTx.filter(t => t.type === 'expense')).abs();
   const expectedIncome = income.minus(receivedIncome);
-  const expectedExpense = cashExpense.minus(paidExpense);
-  const received = receivedIncome.plus(yields);
-  const invoicePayments = sum(settledTx.filter(t => t.type === 'invoice_payment')).abs();
+  const expectedExpense = cashExpense.minus(settledExpense);
+  const received = sum(cashTx.filter(t => ['income','yield'].includes(str(t,'type'))));
+  const invoicePayments = sum(cashTx.filter(t => t.type === 'invoice_payment')).abs();
   const expenses = cashExpense.plus(cardExpense);
   const receipts = income.plus(yields);
   const net = receipts.minus(expenses);
-  return { income: money(income), yields: money(yields), cashExpense: money(cashExpense), cardExpense: money(cardExpense), purchaseTotal: money(sum(purchases)), expenses: money(expenses), receipts: money(receipts), net: money(net), receivedIncome: money(receivedIncome), paidExpense: money(paidExpense), expectedIncome: money(expectedIncome), expectedExpense: money(expectedExpense), received: money(received), hasExpected: tx.some(t => ['income', 'expense'].includes(str(t, 'type')) && !settled(t)), invoicePayments: money(invoicePayments), cashNet: money(received.minus(paidExpense).minus(invoicePayments)), savingRate: receipts.gt(0) ? net.div(receipts).mul(100).toFixed(1) : null, tx, settledTx, purchases, installments };
+  return { income: money(income), yields: money(yields), cashExpense: money(cashExpense), cardExpense: money(cardExpense), purchaseTotal: money(sum(purchases)), expenses: money(expenses), receipts: money(receipts), net: money(net), receivedIncome: money(receivedIncome), settledExpense: money(settledExpense), paidExpense: money(paidExpense), expectedIncome: money(expectedIncome), expectedExpense: money(expectedExpense), received: money(received), hasExpected: tx.some(t => ['income', 'expense'].includes(str(t, 'type')) && !settled(t)), invoicePayments: money(invoicePayments), cashNet: money(received.minus(paidExpense).minus(invoicePayments)), savingRate: receipts.gt(0) ? net.div(receipts).mul(100).toFixed(1) : null, tx, settledTx, cashTx, purchases, installments };
 }
 export function periodCategoryTotals(s: Snapshot, start: string, end: string, fullInvoiceMonths = false, parentId?: string) {
   const metrics = periodMetrics(s, start, end, fullInvoiceMonths);
@@ -98,12 +101,12 @@ export function dashboardModel(s: Snapshot, start: string, end: string, period: 
     const key = shiftInvoiceMonth(month, offset + 1);
     return { month: key, ...invoiceTotals(invoices.filter(i => i.month === key)) };
   });
-  const overallCash = rows(s, 'transactions').filter(t => t.status === 'confirmed' && t.type === 'expense' && str(t, 'date') <= today).reduce((a, t) => a.plus(D(str(t, 'amount')).abs()), D(0));
+  const overallCash = rows(s, 'transactions').filter(t => isSettled(t,today) && t.type === 'expense').reduce((a, t) => a.plus(D(str(t, 'amount')).abs()), D(0));
   const overallPurchases = rows(s, 'credit_card_purchases').filter(p => str(p, 'date') <= today).reduce((a, p) => a.plus(str(p, 'amount')), D(0));
   const overall = { expenses: money(overallCash.plus(overallPurchases)), cashExpenses: money(overallCash), purchaseTotal: money(overallPurchases), committed: invoiceTotals(invoices).pending, future: invoiceTotals(invoices.filter(i => i.month > month)).pending };
   const elapsed = Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1);
   const recent = [
-    ...current.tx.map(t => ({ id: str(t, 'id'), description: str(t, 'description'), date: str(t, 'date'), amount: str(t, 'amount'), state: t.status === 'pending' ? 'Pendente' : str(t, 'date') > today ? 'Agendado · confirmado' : 'Confirmado', kind: str(t, 'type'), account: str(rows(s, 'financial_accounts').find(a => a.id === t.account_id) ?? {}, 'name'), category: categoryLabel(rows(s, 'categories'), str(t, 'category_id'), ' / ') })),
+    ...current.tx.map(t => ({ id: str(t, 'id'), description: str(t, 'description'), date: str(t, 'date'), amount: str(t, 'amount'), state: transactionStatus(t,today), kind: str(t, 'type'), account: str(rows(s, 'financial_accounts').find(a => a.id === t.account_id) ?? {}, 'name'), category: categoryLabel(rows(s, 'categories'), str(t, 'category_id'), ' / ') })),
     ...current.purchases.map(t => ({ id: str(t, 'id'), description: str(t, 'description'), date: str(t, 'date'), amount: money(D(str(t, 'amount')).neg()), state: 'Compra registrada', kind: 'card', account: str(rows(s, 'credit_cards').find(a => a.id === t.card_id) ?? {}, 'name'), category: categoryLabel(rows(s, 'categories'), str(t, 'category_id'), ' / ') })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   return { current, previous, fullInvoiceMonths, overall, previousRange, month, monthlyInvoices, invoiceTotals: invoiceTotals(monthlyInvoices), upcoming, due, pendingExpenses: money(pendingExpenses), pendingObligations: money(pendingObligations), recurringExpenses: money(recurringExpenses), totalCommitments: money(totalCommitments), commitmentDeficit: money(remainingAfterCommitments.lt(0) ? remainingAfterCommitments.neg() : 0), afterCommitments: money(remainingAfterCommitments.gt(0) ? remainingAfterCommitments : 0), categories: categoryTotals, history, budgets, dailyAverage: money(D(current.expenses).div(elapsed)), recent };

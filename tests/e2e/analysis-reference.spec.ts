@@ -25,7 +25,7 @@ test('reference analysis preserves values, category hierarchy, real comparisons,
    {description:'Alimentação anterior',type:'expense',amount:'-50',date:previous,category_id:food},
    {description:'Histórico antigo',type:'income',amount:'333',date:`${shiftInvoiceMonth(today.slice(0,7),-10)}-01`}
   ].map(row=>({...row,user_id:userId,account_id:account.data!.id,status:'confirmed'})));expect(tx.error).toBeNull();
-  await page.route('**/api/economic-indicators',route=>route.fulfill({status:503,json:{error:'Unavailable test source'}}));
+  await page.route('**/api/economic-indicators*',route=>route.fulfill({status:503,json:{error:'Unavailable test source'}}));
   await page.goto('/');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
   const analysis=page.locator('#dashboard-analises'),flow=analysis.locator('.analysis-flow-panel'),category=analysis.locator('.analysis-category-panel');
   await expect(analysis.locator('.recharts-bar')).toHaveCount(3);await expect(analysis.locator('.recharts-line')).toHaveCount(1);

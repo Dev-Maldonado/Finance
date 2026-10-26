@@ -23,6 +23,9 @@ export const schemas = {
   user_settings: z.object({
     name: optional,
     emergency_months_target: z.coerce.number().int().min(1).max(24).default(6),
+    default_account_id: z.union([id,z.literal(''),z.null()]).optional().transform(v=>v===''?null:v),
+    default_expense_category_id: z.union([id,z.literal(''),z.null()]).optional().transform(v=>v===''?null:v),
+    default_income_category_id: z.union([id,z.literal(''),z.null()]).optional().transform(v=>v===''?null:v),
   }),
   financial_obligations: z.object({
     name: text,
@@ -143,10 +146,12 @@ export const operationSchemas = {
     amount: signedMoney,
     date,
     status: z.enum(["confirmed", "pending"]).default("confirmed"),
+    settled_on: z.union([date,z.literal(''),z.null()]).optional().transform(v=>v===''?null:v),
     notes: optional,
     recurrence: optional,
     source_id: optional,
-  }).refine(p => p.type === "adjustment" ? !D(p.amount).isZero() : D(p.amount).gt(0), "Informe um valor positivo; ajustes podem ser negativos"),
+  }).refine(p => p.type === "adjustment" ? !D(p.amount).isZero() : D(p.amount).gt(0), "Informe um valor positivo; ajustes podem ser negativos")
+    .refine(p => !p.settled_on || (p.status === "confirmed" && ["income","expense"].includes(p.type)), "A data efetiva exige uma receita ou despesa confirmada"),
   transfer: z
     .object({ from_account: id, to_account: id, amount, date })
     .refine(

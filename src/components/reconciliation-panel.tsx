@@ -1,4 +1,5 @@
 'use client';
+import { cashDate } from '@/lib/transaction-state';
 import { useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowLeftRight, CheckCheck, CircleAlert } from 'lucide-react';
@@ -25,7 +26,7 @@ export function ReconciliationPanel({ snapshot, today, onSave }: { snapshot: Sna
   const defaultSelection = kind === 'account' ? items[0]?.id : invoices.find(i => i.month === date.slice(0, 7))?.id ?? invoices.find(i => D(i.pending).gt(0))?.id ?? items[0]?.id;
   const selection = selected && items.some(item => item.id === selected) ? selected : defaultSelection ?? '';
   const account = accounts.find(a => a.id === selection);
-  const registered = kind === 'account' && account ? money(rows(snapshot, 'transactions').filter(t => t.account_id === selection && t.status === 'confirmed' && str(t, 'date') <= date).reduce((sum, tx) => sum.plus(str(tx, 'amount')), D(str(account, 'initial_balance') || '0'))) : invoices.find(i => i.id === selection)?.balance ?? '0.00';
+  const registered = kind === 'account' && account ? money(rows(snapshot, 'transactions').filter(t => t.account_id === selection && t.status === 'confirmed' && cashDate(t) <= date).reduce((sum, tx) => sum.plus(str(tx, 'amount')), D(str(account, 'initial_balance') || '0'))) : invoices.find(i => i.id === selection)?.balance ?? '0.00';
   const normalized = official.trim().replace(',', '.');
   const valid = (kind === 'account' ? /^-?\d{1,12}(\.\d{1,2})?$/ : /^\d{1,12}(\.\d{1,2})?$/).test(normalized);
   const difference = valid ? money(D(normalized).minus(registered)) : null;
