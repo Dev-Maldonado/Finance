@@ -167,3 +167,4 @@
  .workspace .date-range:has(input) > span { justify-self:center; }
 }
 .workspace .commitment-empty { min-height:0; }
+.transaction-list td[data-label=Valor] > strong { color:inherit; }
