@@ -420,3 +420,29 @@ Usuário mostrou viewport 1908×945 com o primeiro valor patrimonial abaixo da b
 Nova regressão testa a resolução exata da imagem, 1440×900, 1280×720/680 e janela baixa 1280×430. Confere valor principal inteiro na abertura das telas usuais e acesso por âncora na janela baixa; roda real do mouse, Ctrl+Home e PageDown chegam ao conteúdo/rodapé, sem depender apenas de scrollTo. 165 unitários, TypeScript/build e 20 verificações financeiras integradas aprovados. Dez testes direcionados de dashboard, menu e PWA aprovados (1,2 min). Publicação em novo commit em andamento. Nenhuma mudança financeira, em APIs ou no banco.
 
 Publicação confirmada: commit `f1de6fd04e5e6dd173fd8b4a72479dbb436306a3` no main; Vercel `dpl_AVuMuG1NWDT6JE8vmtDTaAAmnKXJ` READY em https://finance-two-lake.vercel.app/. Worker do commit, manifest e cinco marcadores dos estilos corrigidos verificados na URL pública. Dez testes browser direcionados, 165 unitários, TypeScript/build e 20 integrações financeiras aprovados localmente. CI [40405421266](https://github.com/Dev-Maldonado/Finance/actions/runs/40405421266) em execução na última consulta, sem falhas registradas; não declarar conclusão antes do término. Screenshot inicial e janelas menores conferidas, com acesso real por mouse/teclado a todas as seções. Sem alteração de valores financeiros ou banco.
+
+## 26/10/2026 — Reagrupamento visual do dashboard
+
+Usuário autorizou aplicar as oito sugestões de posicionamento/organização.
+Panorama reúne patrimônio, resultado do período e disponibilidade após compromissos,
+com o bloco integral de disponibilidade transferido da seção de caixa. Oito
+indicadores em três grupos semânticos, histórico patrimonial junto da carteira,
+faturas atuais/próximas em colunas identificadas, atalhos de compromissos no
+planejamento e apresentação consistente dos cards. Topo compacto, índices
+econômicos, todos os gráficos/filtros/ações e 12 áreas abertas preservados.
+
+Comparação de código confirmou as oito expressões Metric idênticas, 13 blocos e
+todos os componentes de gráficos/planejamento/confiabilidade. Nenhum cálculo,
+serviço financeiro, API ou migration foi alterado. 165 unitários, TypeScript/build
+e 20 verificações financeiras integradas aprovados; validação visual/browser em
+andamento em usuários descartáveis locais. Comparação AST preservou as 249
+expressões JSX originais de valores, listas, condições e ações. Próximos passos: revisar capturas,
+concluir regressões de responsividade e publicar em novo commit.
+
+CI da correção anterior de viewport [40405421266](https://github.com/Dev-Maldonado/Finance/actions/runs/40405421266) concluído com sucesso; pendência histórica encerrada.
+
+Revisão visual detectou colisão de taxa/anel em 320px; corrigida a posição explícita na grade. Títulos mobile deixam de competir em largura com o selo de contexto, que fica numa segunda linha. Foco por toque/mouse nos gráficos sem contorno preto; foco de teclado continua identificado em lilás. Nova regressão exige largura legível para o título e ausência de interseção entre os painéis do panorama.
+
+Suíte completa de navegador aprovada: 42 cenários (7,4 min), incluindo todas as páginas em toque/desktop, filtros, CRUD, recorrências, parcelas, investimentos, caixinhas, PWA, competências futuras e registro patrimonial. Os últimos refinamentos de título mobile/foco de gráfico serão conferidos novamente no build final antes da publicação. Capturas desktop/mobile de panorama, indicadores, planejamento, análises, faturas e patrimônio revisadas.
+
+Validação final: build e TypeScript aprovados; quatro cenários direcionados aprovados após os refinamentos principais (1,2 min). Correção adicional do padding herdado da numeração mobile, que quebrava “01” em linhas, validada por duas regressões do dashboard no build final (28,6 s). Captura real de viewport confirma valor principal inteiro abaixo das barras fixas; título com espaço próprio, números de seção numa linha e gráficos sem contorno preto ao toque. Total: 165 unitários, 20 integrações financeiras, rodada completa de 42 browsers aprovada e repetições afetadas aprovadas. Validação em Chromium/emulação, sem aparelhos físicos. Publicação em novo commit em andamento.

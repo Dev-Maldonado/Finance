@@ -89,33 +89,36 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     <DashboardGroup id="panorama" index="01" title="Panorama financeiro" subtitle="O que você possui hoje e o que o período gerou." icon={Wallet}>
 
     <section className="dashboard-hero" aria-label="Panorama patrimonial">
-      <div className="dashboard-hero-main"><span className="dashboard-overline"><ShieldCheck size={14} /> PATRIMÔNIO GERAL · HOJE</span><p>Uma visão completa do seu dinheiro.</p><span className="dashboard-hero-label">Patrimônio líquido geral</span><strong className={D(summary.netWorth).lt(0) ? 'negative' : undefined}>{brl(summary.netWorth)}</strong><div className="dashboard-hero-breakdown"><div><span>Patrimônio bruto geral</span><b>{brl(summary.assets)}</b></div><div><span>Dívidas totais · todos os meses</span><b>{brl(summary.liability)}</b></div><div><span>Rendimento informado das caixinhas</span><b>{summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : brl(summary.goals.reduce((a,g)=>a.plus(g.gross),D(0)).toFixed(2))}</b></div></div><small>Contas e posições atuais. Caixinhas e investimentos usam valores informados por você.</small></div>
-      <div className="dashboard-hero-result" aria-label="Resultado líquido do período"><div className="dashboard-result-copy"><span><CalendarDays size={15} /> {pretty(start)} — {pretty(end)}</span><p>{balanceLabel} · resultado líquido{current.hasExpected ? " previsto" : ""}</p><strong className={D(current.net).lt(0) ? 'result-negative' : ''}>{brl(current.net)}</strong><small>Receitas + rendimentos recebidos − despesas e parcelas do período. Inclui pendentes e finalizados nas datas selecionadas.</small><Delta current={current.net} previous={previous.net} /><Link href="/relatorios">Explorar meus resultados <ArrowRight size={15} /></Link></div><OverviewResultChart data={model.history}/></div>
+      <div className="dashboard-hero-main"><span className="dashboard-overline"><ShieldCheck size={14} /> MEU PATRIMÔNIO · POSIÇÃO DE HOJE</span><p>Uma visão completa do seu dinheiro.</p><span className="dashboard-hero-label">Patrimônio líquido geral</span><strong className={D(summary.netWorth).lt(0) ? 'negative' : undefined}>{brl(summary.netWorth)}</strong><div className="dashboard-hero-breakdown"><div><span>Patrimônio bruto geral</span><b>{brl(summary.assets)}</b></div><div><span>Dívidas totais · todos os meses</span><b>{brl(summary.liability)}</b></div><div><span>Rendimento informado das caixinhas</span><b>{summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : brl(summary.goals.reduce((a,g)=>a.plus(g.gross),D(0)).toFixed(2))}</b></div></div><small>Contas e posições atuais. Caixinhas e investimentos usam valores informados por você.</small></div>
+      <div className="dashboard-hero-result" aria-label="Resultado líquido do período"><div className="dashboard-result-copy"><span className="dashboard-concept-label">{monthly ? 'MEU MÊS' : 'MEU PERÍODO'} · RESULTADO DO PERÍODO</span><span><CalendarDays size={15} /> {pretty(start)} — {pretty(end)}</span><p>{balanceLabel} · resultado líquido{current.hasExpected ? " previsto" : ""}</p><strong className={D(current.net).lt(0) ? 'result-negative' : ''}>{brl(current.net)}</strong><small>Receitas + rendimentos recebidos − despesas e parcelas do período. Inclui pendentes e finalizados nas datas selecionadas.</small><Delta current={current.net} previous={previous.net} /><Link href="/relatorios">Explorar meus resultados <ArrowRight size={15} /></Link></div><OverviewResultChart data={model.history}/></div>
       <div className={`dashboard-hero-rate ${current.savingRate !== null && D(current.savingRate).lt(0) ? 'rate-negative' : ''}`} aria-label="Taxa de economia do período"><span className="dashboard-rate-icon"><Percent size={18} /></span><div className="dashboard-saving-rate"><span>Taxa de economia{current.hasExpected ? " · prevista" : ""}</span><b>{current.savingRate === null ? 'Sem receitas' : pct(current.savingRate)}</b></div><div className={`dashboard-rate-ring ${current.savingRate === null ? 'rate-unknown' : ''}`} style={{ '--saving-rate': `${Math.max(0, Math.min(100, Number(current.savingRate ?? 0)))}%` } as React.CSSProperties} aria-hidden="true"><b>{current.savingRate === null ? '—' : pct(current.savingRate)}</b></div><small>{current.savingRate === null ? 'Registre receitas para calcular a taxa.' : current.hasExpected ? 'Taxa prevista: inclui receitas e despesas ainda não efetivadas.' : 'Parcela das receitas e rendimentos recebidos que ficou após os gastos do período.'}</small><span className="dashboard-rate-context">Mesmo período do resultado líquido</span></div>
       <OverviewComposition income={current.income} expenses={current.expenses} net={current.net}/>
+      <Block className="dashboard-available-panel" title="Quanto fica livre?" subtitle="Saldo atual após compromissos registrados até o fim deste mês">
+        <div className="dashboard-liquidity"><span>MEU DISPONÍVEL · APÓS COMPROMISSOS</span><strong className={D(model.afterCommitments).lt(0) ? 'negative' : ''}>{brl(model.afterCommitments)}</strong></div>
+        <div className="dashboard-key-values"><div><span>Saldo das contas</span><b>{brl(summary.cash)}</b></div><div><span>Faturas pendentes e atrasadas</span><b>− {brl(dueTotals.pending)}</b></div><div><span>Despesas pendentes</span><b>− {brl(model.pendingExpenses)}</b></div></div>
+        <p className="dashboard-note">Estimativa de disponibilidade; não inclui receitas futuras, despesas não cadastradas ou parcelas de outros meses.</p>
+      </Block>
     </section>
     <div className="dashboard-period-note"><span><span className="live-dot" /> Dados reais dos seus registros</span><span>Comparativo: {pretty(model.previousRange.start)} a {pretty(model.previousRange.end)} · receitas/despesas na mesma janela; parcelas no mês de vencimento</span></div>
-
-      <div className="overview-wealth">
-      <Block title="Evolução do patrimônio" subtitle="Histórico registrado, sem reconstruções fictícias" wide>
-        <div className="dashboard-wealth-top"><div><span>Variação entre registros do período</span><strong>{growth === null ? 'Histórico em formação' : brl(growth)}</strong></div><button onClick={onSaveWealth} disabled={wealthSaving} aria-busy={wealthSaving}>{wealthSaving ? 'Registrando posição…' : 'Registrar posição de hoje'}</button></div>
-        <WealthRegistrationFeedback feedback={wealthFeedback} />
-        <WealthChart data={wealth.map(r => ({ date: str(r, 'date'), assets: Number(r.assets), net: D(str(r, 'assets')).minus(str(r, 'liabilities')).toNumber() }))} />
-      </Block>
-      </div>
 
     </DashboardGroup>
     <DashboardGroup id="indicadores" index="02" title="Indicadores financeiros" subtitle="Seus principais números, com contexto e comparativos." icon={ChartNoAxesCombined}>
 
-    <div className="dashboard-metrics-grid">
+    <div className="dashboard-metric-groups">
+      <section className="dashboard-metric-group metric-group-money" aria-labelledby="metric-group-money"><header><h3 id="metric-group-money">Disponibilidade e entradas</h3><p>Saldo de hoje e entradas do período.</p></header><div className="dashboard-metrics-grid">
       <Metric label="Saldo disponível" value={summary.cash} detail="Saldo geral das contas hoje · sem caixinhas e limites" icon={Wallet} tone="balance" />
       <Metric label="Receitas do período" value={current.income} detail={`${brl(current.receivedIncome)} recebidos · ${brl(current.expectedIncome)} pendentes/agendados`} icon={ArrowDownLeft} current={current.income} previous={previous.income} tone="income" />
+      <Metric label="Rendimentos recebidos" value={current.yields} detail="Valores confirmados · sem valorização de ativos" icon={TrendingUp} current={current.yields} previous={previous.yields} tone="income" />
+      </div></section>
+      <section className="dashboard-metric-group metric-group-spending" aria-labelledby="metric-group-spending"><header><h3 id="metric-group-spending">Gastos e faturas</h3><p>Despesas do período e faturas do mês.</p></header><div className="dashboard-metrics-grid">
       <Metric label={spendingLabel} value={current.expenses} detail={`${brl(current.settledExpense)} pagos nas contas · ${brl(current.expectedExpense)} pendentes/agendados + ${brl(current.cardExpense)} em parcelas`} icon={ArrowUpRight} current={current.expenses} previous={previous.expenses} lowerBetter tone="expense" />
       <Metric label="Faturas do mês" value={model.invoiceTotals.total} detail={`Vencimento em ${invoiceMonthLabel(model.month)}`} icon={CreditCard} tone="pending" />
       <Metric label="Faturas a pagar no mês" value={model.invoiceTotals.pending} detail={`${brl(model.invoiceTotals.paid)} já pagos nessas faturas`} icon={CalendarDays} tone={model.monthlyInvoices.some(i => i.status === "Atrasada") ? "danger" : D(model.invoiceTotals.pending).eq(0) ? "paid" : "pending"} />
-      <Metric label="Rendimentos recebidos" value={current.yields} detail="Valores confirmados · sem valorização de ativos" icon={TrendingUp} current={current.yields} previous={previous.yields} tone="income" />
+      </div></section>
+      <section className="dashboard-metric-group metric-group-assets" aria-labelledby="metric-group-assets"><header><h3 id="metric-group-assets">Investimentos e caixinhas</h3><p>Posições atuais e rendimento informado.</p></header><div className="dashboard-metrics-grid">
       <Metric label="Investido em BRL" value={summary.investments} detail="Posições atuais · cotação ou custo identificado" icon={ChartNoAxesCombined} tone="investment" />
       <Metric label={monthly ? "Rendimento das caixinhas no mês" : "Rendimento das caixinhas no período"} value={periodSavings.value} display={periodSavings.partial && summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : undefined} detail={periodSavings.partial ? 'Atualizações manuais no período · há caixinhas sem atualização' : 'Variação dos saldos informados, excluindo depósitos e retiradas'} icon={PiggyBank} tone="income" />
+      </div></section>
     </div>
 
     </DashboardGroup>
@@ -157,13 +160,9 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       </div>
       </div>
     </DashboardGroup>
-    <DashboardGroup id="caixa" index="06" title="Disponibilidade e fluxo de caixa" subtitle="Saldo registrado, compromissos e pagamentos efetivos." icon={Wallet}>
+    <DashboardGroup id="caixa" index="06" title="Disponibilidade e fluxo de caixa" subtitle="Recebimentos e pagamentos efetivos; disponibilidade detalhada no panorama." icon={Wallet}>
       <div className="dashboard-section-grid dashboard-cash-grid">
-      <Block title="Quanto fica livre?" subtitle="Saldo atual após compromissos registrados até o fim deste mês">
-        <div className="dashboard-liquidity"><span>Disponível após compromissos</span><strong className={D(model.afterCommitments).lt(0) ? 'negative' : ''}>{brl(model.afterCommitments)}</strong></div>
-        <div className="dashboard-key-values"><div><span>Saldo das contas</span><b>{brl(summary.cash)}</b></div><div><span>Faturas pendentes e atrasadas</span><b>− {brl(dueTotals.pending)}</b></div><div><span>Despesas pendentes</span><b>− {brl(model.pendingExpenses)}</b></div></div>
-        <p className="dashboard-note">Estimativa de disponibilidade; não inclui receitas futuras, despesas não cadastradas ou parcelas de outros meses.</p>
-      </Block>
+
       <Block title="Fluxo de caixa operacional" subtitle="Recebimentos e pagamentos efetivos no período">
         <div className="dashboard-liquidity"><span>Resultado em caixa</span><strong>{brl(current.cashNet)}</strong></div><div className="dashboard-key-values"><div><span>Receitas + rendimentos recebidos</span><b>{brl(current.received)}</b></div><div><span>Despesas pagas nas contas</span><b>− {brl(current.paidExpense)}</b></div><div><span>Pagamentos de fatura</span><b>− {brl(current.invoicePayments)}</b></div></div><p className="dashboard-note">Transferências próprias, aportes, resgates e operações de investimento ficam fora deste resultado.</p>
       </Block>
@@ -173,8 +172,9 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <div className="dashboard-section-grid dashboard-single-grid">
       <Block title={`Faturas de ${invoiceMonthLabel(model.month)}`} subtitle="Todos os cartões · total, pago e saldo restante" link="/cartoes" wide>
         <div className="dashboard-bill-summary"><div><span>Total do mês</span><b>{brl(model.invoiceTotals.total)}</b></div><div><span>Pago nessas faturas</span><b>{brl(model.invoiceTotals.paid)}</b></div><div><span>A pagar</span><b>{brl(model.invoiceTotals.pending)}</b></div></div>
-        <div className="dashboard-invoice-list">{model.monthlyInvoices.length ? model.monthlyInvoices.map(i => { const card = rows(snapshot, 'credit_cards').find(c => c.id === i.cardId); return <article key={i.id} aria-label={`Resumo da fatura de ${i.cardName}`}><span className="dashboard-card-symbol" style={{ background: cardColors(str(card ?? {}, 'color')).background, color: cardColors(str(card ?? {}, 'color')).color }}><CreditCard size={20} /></span><div><strong>{i.cardName}</strong><small>Vence {pretty(i.due)} · {i.status}</small></div><div><b>{brl(i.pending)}</b><small>Total: {brl(i.total)}</small></div>{D(i.pending).gt(0) && <button onClick={() => onPay(i)}>Pagar</button>}</article>; }) : <p className="dashboard-empty">Nenhuma fatura cadastrada para este mês.</p>}</div>
-        <div className="dashboard-next-bills">{model.upcoming.slice(0, 3).map(i => <Link href={`/cartoes?month=${i.month}`} key={i.month}><span>{invoiceMonthLabel(i.month)}</span><b>{brl(i.pending)}</b><small>A pagar · parcelas registradas</small><ChevronRight size={15} /></Link>)}</div>
+        <div className="dashboard-billing-columns"><section className="dashboard-current-bills" aria-labelledby="dashboard-current-bills-title"><h3 id="dashboard-current-bills-title">Faturas do mês por cartão</h3><div className="dashboard-invoice-list">{model.monthlyInvoices.length ? model.monthlyInvoices.map(i => { const card = rows(snapshot, 'credit_cards').find(c => c.id === i.cardId); return <article key={i.id} aria-label={`Resumo da fatura de ${i.cardName}`}><span className="dashboard-card-symbol" style={{ background: cardColors(str(card ?? {}, 'color')).background, color: cardColors(str(card ?? {}, 'color')).color }}><CreditCard size={20} /></span><div><strong>{i.cardName}</strong><small>Vence {pretty(i.due)} · {i.status}</small></div><div><b>{brl(i.pending)}</b><small>Total: {brl(i.total)}</small></div>{D(i.pending).gt(0) && <button onClick={() => onPay(i)}>Pagar</button>}</article>; }) : <p className="dashboard-empty">Nenhuma fatura cadastrada para este mês.</p>}</div>
+        </section><section className="dashboard-upcoming-bills" aria-labelledby="dashboard-upcoming-bills-title"><h3 id="dashboard-upcoming-bills-title">Próximas faturas</h3><div className="dashboard-next-bills">{model.upcoming.slice(0, 3).map(i => <Link href={`/cartoes?month=${i.month}`} key={i.month}><span>{invoiceMonthLabel(i.month)}</span><b>{brl(i.pending)}</b><small>A pagar · parcelas registradas</small><ChevronRight size={15} /></Link>)}</div>
+        </section></div>
         {model.due.some(i => i.due < today) && <p className="dashboard-alert">Há faturas vencidas: {brl(invoiceTotals(model.due.filter(i => i.due < today)).pending)} a pagar. Confira em Cartões.</p>}
       </Block>
       </div>
@@ -190,6 +190,13 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       </div>
     </DashboardGroup>
     <DashboardGroup id="patrimonio" index="09" title="Patrimônio e investimentos" subtitle="Histórico, composição e avaliações registradas." icon={TrendingUp}>
+      <div className="overview-wealth">
+      <Block title="Evolução do patrimônio" subtitle="Histórico registrado, sem reconstruções fictícias" wide>
+        <div className="dashboard-wealth-top"><div><span>Variação entre registros do período</span><strong>{growth === null ? 'Histórico em formação' : brl(growth)}</strong></div><button onClick={onSaveWealth} disabled={wealthSaving} aria-busy={wealthSaving}>{wealthSaving ? 'Registrando posição…' : 'Registrar posição de hoje'}</button></div>
+        <WealthRegistrationFeedback feedback={wealthFeedback} />
+        <WealthChart data={wealth.map(r => ({ date: str(r, 'date'), assets: Number(r.assets), net: D(str(r, 'assets')).minus(str(r, 'liabilities')).toNumber() }))} />
+      </Block>
+      </div>
       <div className="dashboard-section-grid dashboard-assets-grid">
       <Block title="Composição do patrimônio" subtitle="Distribuição entre contas, caixinhas e investimentos"><div className="dashboard-allocation">{allocation.map(a => <div key={a.name}><i style={{ background: a.color }} /><span>{a.name}</span><b>{brl(a.value)}</b></div>)}</div></Block>
       <Block title="Minha carteira" subtitle="Posições em BRL e fontes de avaliação" link="/investimentos">

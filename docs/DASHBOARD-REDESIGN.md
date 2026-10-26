@@ -65,3 +65,25 @@ movimentações e confiabilidade seguem renderizados. Nenhum cálculo, API, sche
 dado armazenado foi modificado. Valores grandes reorganizam a grade sem cortes;
 regras de safe area e navegação mobile permanecem. Somente a ilustração decorativa
 usa contenção de pintura, sem recortar conteúdo financeiro.
+
+## Reagrupamento por decisão — 26/10/2026
+
+Panorama aproxima três conceitos: patrimônio atual, resultado do período e
+disponibilidade após compromissos. O bloco completo “Quanto fica livre?” sai da
+seção de caixa e passa ao panorama, mantendo saldo, faturas, pendências e ressalvas.
+Taxa de economia e composição do resultado continuam visíveis. A seção de caixa
+mantém o fluxo operacional com todos os recebimentos/pagamentos efetivos.
+
+Os oito indicadores são agrupados em disponibilidade/entradas (3), gastos/faturas
+(3) e investimentos/caixinhas (2), com as mesmas expressões, valores, descrições e
+comparativos. O histórico patrimonial e sua ação única voltam a ficar junto à
+composição e carteira. Faturas atuais e próximas recebem títulos próprios e
+colunas relacionadas; planejamento oferece acesso direto às contas recorrentes
+e aos vencimentos. Nenhum resumo é escondido ou duplicado.
+
+O topo compacto e a faixa única de Selic/IPCA/PTAX são preservados. O refinamento
+em dashboard-organization.css usa o escopo do dashboard; telas menores crescem
+verticalmente, sem comprimir os valores para caber em uma única tela. Análises
+mantêm a composição da referência, com fluxo/resumos à esquerda e
+categorias/comparativo à direita. Inventário comparado: 12 grupos, 13 blocos,
+oito expressões Metric idênticas e todos os componentes de gráficos presentes.
