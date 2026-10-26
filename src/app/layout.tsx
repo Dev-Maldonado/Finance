@@ -6,6 +6,7 @@ import "./dashboard-reference.css";
 import "./recurring-bills.css";
 import "./desktop-navigation.css";
 import "./practical-finance.css";
+import "./experience.css";
 import { PwaProvider } from "@/components/pwa";
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",

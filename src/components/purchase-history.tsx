@@ -5,6 +5,9 @@ import { rows, str, type Row, type Snapshot } from '@/lib/summary';
 import { categoryLabel } from '@/lib/categories';
 import { invoiceMonthLabel } from '@/lib/card-invoices';
 import { filteredPurchases, purchaseMetrics, type PurchaseFilters } from '@/lib/purchase-filters';
+import { ActiveFilters } from './active-filters';
+import { useViewMemory } from './use-view-memory';
+import { purchaseViewSchema } from '@/lib/view-preferences';
 import { CategoryPicker } from './category-picker';
 const brl = (value: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
 const pretty = (value: string) => value.split('-').reverse().join('/');
@@ -13,6 +16,8 @@ export function PurchaseHistory({ snapshot, month, today, cardId, onCardChange, 
   const [status, setStatus] = useState<PurchaseFilters['status']>('active');
   const [period, setPeriod] = useState<PurchaseFilters['period']>('all');
   const [start, setStart] = useState(today.slice(0, 7) + '-01'), [end, setEnd] = useState(today);
+  useViewMemory(snapshot.user.id,'purchases',{categoryId,search,status,period,start,end},saved=>{const r=purchaseViewSchema.safeParse(saved);if(r.success){setCategory(r.data.categoryId);setSearch(r.data.search);setStatus(r.data.status);setPeriod(r.data.period);setStart(r.data.start);setEnd(r.data.end);}});
+  function clear(){onCardChange('');setCategory('');setStatus('active');setSearch('');setPeriod('all');}
   const purchases = filteredPurchases(snapshot, { cardId, categoryId, status, search, period, month, start, end });
   const metrics = purchaseMetrics(snapshot, purchases, month, today);
   const invoices = new Map(rows(snapshot, 'credit_card_invoices').map(i => [i.id, i]));
@@ -23,7 +28,7 @@ export function PurchaseHistory({ snapshot, month, today, cardId, onCardChange, 
     const detail = (part: Row) => <span key={str(part, 'id')}>Parcela {part.number} de {p.installments} · {brl(str(part, 'amount'))}<small>Vence em {pretty(str(invoices.get(part.invoice_id) || {}, 'due_date'))}</small></span>;
     return <><strong>{p.installments} {Number(p.installments) === 1 ? 'parcela' : 'parcelas'}</strong>{monthParts.map(detail)}{!monthParts.length && <small>Sem parcela em {invoiceMonthLabel(month)}</small>}<details><summary>Ver todas as parcelas</summary>{parts.map(detail)}</details></>;
   }
-  return <section className="panel purchase-history" aria-label="Compras registradas">
+  return <section id="compras-registradas" className="panel purchase-history screen-anchor" aria-label="Compras registradas">
     <div className="panel-head"><div><h2>Compras registradas</h2><p>O cartão selecionado é compartilhado com as faturas. Valores integrais das compras ficam separados das parcelas do mês.</p></div><label className="excluded-toggle"><input type="checkbox" checked={status !== 'active'} onChange={e => setStatus(e.target.checked ? 'all' : 'active')} />Mostrar compras excluídas</label></div>
     <div className="transaction-filters purchase-filters" aria-label="Filtrar compras">
       <label>Cartão<select aria-label="Filtrar compras por cartão" value={cardId} onChange={e => onCardChange(e.target.value)}><option value="">Todos os cartões</option>{rows(snapshot, 'credit_cards').map(card => <option key={str(card, 'id')} value={str(card, 'id')}>{card.name}</option>)}</select></label>
@@ -31,9 +36,17 @@ export function PurchaseHistory({ snapshot, month, today, cardId, onCardChange, 
       <label>Período<select aria-label="Período das compras" value={period} onChange={e => setPeriod(e.target.value as PurchaseFilters['period'])}><option value="all">Todas as datas</option><option value="invoice">Parcelas ativas na fatura selecionada</option><option value="custom">Data da compra · personalizado</option></select></label>
       <label>Status<select aria-label="Filtrar compras por status" value={status} onChange={e => setStatus(e.target.value as PurchaseFilters['status'])}><option value="active">Ativas</option><option value="cancelled">Excluídas</option><option value="all">Todos os status</option></select></label>
       <label className="purchase-search">Descrição<span><Search size={15} /><input aria-label="Buscar compras" placeholder="Buscar descrição" value={search} onChange={e => setSearch(e.target.value)} /></span></label>
-      <button onClick={() => { onCardChange(''); setCategory(''); setStatus('active'); setSearch(''); setPeriod('all'); }}>Limpar filtros de compras</button>
+      <button onClick={clear}>Limpar filtros de compras</button>
     </div>
     {period === 'custom' && <div className="purchase-date-range"><label>Data inicial da compra<input type="date" value={start} onChange={e => { if (e.target.value) { setStart(e.target.value); if (e.target.value > end) setEnd(e.target.value); } }} /></label><label>Data final da compra<input type="date" value={end} min={start} onChange={e => { if (e.target.value && e.target.value >= start) setEnd(e.target.value); }} /></label></div>}
+    <ActiveFilters label="Seleção das compras" context={`${metrics.count} compras exibidas`} onClear={clear} items={[
+      {key:'month',label:'Fatura de referência',value:invoiceMonthLabel(month)},
+      ...(cardId?[{key:'card',label:'Cartão',value:str(rows(snapshot,'credit_cards').find(c=>c.id===cardId)??{},'name'),remove:()=>onCardChange('')}]:[]),
+      ...(categoryId?[{key:'category',label:'Categoria',value:categoryLabel(rows(snapshot,'categories'),categoryId,' / '),remove:()=>setCategory('')}]:[]),
+      ...(search?[{key:'search',label:'Busca',value:search,remove:()=>setSearch('')}]:[]),
+      ...(period!=='all'?[{key:'period',label:'Período',value:period==='invoice'?'Parcelas na fatura selecionada':`${pretty(start)} — ${pretty(end)}`,remove:()=>setPeriod('all')}]:[]),
+      ...(status!=='active'?[{key:'status',label:'Status',value:status==='all'?'Todos':'Excluídas',remove:()=>setStatus('active')}]:[])
+    ]}/>
     <div className="purchase-summary" aria-label="Resumo das compras filtradas">
       <div><ShoppingBag size={17} /><span>Compras exibidas</span><strong>{metrics.count}</strong><small>{metrics.excluded ? `${metrics.excluded} excluídas · preservadas no histórico` : 'Somente compras ativas'}</small></div>
       <div className="financial-surface tone-expense"><CreditCard size={17} /><span>Total das compras ativas</span><strong>{brl(metrics.total)}</strong><small>Valor integral · não é o gasto mensal</small></div>

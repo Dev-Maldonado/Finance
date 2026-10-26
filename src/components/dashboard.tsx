@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { OverviewResultChart, OverviewComposition } from './dashboard-overview';
 import { useReadableAmounts } from './use-readable-amounts';
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, Wallet, CreditCard, TrendingUp, PiggyBank, ChartNoAxesCombined, Target, CalendarDays, ShieldCheck, ChevronRight, Percent } from 'lucide-react';
+import { useViewMemory } from './use-view-memory';
 import { financialTone, type FinancialTone } from '@/lib/financial-tone';
 import { D, money } from '@/financial/engine';
 import { financialSummary, rows, str, type Snapshot } from '@/lib/summary';
@@ -23,7 +24,8 @@ const brl = (value: string | number) => new Intl.NumberFormat('pt-BR', { style: 
 const pretty = (value: string) => value.split('-').reverse().join('/');
 const pct = (value: string) => `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 function DashboardGroup({ id, index, title, subtitle, icon: Icon, children }: { id: string; index: string; title: string; subtitle: string; icon: typeof Wallet; children: React.ReactNode }) {
-  return <div className="dashboard-section" id={`dashboard-${id}`} role="region" aria-labelledby={`dashboard-heading-${id}`}><header className="dashboard-section-heading"><span className="dashboard-section-mark"><Icon size={18} /></span><div><h2 id={`dashboard-heading-${id}`}>{title}</h2><p>{subtitle}</p></div><span className="dashboard-section-number" aria-hidden="true">{index}</span></header>{children}</div>;
+  const context:Record<string,string>={panorama:'Posição de hoje + resultado do período',indicadores:'Hoje e período selecionado',planejamento:'Próximos compromissos',compromissos:'Histórico e futuro',analises:'Período selecionado',caixa:'Caixa efetivo e disponibilidade',faturas:'Vencimento das faturas',reservas:'Reservas e limites do mês',patrimonio:'Histórico e posições atuais',movimentacoes:'Período selecionado',economia:'Referências oficiais',confiabilidade:'Fontes e cobertura'};
+  return <div className="dashboard-section" id={`dashboard-${id}`} role="region" aria-labelledby={`dashboard-heading-${id}`}><header className="dashboard-section-heading"><span className="dashboard-section-mark"><Icon size={18} /></span><div><h2 id={`dashboard-heading-${id}`}>{title}</h2><p>{subtitle}</p></div><span className="dashboard-context-tag">{context[id]}</span><span className="dashboard-section-number" aria-hidden="true">{index}</span></header>{children}</div>;
 }
 function Block({ title, subtitle, link, children, wide = false, className = '' }: { title: string; subtitle: string; link?: string; children: React.ReactNode; wide?: boolean; className?: string }) {
   return <section className={`panel dashboard-block ${className} ${wide ? 'dashboard-wide' : ''}`}><div className="panel-head"><div><h2>{title}</h2><p>{subtitle}</p></div>{link && <Link href={link} aria-label={`Abrir ${title}`} className="dashboard-block-link"><ArrowUpRight size={18} /></Link>}</div>{children}</section>;
@@ -47,6 +49,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
   useReadableAmounts(dashboardRef);
   const [activeSection, setActiveSection] = useState('panorama');
   const [flowMode, setFlowMode] = useState<'six-months' | 'twelve-months' | 'period'>('six-months');
+  useViewMemory(snapshot.user.id,'dashboard-analysis',{flowMode},saved=>{if(['six-months','twelve-months','period'].includes(String(saved.flowMode)))setFlowMode(saved.flowMode as typeof flowMode);});
   const model = useMemo(() => dashboardModel(snapshot, start, end, period, today), [snapshot, start, end, period, today]);
   const savings = useMemo(() => savingsMetrics(snapshot, today), [snapshot, today]);
   const periodSavings = useMemo(() => savingsPeriodMetrics(snapshot, start, end, today), [snapshot, start, end, today]);

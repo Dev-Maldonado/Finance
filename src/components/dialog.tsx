@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useId } from "react";
 import { X } from "lucide-react";
-import { FormDef } from "./forms";
+import { FormDef,type Field } from "./forms";
 import { installmentPreview, purchaseTotal, type PurchaseEntryMethod } from "@/lib/installments";
 import { Snapshot, rows, str, Row } from "@/lib/summary";
 import { cardInvoices } from "@/lib/card-invoices";
@@ -175,46 +175,13 @@ export function Dialog({
       setBusy(false);
     }
   }
-  return (
-    <dialog
-      ref={dialog}
-      className="dialog"
-      aria-labelledby={titleId}
-      onCancel={(event) => {
-        if (busy) event.preventDefault();
-        else onClose();
-      }}
-    >
-      <form ref={formElement} onSubmit={submit}>
-        <div className="dialog-head">
-          <div>
-            <span className="eyebrow">ORGANIZE SUAS FINANÇAS</span>
-            <h2 id={titleId}>
-              {form.resource === 'categories' && initial?.parent_id ? initial?.id ? 'Editar subcategoria' : 'Nova subcategoria' : initial?.id ? form.editTitle || "Editar cadastro" : form.title}
-            </h2>
-          </div>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onClose}
-            aria-label="Fechar"
-            disabled={busy}
-          >
-            <X />
-          </button>
-        </div>
-        {form.purchaseCalculator && <fieldset className="purchase-method">
-          <legend>Como deseja informar a compra?</legend>
-          <div className="purchase-method-options"><label className={`purchase-method-option ${entryMethod === "total" ? "selected" : ""}`}><input type="radio" name="entry_method" aria-label="Valor total da compra" value="total" checked={entryMethod === "total"} onChange={() => { entryValues.current[entryMethod] = entryValue; setEntryValue(entryValues.current.total ?? purchaseTotalValue ?? ""); setEntryMethod("total"); }} /><span><strong>Valor total da compra</strong><small>Dividir o total em parcelas</small></span></label>
-          <label className={`purchase-method-option ${entryMethod === "installment" ? "selected" : ""}`}><input type="radio" name="entry_method" aria-label="Valor individual da parcela" value="installment" checked={entryMethod === "installment"} onChange={() => { entryValues.current[entryMethod] = entryValue; setEntryValue(entryValues.current.installment ?? (purchaseTotalValue ? D(purchaseTotalValue).div(parcelCount).toDecimalPlaces(2, 1).toFixed(2) : "")); setEntryMethod("installment"); }} /><span><strong>Valor individual da parcela</strong><small>Repetir o valor de cada parcela</small></span></label></div>
-          <small>Ao informar o valor individual, todas as parcelas terão exatamente esse valor.</small>
-        </fieldset>}
-        {canCreateRecurring && <label className="checkbox recurring-toggle"><input type="checkbox" checked={recurringExpense} onChange={event => setRecurringExpense(event.target.checked)} /> Gasto Recorrente</label>}
-        <div className="form-grid">
-          {activeFields.map((f) => (
+  const paymentFields=isTransactionForm?activeFields.filter(f=>['status','settled_on'].includes(f.key)):[];
+  const dataFields=isTransactionForm?activeFields.filter(f=>!['status','settled_on'].includes(f.key)):activeFields;
+  const renderField=(f:Field)=>(
+
             <label
               key={f.key}
-              className={f.type === "checkbox" ? "checkbox" : ""}
+              className={`${f.type === "checkbox" ? "checkbox" : ""} ${isTransactionForm&&['status','settled_on'].includes(f.key)?'form-payment-field':''} ${isTransactionForm&&f.key==='date'?'form-due-field':''}`}
             >
               {form.purchaseCalculator && f.key === "amount" ? (entryMethod === "total" ? "Valor total da compra (R$)" : "Valor individual da parcela (R$)") : recurringExpense && f.key === "date" ? "Data de início" : f.label}
               {f.source === 'categories' ? <CategoryPicker categories={rows(snapshot, 'categories')} name={f.key} label={f.label} defaultValue={str(initial ?? {}, f.key) || f.default || ''} value={f.key==='category_id'&&isTransactionForm?transactionCategory:undefined} onChange={f.key==='category_id'&&isTransactionForm?v=>{setTransactionCategory(v);setCategoryTouched(true);}:undefined} required={f.required !== false} /> : f.source || f.options ? (
@@ -267,12 +234,51 @@ export function Dialog({
               )}
               {f.help && <small className="field-help">{f.help}</small>}
             </label>
-          ))}
+  );
+  return (
+    <dialog
+      ref={dialog}
+      className="dialog"
+      aria-labelledby={titleId}
+      onCancel={(event) => {
+        if (busy) event.preventDefault();
+        else onClose();
+      }}
+    >
+      <form ref={formElement} onSubmit={submit}>
+        <div className="dialog-head">
+          <div>
+            <span className="eyebrow">ORGANIZE SUAS FINANÇAS</span>
+            <h2 id={titleId}>
+              {form.resource === 'categories' && initial?.parent_id ? initial?.id ? 'Editar subcategoria' : 'Nova subcategoria' : initial?.id ? form.editTitle || "Editar cadastro" : form.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClose}
+            aria-label="Fechar"
+            disabled={busy}
+          >
+            <X />
+          </button>
+        </div>
+        {form.purchaseCalculator && <fieldset className="purchase-method">
+          <legend>Como deseja informar a compra?</legend>
+          <div className="purchase-method-options"><label className={`purchase-method-option ${entryMethod === "total" ? "selected" : ""}`}><input type="radio" name="entry_method" aria-label="Valor total da compra" value="total" checked={entryMethod === "total"} onChange={() => { entryValues.current[entryMethod] = entryValue; setEntryValue(entryValues.current.total ?? purchaseTotalValue ?? ""); setEntryMethod("total"); }} /><span><strong>Valor total da compra</strong><small>Dividir o total em parcelas</small></span></label>
+          <label className={`purchase-method-option ${entryMethod === "installment" ? "selected" : ""}`}><input type="radio" name="entry_method" aria-label="Valor individual da parcela" value="installment" checked={entryMethod === "installment"} onChange={() => { entryValues.current[entryMethod] = entryValue; setEntryValue(entryValues.current.installment ?? (purchaseTotalValue ? D(purchaseTotalValue).div(parcelCount).toDecimalPlaces(2, 1).toFixed(2) : "")); setEntryMethod("installment"); }} /><span><strong>Valor individual da parcela</strong><small>Repetir o valor de cada parcela</small></span></label></div>
+          <small>Ao informar o valor individual, todas as parcelas terão exatamente esse valor.</small>
+        </fieldset>}
+        {canCreateRecurring && <label className="checkbox recurring-toggle"><input type="checkbox" checked={recurringExpense} onChange={event => setRecurringExpense(event.target.checked)} /> Gasto Recorrente</label>}
+        {isTransactionForm&&<div className="form-introduction"><strong>Dados do lançamento</strong><p>Informe o valor, o vencimento e a origem. A confirmação do pagamento ou recebimento fica separada abaixo.</p></div>}
+        <div className="form-grid">
+          {dataFields.map(renderField)}
           {recurringExpense && canCreateRecurring && <>
             <label>Frequência<select name="frequency" aria-label="Frequência" defaultValue="monthly"><option value="weekly">Semanal</option><option value="monthly">Mensal</option><option value="annual">Anual</option></select></label>
             <label>Data de término (opcional)<input type="date" name="end_date" aria-label="Data de término (opcional)" /><small className="field-help">Em branco: por tempo indeterminado. Cada ocorrência fica pendente até sua confirmação.</small></label>
           </>}
         </div>
+        {paymentFields.length>0&&<fieldset className="form-payment-section"><legend>Confirmação do lançamento</legend><p>O vencimento define o mês; a data efetiva define o caixa. Pendente não altera o saldo.</p><div className="form-grid">{paymentFields.map(renderField)}</div></fieldset>}
         {form.purchaseCalculator && <section className="installment-preview" aria-live="polite" aria-label="Prévia das parcelas">
           <h3>Prévia das parcelas e vencimentos</h3>
           {preview.length ? <><p><strong>Total: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(purchaseTotalValue))}</strong> · {parcelCount} parcelas</p><div className="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>{preview.map(part => <tr key={part.number}><td>{part.number}/{parcelCount}</td><td>{part.dueDate.split("-").reverse().join("/")}</td><td>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(part.amount))}</td></tr>)}</tbody></table></div><small>Somente a parcela do mês entra nos gastos mensais. Diferenças de centavos ficam na última parcela.</small></> : <p>Informe o cartão, a data, o valor e o número de parcelas para visualizar os vencimentos.</p>}

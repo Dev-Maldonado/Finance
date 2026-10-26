@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Fragment,useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CalendarDays, CreditCard, Plus, Repeat2, Clock3, X } from 'lucide-react';
+import { financialTone } from '@/lib/financial-tone';
 import { D } from '@/financial/engine';
 import { monthlyCommitments, type MonthlyCommitment } from '@/lib/monthly-commitments';
 import { invoiceMonthLabel } from '@/lib/card-invoices';
@@ -13,6 +14,8 @@ import { post } from './dialog';
 import { useReadableAmounts } from './use-readable-amounts';
 import { dateShift, monthEnd } from '@/lib/dashboard';
 import { forecastItems } from '@/lib/financial-plan';
+import { useViewMemory } from './use-view-memory';
+import { recurringViewSchema } from '@/lib/view-preferences';
 import type { SettlementTarget } from './settlement-dialog';
 
 const brl = (v: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v));
@@ -28,40 +31,44 @@ export function RecurringBills({ snapshot, today, onSaved, onNew, onEditTransact
   const [change, setChange] = useState<{ item: MonthlyCommitment; cancel: boolean } | null>(null);
   const [notice, setNotice] = useState('');
   const [filter,setFilter]=useState<'month'|'overdue'|'week'>('month');
+  useViewMemory(snapshot.user.id,'recurring-bills',{month,filter},saved=>{const r=recurringViewSchema.safeParse(saved);if(r.success){setMonth(r.data.month);setFilter(r.data.filter);}});
   const root = useRef<HTMLDivElement>(null);
   useReadableAmounts(root);
   const changeMonth = (value: string) => { setMonth(value); setNotice(''); setFilter('month'); };
   const model = useMemo(() => monthlyCommitments(snapshot, month, today, filter==='overdue'?{start:'0001-01-01',end:dateShift(today,-1),project:false}:filter==='week'?{start:today,end:dateShift(today,7)}:undefined), [snapshot, month, today,filter]);
   const requestedEnd=monthEnd(month)>monthEnd(today.slice(0,7))?monthEnd(month):monthEnd(today.slice(0,7));
-  const through=requestedEnd>dateShift(today,90)?dateShift(today,90):requestedEnd;
+  const through=filter==='week'?dateShift(today,7):filter==='overdue'?today:requestedEnd>dateShift(today,90)?dateShift(today,90):requestedEnd;
   const cash=rows(snapshot,'account_balances').filter(a=>a.kind!=='savings').reduce((a,r)=>a.plus(str(r,'balance')),D(0));
-  const outgoing=forecastItems(snapshot,today,through).filter(i=>D(i.amount).lt(0)).reduce((a,i)=>a.plus(D(i.amount).abs()),D(0));
+  const outgoing=filter==='overdue'?D(model.totals.total):forecastItems(snapshot,today,through).filter(i=>D(i.amount).lt(0)).reduce((a,i)=>a.plus(D(i.amount).abs()),D(0));
   const after=cash.minus(outgoing);
+  const interval=filter==='overdue'?`Vencimentos anteriores a ${pretty(today)}`:filter==='week'?`${pretty(today)} — ${pretty(dateShift(today,7))}`:`${pretty(month+'-01')} — ${pretty(monthEnd(month))}`;
+  const band=(date:string)=>date<today?'Em atraso':date===today?'Vence hoje':date<=dateShift(today,7)?'Nos próximos 7 dias':'Próximos vencimentos';
   return <div className="recurring-bills" ref={root}>
     <section className="panel commitments-toolbar" aria-label="Navegação mensal de contas recorrentes">
-      <div><span className="eyebrow">SEUS COMPROMISSOS, MÊS A MÊS</span><h2>{filter==='overdue'?'Contas atrasadas':filter==='week'?'Próximos 7 dias':invoiceMonthLabel(month)}</h2><p>Contas a pagar, sem duplicações. Pendentes não descontam do saldo disponível.</p></div>
-      <InvoiceMonthPicker month={month} today={today} onChange={changeMonth} label="Mês das contas recorrentes" previousLabel="Voltar um mês" />
+      <div><span className="eyebrow">SEUS COMPROMISSOS, MÊS A MÊS</span><h2>{filter==='overdue'?'Contas atrasadas':filter==='week'?'Próximos 7 dias':invoiceMonthLabel(month)}</h2><p>Parcelas, gastos fixos e programados. Pendentes não descontam do saldo disponível.</p><span className="commitment-interval"><CalendarDays size={14}/>{interval}</span></div>
+      <div className="commitment-month-control"><span>{filter==='month'?'Navegar pelos meses':'Consultar outro mês'}</span><InvoiceMonthPicker month={month} today={today} onChange={changeMonth} label="Mês das contas recorrentes" previousLabel="Voltar um mês" /></div>
       <div className="actions"><button onClick={() => onNew('recurring', filter==='month'?month:today.slice(0,7))}><Repeat2 size={16} /> Novo gasto fixo</button><button className="primary" onClick={() => onNew('transaction', filter==='month'?month:today.slice(0,7))}><Plus size={16} /> Gasto programado</button><Link href="/transacoes">Gerenciar recorrências</Link></div>
     </section>
+    <nav className="screen-jump-links" aria-label="Tipos de contas"><a href="#recorrentes-cartoes">Cartões</a><a href="#recorrentes-fixed">Gastos fixos</a><a href="#recorrentes-scheduled">Programados</a></nav>
     {notice && <p className="notice" role="status">{notice}</p>}
     <div className="commitment-filter-tabs" role="group" aria-label="Foco das contas"><button aria-pressed={filter==='month'} className={filter==='month'?'selected':''} onClick={()=>setFilter('month')}>Mês selecionado</button><button aria-pressed={filter==='overdue'} className={filter==='overdue'?'selected':''} onClick={()=>setFilter('overdue')}>Atrasadas</button><button aria-pressed={filter==='week'} className={filter==='week'?'selected':''} onClick={()=>setFilter('week')}>Próximos 7 dias</button></div>
     {filter!=='month'&&<p className="commitment-note">{filter==='overdue'?`Pendências registradas com vencimento anterior a ${pretty(today)}, inclusive de outros meses.`:`Vencimentos de ${pretty(today)} a ${pretty(dateShift(today,7))}, inclusive quando atravessam a virada do mês.`} Selecione um mês para voltar à consulta mensal.</p>}
-    <div className="commitment-cash-summary"><article className="financial-surface tone-balance" aria-label="Saldo atual das contas"><span>Saldo atual das contas</span><strong>{brl(cash.toFixed(2))}</strong><small>Caixa efetivo de hoje · sem caixinhas e limites</small></article><article className={`financial-surface ${after.lt(0)?'tone-danger':'tone-balance'}`} aria-label="Saldo após contas previstas"><span>Saldo após contas previstas</span><strong>{brl(after.toFixed(2))}</strong><small>Saídas de hoje até {pretty(through)}, incluindo pendências anteriores · sem antecipar entradas futuras</small></article></div>
+    <div className="commitment-cash-summary"><article className={`financial-surface ${financialTone(cash.toFixed(2),'balance')}`} aria-label="Saldo atual das contas"><span>Saldo atual das contas</span><strong>{brl(cash.toFixed(2))}</strong><small>Caixa efetivo de hoje · sem caixinhas e limites</small></article><article className={`financial-surface ${after.lt(0)?'tone-danger':'tone-balance'}`} aria-label="Saldo após contas previstas"><span>Saldo após contas previstas</span><strong>{brl(after.toFixed(2))}</strong><small>{filter==='overdue'?'Apenas as contas atrasadas desta seleção':`Saídas de hoje até ${pretty(through)}, incluindo pendências anteriores`} · sem antecipar entradas futuras</small></article></div>
     <div className="commitment-totals" aria-label="Resumo de contas recorrentes">
       {([{ key: 'total', label: 'Total previsto a pagar', Icon: CalendarDays, tone: 'tone-pending' }, { key: 'cards', label: 'Parcelas de cartões', Icon: CreditCard, tone: 'tone-expense' }, { key: 'fixed', label: 'Gastos fixos', Icon: Repeat2, tone: 'tone-wealth' }, { key: 'scheduled', label: 'Gastos programados', Icon: Clock3, tone: 'tone-pending' }] as const).map(({ key, label, Icon, tone }) => <article key={key} aria-label={label} className={`financial-surface ${tone}`}><Icon size={19} /><span>{label}</span><strong>{brl(model.totals[key])}</strong></article>)}
     </div>
-    <section className="panel" aria-labelledby="commitment-cards-heading"><div className="panel-head"><div><h2 id="commitment-cards-heading">Parcelas de cartões</h2><p>Vencimento da fatura, cartão e parcela vinculados à compra original.</p></div><Link href={`/cartoes?month=${month}`}>Consultar faturas</Link></div>
+    <section className="panel screen-anchor" id="recorrentes-cartoes" aria-labelledby="commitment-cards-heading"><div className="panel-head"><div><h2 id="commitment-cards-heading">Parcelas de cartões</h2><p>Vencimento da fatura, cartão e parcela vinculados à compra original.</p></div><Link href={`/cartoes?month=${month}`}>Consultar faturas</Link></div>
       {model.invoices.length ? model.invoices.map(invoice => <div className="commitment-invoice" key={invoice.id}>
         <div className="commitment-invoice-head"><div><strong>{invoice.cardName}</strong><small>Vence {pretty(invoice.due)} · {invoice.status}</small></div><div><small>Saldo a pagar da fatura</small><strong>{brl(invoice.pending)}</strong></div></div>
         {D(invoice.paid).gt(0) && <p className="commitment-note">{brl(invoice.paid)} pagos nesta fatura. Valores abaixo são os valores originais das parcelas; o resumo considera apenas o saldo restante, sem distribuir pagamentos arbitrariamente entre compras.</p>}
         {invoice.installments.map(part => <div className="commitment-row" key={part.id}><span className="commitment-icon"><CreditCard size={18} /></span><div className="commitment-copy"><strong>{part.description}</strong><small>{invoice.cardName} · Parcela {part.number} de {part.count} · {pretty(invoice.due)}</small><small>{categoryLabel(rows(snapshot, 'categories'), part.categoryId, ' / ')}</small></div><strong className="commitment-amount">{brl(part.amount)}</strong><div className="actions">{invoice.due > today && D(invoice.paid).eq(0) && !rows(snapshot, 'credit_card_payments').some(p => p.invoice_id === invoice.id) && <button onClick={() => onEditInstallment(rows(snapshot, 'credit_card_installments').find(p => p.id === part.id)!)}>Editar parcela</button>}</div></div>)}
       </div>) : <p className="empty commitment-empty">Nenhuma parcela a pagar neste mês.</p>}
     </section>
-    {([{ kind: 'fixed', title: 'Gastos fixos', detail: 'Ocorrências pendentes e previstas, respeitando pausas, término e exclusões.' }, { kind: 'scheduled', title: 'Gastos programados', detail: 'Despesas cadastradas e compromissos agendados com vencimento neste mês.' }] as const).map(group => <section className="panel" key={group.kind} aria-label={group.title}><div className="panel-head"><div><h2>{group.title}</h2><p>{group.detail}</p></div><strong>{brl(model.totals[group.kind])}</strong></div>
-      {model.items.filter(i => i.kind === group.kind).map(item => <div className="commitment-row" key={item.id} aria-label={item.description}><span className="commitment-icon">{group.kind === 'fixed' ? <Repeat2 size={18} /> : <Clock3 size={18} />}</span><div className="commitment-copy"><strong>{item.description}</strong><small>{pretty(item.date)} · {item.source}</small><small>{categoryLabel(rows(snapshot, 'categories'), item.categoryId, ' / ')}</small><span className={`badge ${item.date < today ? 'commitment-overdue' : ''}`}>{item.date < today ? 'Vencido · ' : ''}{item.status}</span></div><strong className="commitment-amount">{brl(item.amount)}</strong><div className="actions">
+    {([{ kind: 'fixed', title: 'Gastos fixos', detail: 'Ocorrências pendentes e previstas, respeitando pausas, término e exclusões.' }, { kind: 'scheduled', title: 'Gastos programados', detail: 'Despesas cadastradas e compromissos agendados com vencimento neste mês.' }] as const).map(group => <section className="panel screen-anchor" id={`recorrentes-${group.kind}`} key={group.kind} aria-label={group.title}><div className="panel-head"><div><h2>{group.title}</h2><p>{group.detail}</p></div><strong>{brl(model.totals[group.kind])}</strong></div>
+      {model.items.filter(i => i.kind === group.kind).map((item,index,list) => <Fragment key={item.id}>{(index===0||band(list[index-1].date)!==band(item.date))&&<h3 className={`commitment-bucket-heading ${item.date<today?'is-overdue':''}`}>{band(item.date)}<span>{list.filter(i=>band(i.date)===band(item.date)).length}</span></h3>}<div className="commitment-row" key={item.id} aria-label={item.description}><span className="commitment-icon">{group.kind === 'fixed' ? <Repeat2 size={18} /> : <Clock3 size={18} />}</span><div className="commitment-copy"><strong>{item.description}</strong><small>{pretty(item.date)} · {item.source}</small><small>{categoryLabel(rows(snapshot, 'categories'), item.categoryId, ' / ')}</small><span className={`badge ${item.date < today ? 'commitment-overdue' : ''}`}>{item.date < today ? 'Vencido · ' : ''}{item.status}</span></div><strong className="commitment-amount">{brl(item.amount)}</strong><div className="actions">
         <button className="commitment-pay" onClick={()=>onSettle({transaction:item.transaction,recurrenceId:item.recurrenceId,occurrenceDate:item.occurrenceDate,obligation:item.obligation,description:item.description,amount:item.amount,due:item.date,accountId:str(item.transaction??rows(snapshot,'recurring_transactions').find(r=>r.id===item.recurrenceId)??{},'account_id'),type:'expense'})}>Pagar</button>
         {item.recurrenceId ? <><button onClick={() => setChange({ item, cancel: false })}>Editar</button><button onClick={() => setChange({ item, cancel: true })}>Excluir</button></> : item.transaction ? <><button onClick={() => onEditTransaction(item.transaction!)}>Editar</button><button onClick={() => onRemoveTransaction(item.transaction!)}>Excluir</button></> : item.obligation ? <button onClick={() => onEditObligation(item.obligation!)}>Editar compromisso</button> : null}
-      </div></div>)}
+      </div></div></Fragment>)}
       {!model.items.some(i => i.kind === group.kind) && <p className="empty commitment-empty">Nenhum {group.kind === 'fixed' ? 'gasto fixo' : 'gasto programado'} a pagar neste mês.</p>}
     </section>)}
     <p className="commitment-note">Valores previstos não alteram o saldo disponível. Lançamentos pagos e faturas quitadas deixam esta lista; o histórico permanece nas Transações e nos Cartões. Recorrências futuras são projeções até serem registradas, sempre substituídas pela ocorrência real sem duplicação.</p>

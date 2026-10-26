@@ -113,6 +113,9 @@ test("card color and corrections of purchases, expenses and income persist", asy
     };
     for (const type of ["expense", "income"]) {
       await page.goto("/transacoes");
+      await expect(page.getByRole("button", { name: "Novo lançamento", exact: true })).toBeEnabled();
+      if (type === "income") await expect(page.getByLabel("Mostrar lançamentos excluídos")).toBeChecked();
+      await page.getByLabel("Mostrar lançamentos excluídos").uncheck();
       await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
       await page.getByLabel("Descrição", { exact: true }).fill(`Wrong ${type}`);
       await page.getByLabel("Tipo", { exact: true }).selectOption(type);

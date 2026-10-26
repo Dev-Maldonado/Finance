@@ -1,11 +1,14 @@
 "use client";
 import { transactionHistory, filterTransactionHistory } from "@/lib/transaction-history";
 import { DashboardWalletArt } from "./dashboard-overview";
+import { TransactionList } from './transaction-list';
+import { ActiveFilters } from './active-filters';
+import { useViewMemory } from './use-view-memory';
+import { pageViewSchema,presetRange } from '@/lib/view-preferences';
 import { PurchaseHistory } from "./purchase-history";
 import { RecurringBills } from "./recurring-bills";
 import { DesktopNavigation } from "./desktop-navigation";
 import { SettlementDialog, type SettlementTarget } from './settlement-dialog';
-import { isSettled, transactionStatus } from '@/lib/transaction-state';
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
@@ -316,6 +319,14 @@ function Workspace({
   });
   const snapshot = query.data;
   const today = localDate();
+  const viewReady=useViewMemory(session&&snapshot?snapshot.user.id:undefined,`page:${section}:${detail??''}`,{period,start,end,account:txAccount,category:txCategory,type:txType,status:txStatus,excluded:showExcluded,search,card:selectedCard,invoiceMonth,chartMode},saved=>{
+    const parsed=pageViewSchema.safeParse(saved);if(!parsed.success)return;const v=parsed.data;
+    if(v.period){setPeriod(v.period);const range=presetRange(v.period,localDate());if(range){setStart(range.start);setEnd(range.end);}else if(v.start&&v.end){setStart(v.start);setEnd(v.end);}}
+    if(v.account!==undefined)setTxAccount(v.account);if(v.category!==undefined)setTxCategory(v.category);if(v.type!==undefined)setTxType(v.type);if(v.status!==undefined)setTxStatus(v.status);if(v.excluded!==undefined)setShowExcluded(v.excluded);if(v.search!==undefined)setSearch(v.search);if(v.card!==undefined)setSelectedCard(v.card);if(v.chartMode)setChartMode(v.chartMode);
+    const requested=new URLSearchParams(window.location.search).get('month');if(v.invoiceMonth&&!(section==='cartoes'&&requested&&/^\d{4}-(0[1-9]|1[0-2])$/.test(requested)))setInvoiceMonth(v.invoiceMonth);
+  });
+  function clearTransactionFilters(){setSearch('');setTxAccount('');setTxCategory('');setTxType('');setTxStatus('');setShowExcluded(false);}
+
   const allInvoices = useMemo(
     () => (snapshot ? cardInvoices(snapshot, today) : []),
     [snapshot, today],
@@ -365,7 +376,7 @@ function Workspace({
   );
   function open(key: string, initial?: Row) {
     const kind = ['income','expense'].includes(key) ? 'transaction' : key;
-    const form = forms[kind], seed:Row = {...initial};
+    const form = ['income','expense'].includes(key)?{...forms[kind],title:key==='income'?'Nova receita':'Nova despesa'}:forms[kind], seed:Row = {...initial};
     if (key === 'income' || key === 'expense') seed.type = key;
     if (!seed.id && snapshot) {
       const preferences=rows(snapshot,'user_settings')[0]??{};
@@ -543,128 +554,13 @@ function Workspace({
       })()
     : [];
   function transactionTable(list: Row[]) {
-    return list.length ? (
-      <div className="table-wrap transaction-list">
-        <table>
-          <thead>
-            <tr>
-              <th>Descrição</th>
-              <th>Categoria</th>
-              <th>Origem</th>
-              <th>Data</th>
-              <th>Status</th>
-              <th className="right">Valor</th>
-              <th className="transaction-actions">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((t) => (
-              <tr key={str(t, "id")}>
-                <td>
-                  <span
-                    className={`transaction-icon ${D(str(t, "amount")).lt(0) ? "out" : "in"}`}
-                  >
-                    {D(str(t, "amount")).lt(0) ? (
-                      <ArrowUpRight size={17} />
-                    ) : (
-                      <ArrowDownLeft size={17} />
-                    )}
-                  </span>
-                  <span>
-                    <strong>{str(t, "description")}</strong>
-                    <small>
-                      {
-                        (
-                          {
-                            income: "Receita",
-                            expense: "Despesa",
-                            transfer: "Transferência",
-                            invoice_payment: "Pagamento de fatura",
-                            investment: "Investimento",
-                            yield: "Rendimento",
-                            adjustment: "Ajuste",
-                          } as Record<string, string>
-                        )[str(t, "type")]
-                      }
-                    </small>
-                    {t.origin === "card" && <small className="installment-detail">Parcela {str(t, "number")} de {str(t, "installment_count")} · {brl(D(str(t, "amount")).abs().toFixed(2))}<br />Total da compra: {brl(str(t, "purchase_total"))} · Compra em {pretty(str(t, "purchase_date"))}</small>}
-                    {t.type === "income" && t.status === "pending" && str(t, "date") < today && (
-                      <small className="pending-receipt-warning" title="A data prevista passou. Edite o lançamento para confirmar o recebimento ou corrigir a data.">
-                        <AlertTriangle size={13} aria-hidden="true" /> Recebimento em atraso
-                      </small>
-                    )}
-                  </span>
-                </td>
-                <td data-label="Categoria">
-                  {snapshot ? categoryLabel(rows(snapshot, "categories"), str(t, "category_id"), " / ") : "—"}
-                </td>
-                <td data-label="Origem">
-                  {t.origin === "card" ? `Cartão · ${str(t, "card_name")}` : (snapshot &&
-                    rows(snapshot, "financial_accounts").find(
-                      (c) => c.id === t.account_id,
-                    )?.name) ||
-                    "—"}
-                </td>
-                <td data-label="Data">{pretty(str(t, "date"))}{t.origin!=='card'&&t.settled_on&&<small>{t.type==='income'?'Recebido':'Pago'}: {pretty(str(t,'settled_on'))}</small>}</td>
-                <td data-label="Status">
-                  <span
-                    className={`badge ${t.status === "confirmed" ? "green" : ""}`}
-                  >
-                    {t.origin === "card" && t.status !== "cancelled" ? str(t, "invoice_status") : transactionStatus(t,today)}
-                  </span>
-                </td>
-                <td data-label="Valor"
-                  className={`right amount ${D(str(t, "amount")).lt(0) ? "negative" : "positive"}`}
-                >
-                  {brl(str(t, "amount"))}
-                </td>
-                <td className="transaction-actions">
-                  {t.origin === "card" && t.status !== "cancelled" && (() => {
-                    const purchase = snapshot && rows(snapshot, "credit_card_purchases").find(p => p.id === t.purchase_id);
-                    return purchase ? <div className="actions"><button onClick={() => setModal({ form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: purchase })}>Editar compra</button><button onClick={() => setRemoval({ kind: "purchase", row: purchase })}>Excluir compra</button></div> : null;
-                  })()}
-                  {["income", "expense", "yield", "adjustment"].includes(
-                    str(t, "type"),
-                  ) &&
-                    t.origin !== "card" && !t.group_id &&
-                    t.status !== "cancelled" && (
-                      <div className="actions">
-                        {['income','expense'].includes(str(t,'type'))&&!t.linked_income_id&&!isSettled(t,today)&&<button onClick={()=>setSettlement({transaction:t,description:str(t,'description'),amount:D(str(t,'amount')).abs().toFixed(2),due:str(t,'date'),accountId:str(t,'account_id'),type:t.type==='income'?'income':'expense'})}>{t.type==='income'?'Receber':'Pagar'}</button>}
-                        <button
-                          onClick={() =>
-                            setModal({
-                              form: {
-                                ...forms.transaction,
-                                action: undefined,
-                                endpoint: "/api/transactions",
-                              },
-                              initial: {
-                                ...t,
-                                amount: D(str(t, "amount")).abs().toFixed(2),
-                              },
-                            })
-                          }
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() =>
-                            setRemoval({ kind: "transaction", row: t })
-                          }
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    ) : (
-      <Empty action={() => open("transaction")} />
-    );
+    if(!snapshot)return null;
+    return list.length?<TransactionList list={list} snapshot={snapshot} today={today}
+      onSettle={setSettlement}
+      onEditPurchase={p=>setModal({form:{...forms.purchase,action:undefined,endpoint:'/api/purchases'},initial:p})}
+      onRemovePurchase={p=>setRemoval({kind:'purchase',row:p})}
+      onEditTransaction={t=>setModal({form:{...forms.transaction,action:undefined,endpoint:'/api/transactions'},initial:{...t,amount:D(str(t,'amount')).abs().toFixed(2)}})}
+      onRemoveTransaction={t=>setRemoval({kind:'transaction',row:t})}/>:<Empty action={()=>open('transaction')}/>;
   }
   return (
     <div className={`workspace ${collapsed ? "collapsed" : ""} ${current[0] === "dashboard" ? "dashboard-workspace" : ""}`}>
@@ -796,7 +692,7 @@ function Workspace({
               {(controls[current[0]] ?? []).map(([key, label], i, all) => (
                 <button
                   key={key}
-                  disabled={!snapshot}
+                  disabled={!snapshot||!viewReady}
                   className={i === all.length - 1 ? "primary" : ""}
                   onClick={() => open(key)}
                 >
@@ -806,7 +702,7 @@ function Workspace({
               ))}
             </div>
           </div>
-          {['dashboard','transacoes','recorrentes','contas'].includes(current[0])&&<div className="quick-entry-actions" role="group" aria-label="Atalhos de lançamentos"><button disabled={!snapshot} className="financial-surface tone-income" onClick={()=>open('income')}><ArrowDownLeft size={16}/>Nova receita</button><button disabled={!snapshot} className="financial-surface tone-expense" onClick={()=>open('expense')}><ArrowUpRight size={16}/>Nova despesa</button><button disabled={!snapshot} onClick={()=>open('transfer')}><ArrowLeftRight size={16}/>Transferência</button></div>}
+          {['dashboard','transacoes','recorrentes','contas'].includes(current[0])&&<div className="quick-entry-actions" role="group" aria-label="Atalhos de lançamentos"><button disabled={!snapshot||!viewReady} className="financial-surface tone-income" onClick={()=>open('income')}><ArrowDownLeft size={16}/>Nova receita</button><button disabled={!snapshot||!viewReady} className="financial-surface tone-expense" onClick={()=>open('expense')}><ArrowUpRight size={16}/>Nova despesa</button><button disabled={!snapshot||!viewReady} onClick={()=>open('transfer')}><ArrowLeftRight size={16}/>Transferência</button></div>}
           {!["cartoes", "investimentos", "recorrentes"].includes(current[0]) && (
             <div className={`period-bar ${current[0] === "dashboard" ? "dashboard-page-controls" : ""}`}>
               <div className="period-tabs">
@@ -820,6 +716,7 @@ function Workspace({
                 ].map(([v, l]) => (
                   <button
                     key={v}
+                    disabled={!viewReady}
                     className={period === v ? "selected" : ""}
                     onClick={() => changePeriod(v)}
                   >
@@ -830,7 +727,7 @@ function Workspace({
               {current[0] === "dashboard" && (
                 <div className="dashboard-month-navigation" role="group" aria-label="Navegação mensal do dashboard">
                   <span>Visualizar mês</span>
-                  <InvoiceMonthPicker month={start.slice(0, 7)} today={today} label="Mês do dashboard" previousLabel="Voltar um mês" onChange={selectDashboardMonth} />
+                  <InvoiceMonthPicker disabled={!viewReady} month={start.slice(0, 7)} today={today} label="Mês do dashboard" previousLabel="Voltar um mês" onChange={selectDashboardMonth} />
                   <span className="dashboard-selected-month" aria-live="polite">{invoiceMonthLabel(start.slice(0, 7))}</span>
                 </div>
               )}
@@ -840,6 +737,7 @@ function Workspace({
                   <>
                     <input
                       aria-label="Data inicial"
+                      disabled={!viewReady}
                       type="date"
                       value={start}
                       onChange={(e) => {
@@ -852,6 +750,7 @@ function Workspace({
                     <span>—</span>
                     <input
                       aria-label="Data final"
+                      disabled={!viewReady}
                       type="date"
                       value={end}
                       min={start}
@@ -875,6 +774,7 @@ function Workspace({
             <div role="status" className="notice dismissible-notice"><span>{notice}</span><button className="icon-button" aria-label="Fechar aviso" onClick={() => setNotice("")}><X size={16} /></button></div>
           )}
           {recurrenceWarning && <p className="error" role="alert">{recurrenceWarning}</p>}
+          {!viewReady&&snapshot&&<p className="loading" role="status">Restaurando sua seleção…</p>}
           {query.isPending && <p className="loading" role="status">Carregando seus dados…</p>}
           {query.error && (
             <div className="error" role="alert">
@@ -882,7 +782,7 @@ function Workspace({
               <button onClick={refresh}>Tentar novamente</button>
             </div>
           )}
-          {snapshot && summary && (
+          {snapshot && summary && viewReady && (
             <>
               {current[0] === "dashboard" && (
                 <Dashboard
@@ -1068,18 +968,20 @@ function Workspace({
                         </select>
                       </label>
                       <button
-                        onClick={() => {
-                          setSearch("");
-                          setTxAccount("");
-                          setTxCategory("");
-                          setTxType("");
-                          setTxStatus("");
-                          setShowExcluded(false);
-                        }}
+                        onClick={clearTransactionFilters}
                       >
                         Limpar filtros
                       </button>
                     </div>
+                    <ActiveFilters label="Seleção das transações" context={`${filteredTx.length} lançamentos · mais recentes primeiro`} onClear={clearTransactionFilters} items={[
+                      {key:'period',label:'Período',value:`${pretty(start)} — ${pretty(end)}`},
+                      ...(txAccount?[{key:'account',label:'Origem',value:txAccount.startsWith('card:')?str(rows(snapshot,'credit_cards').find(c=>c.id===txAccount.slice(5))??{},'name'):str(rows(snapshot,'financial_accounts').find(a=>a.id===txAccount)??{},'name'),remove:()=>setTxAccount('')}]:[]),
+                      ...(txCategory?[{key:'category',label:'Categoria',value:txCategory==='uncategorized'?'Sem categoria':categoryLabel(rows(snapshot,'categories'),txCategory,' / '),remove:()=>setTxCategory('')}]:[]),
+                      ...(txType?[{key:'type',label:'Tipo',value:({income:'Receita',expense:'Despesa',yield:'Rendimento',transfer:'Transferência',invoice_payment:'Pagamento de fatura',investment:'Investimento',adjustment:'Ajuste'} as Record<string,string>)[txType],remove:()=>setTxType('')}]:[]),
+                      ...(txStatus?[{key:'status',label:'Status',value:({confirmed:'Confirmado',pending:'Pendente',cancelled:'Excluído'} as Record<string,string>)[txStatus],remove:()=>setTxStatus('')}]:[]),
+                      ...(search?[{key:'search',label:'Busca',value:search,remove:()=>setSearch('')}]:[]),
+                      ...(showExcluded?[{key:'excluded',label:'Histórico',value:'Inclui excluídos',remove:()=>{setShowExcluded(false);if(txStatus==='cancelled')setTxStatus('');}}]:[])
+                    ]}/>
                     {transactionTable(filteredTx)}
                   </Panel>
                   <Panel
@@ -1189,6 +1091,7 @@ function Workspace({
               )}
               {current[0] === "cartoes" && (
                 <>
+                  <nav className="screen-jump-links" aria-label="Áreas dos cartões"><a href="#faturas-do-mes">Faturas e itens</a><a href="#meus-cartoes">Meus cartões</a><a href="#compras-registradas">Compras registradas</a></nav>
                   <div className="invoice-month-toolbar">
                     <div>
                       <h2>Faturas por mês</h2>
@@ -1203,26 +1106,7 @@ function Workspace({
                       onChange={setInvoiceMonth}
                     />
                   </div>
-                  <div className="cards-grid">
-                    {rows(snapshot, "credit_cards").filter(c => !selectedCard || c.id === selectedCard).map((c) => (
-                      <Panel
-                        key={str(c, "id")}
-                        title={str(c, "name")}
-                        subtitle="Limite, compras e compromissos futuros"
-                        action={
-                          <button onClick={() => open("card", c)}>
-                            Editar
-                          </button>
-                        }
-                      >
-                        {renderCard(c)}
-                      </Panel>
-                    ))}
-                    {!rows(snapshot, "credit_cards").length && (
-                      <Empty action={() => open("card")} />
-                    )}
-                  </div>
-                  <Panel
+                  <div id="faturas-do-mes" className="screen-anchor"><Panel
                     title={`Faturas de ${invoiceMonthLabel(invoiceMonth)}`}
                     subtitle="Total, pagamentos e saldo de cada cartão no mês selecionado"
                   >
@@ -1246,7 +1130,28 @@ function Workspace({
                         })
                       }
                     />
-                  </Panel>
+                  </Panel></div>
+                  <section id="meus-cartoes" className="screen-anchor" aria-label="Meus cartões"><div className="screen-section-title"><h2>Meus cartões</h2><p>Limites e compromissos gerais · as faturas do mês estão acima.</p></div>
+                  <div className="cards-grid">
+                    {rows(snapshot, "credit_cards").filter(c => !selectedCard || c.id === selectedCard).map((c) => (
+                      <Panel
+                        key={str(c, "id")}
+                        title={str(c, "name")}
+                        subtitle="Limite, compras e compromissos futuros"
+                        action={
+                          <button onClick={() => open("card", c)}>
+                            Editar
+                          </button>
+                        }
+                      >
+                        {renderCard(c)}
+                      </Panel>
+                    ))}
+                    {!rows(snapshot, "credit_cards").length && (
+                      <Empty action={() => open("card")} />
+                    )}
+                  </div>
+                  </section>
                   <PurchaseHistory snapshot={snapshot} month={invoiceMonth} today={today} cardId={selectedCard} onCardChange={setSelectedCard}
                     onEdit={p => setModal({ form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: p })}
                     onRemove={p => setRemoval({ kind: "purchase", row: p })} />

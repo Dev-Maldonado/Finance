@@ -5,6 +5,8 @@ import { D, money } from '@/financial/engine';
 import { categoryTree, categoryMatches, categoryLabel } from '@/lib/categories';
 import { rows, str, type Row, type Snapshot } from '@/lib/summary';
 import { CategoryBreakdown } from './category-breakdown';
+import { useViewMemory } from './use-view-memory';
+import { categoryViewSchema } from '@/lib/view-preferences';
 import { CategoryPicker } from './category-picker';
 
 const brl = (value: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
@@ -13,6 +15,7 @@ const spending = (row: Row) => row.spending_kind === 'essential' ? 'Essencial' :
 export function CategoryManagement({ snapshot, expenses, onEdit, onRemove }: { snapshot: Snapshot; expenses: Row[]; onEdit: (row?: Row) => void; onRemove: (row: Row) => void }) {
   const [expanded, setExpanded] = useState('');
   const [filter, setFilter] = useState('');
+  useViewMemory(snapshot.user.id,'categories',{filter},saved=>{const r=categoryViewSchema.safeParse(saved);if(r.success)setFilter(r.data.filter);});
   const categories = rows(snapshot, 'categories');
   const tree = categoryTree(categories);
   const total = (id: string) => money(expenses.filter(expense => categoryMatches(categories, str(expense, 'category_id'), id)).reduce((value, expense) => value.plus(D(str(expense, 'amount')).abs()), D(0)));

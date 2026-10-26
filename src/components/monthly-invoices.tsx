@@ -1,23 +1,24 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo,useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cardInvoices, invoiceMonthLabel, invoiceTotals, shiftInvoiceMonth, type CardInvoice } from "@/lib/card-invoices";
 import { rows, str, type Snapshot, type Row } from "@/lib/summary";
 import { financialTone } from '@/lib/financial-tone';
 import { D } from "@/financial/engine";
+import { useReadableAmounts } from './use-readable-amounts';
 import { categoryLabel } from '@/lib/categories';
 
 const brl = (value: string) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
 const dateLabel = (value: string) => value ? value.split("-").reverse().join("/") : "—";
 
-export function InvoiceMonthPicker({ month, today, onChange, label = "Mês das faturas", previousLabel = "Mês anterior" }: { month: string; today: string; onChange: (month: string) => void; label?: string; previousLabel?: string }) {
+export function InvoiceMonthPicker({ month, today, onChange, label = "Mês das faturas", previousLabel = "Mês anterior", disabled=false }: { disabled?:boolean; month: string; today: string; onChange: (month: string) => void; label?: string; previousLabel?: string }) {
   return <div className="invoice-month-picker">
-    <button aria-label={previousLabel} onClick={() => onChange(shiftInvoiceMonth(month, -1))}><ChevronLeft size={18} /></button>
-    <input aria-label={label} type="month" value={month} onChange={event => {
+    <button disabled={disabled} aria-label={previousLabel} onClick={() => onChange(shiftInvoiceMonth(month, -1))}><ChevronLeft size={18} /></button>
+    <input disabled={disabled} aria-label={label} type="month" value={month} onChange={event => {
       if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) onChange(event.target.value);
     }} />
-    <button aria-label="Próximo mês" onClick={() => onChange(shiftInvoiceMonth(month, 1))}><ChevronRight size={18} /></button>
-    <button onClick={() => onChange(today.slice(0, 7))}>Mês atual</button>
+    <button disabled={disabled} aria-label="Próximo mês" onClick={() => onChange(shiftInvoiceMonth(month, 1))}><ChevronRight size={18} /></button>
+    <button disabled={disabled} onClick={() => onChange(today.slice(0, 7))}>Mês atual</button>
   </div>;
 }
 
@@ -27,11 +28,13 @@ export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay, 
   onMonthChange: (month: string) => void; onPay: (invoice: CardInvoice) => void;
   onEditInstallment?: (part: Row) => void;
 }) {
+  const root=useRef<HTMLDivElement>(null);useReadableAmounts(root);
   const invoices = useMemo(() => cardInvoices(snapshot, today), [snapshot, today]);
   const matching = invoices.filter(invoice => !cardId || invoice.cardId === cardId);
   const selected = matching.filter(invoice => invoice.month === month);
   const totals = invoiceTotals(selected);
-  return <div className="monthly-invoices">
+  return <div className="monthly-invoices" ref={root}>
+    <div className="invoice-context"><span className="eyebrow">FATURAS · VENCIMENTO NO MÊS</span><strong>{invoiceMonthLabel(month)}</strong><small>{selected.length} fatura(s) · {cardId?str(rows(snapshot,'credit_cards').find(c=>c.id===cardId)??{},'name'):'Todos os cartões'}</small></div>
     <label className="invoice-card-filter">Cartão
       <select aria-label="Filtrar faturas por cartão" value={cardId} onChange={event => onCardChange(event.target.value)}>
         <option value="">Todos os cartões</option>
@@ -68,7 +71,7 @@ export function MonthlyInvoices({ snapshot, month, today, onMonthChange, onPay, 
             </tr>)}</tbody>
           </table></div>
         </details>
-        {D(invoice.pending).gt(0) && <button onClick={() => onPay(invoice)}>Registrar pagamento</button>}
+        {D(invoice.pending).gt(0) && <button className="invoice-pay-button" onClick={() => onPay(invoice)}>Registrar pagamento</button>}
       </div>
     </article>)}
     <h3 className="upcoming-invoices-title">Próximas faturas</h3>

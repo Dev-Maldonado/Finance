@@ -24,6 +24,6 @@ export function CategoryPicker({ categories, name = 'category_id', label = 'Cate
       <option value="">{filterMode ? 'Categoria e todas as subcategorias' : `Diretamente em ${root?.name}`}</option>
       {children.map(child => <option key={String(child.id)} value={String(child.id)}>{child.name}{child.archived ? " (arquivada)" : ""}</option>)}
     </select></span>}
-    {category && category.id !== root?.id && <small className="category-selected-path">{categoryLabel(categories, String(category.id))}</small>}
+    {category && <small className="category-selected-path">{categoryLabel(categories, String(category.id))}</small>}
   </span>;
 }

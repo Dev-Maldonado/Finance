@@ -41,7 +41,7 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
         await page.goto(path); await snapshotReady; await expect(page.locator('.page-head h1')).toBeVisible();
         const loaded = path === '/cartoes' ? 'Compra parcelada da família' : path === '/categorias' ? 'Alimentação e compras da família em supermercados e restaurantes' : 'DescriçãoSemEspaços'.repeat(5);
         if (['/', '/cartoes', '/transacoes', '/categorias'].includes(path)) await expect(page.getByText(loaded, { exact: true }).first()).toBeVisible();
-        if (path === '/recorrentes') await expect(page.getByRole('article', { name: 'Total previsto a pagar', exact: true })).toBeVisible();
+        if (path === '/recorrentes') {await expect(page.getByRole('article', { name: 'Total previsto a pagar', exact: true })).toBeVisible();await expect(page.getByRole('article',{name:'Saldo atual das contas',exact:true})).toHaveClass(/tone-danger/);}
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
         await page.waitForTimeout(100);
         const spills = await page.locator('.content').evaluate(root => [...root.querySelectorAll('.panel, .stat, .page-head, .filters, .cards-grid')].filter(el => { const b = el.getBoundingClientRect(); return b.width > 0 && (b.left < -1 || b.right > document.documentElement.clientWidth + 1); }).map(el => el.className));
@@ -49,6 +49,14 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
           const brokenAmounts = await page.locator('.invoice-totals strong').evaluateAll(elements => elements.filter(el => { const range = document.createRange(); range.selectNodeContents(el); return range.getClientRects().length > 1 || range.getBoundingClientRect().width > el.clientWidth + 1; }).map(el => el.textContent));
           expect(brokenAmounts, `invoice amounts at ${width}px`).toEqual([]);
         }
+        const textCuts = await page.locator('.content').evaluate(root => [...root.querySelectorAll<HTMLElement>('strong, h1, h2, h3, button')].filter(el => {
+          const box=el.getBoundingClientRect(),style=getComputedStyle(el);if(!box.width||style.visibility==='hidden'||style.display==='none'||el.closest('.recharts-wrapper'))return false;
+          const table=el.closest('.table-wrap');if(table&&table.scrollWidth>table.clientWidth+1)return false;
+          if(box.left< -1||box.right>innerWidth+1)return true;
+          if(el.matches('strong')&&el.clientWidth>0&&/^[-+−]?\s*R\$/.test(el.textContent?.trim()??'')){const range=document.createRange();range.selectNodeContents(el);return range.getBoundingClientRect().width>el.clientWidth+2;}
+          return false;
+        }).map(el=>el.textContent?.slice(0,120)));
+        expect(textCuts, `${path} at ${width}px: text/buttons must fit`).toEqual([]);
         const footer = page.locator('.content > footer'); await expect(footer).toBeInViewport();
         if (mobile) { const footerBox = await footer.boundingBox(), navBox = await page.locator('.mobile-bottom-nav').boundingBox(); expect(footerBox!.y + footerBox!.height, `footer above navigation at ${width}px`).toBeLessThanOrEqual(navBox!.y + 1); }
         expect(spills, `${path} at ${width}px: components outside viewport`).toEqual([]);
