@@ -43,6 +43,7 @@ create table saved_settings as select * from user_settings;
 SQL
 for finora_pass in 1 2; do
  "${finora_psql[@]}" < "$finora_upgrade_sql" >/dev/null
+ "${finora_psql[@]}" < supabase/migrations/202610270028_obligation_settlement_guard.sql >/dev/null
  "${finora_psql[@]}" >/dev/null <<'SQL'
 do $$begin
  if (select jsonb_agg(to_jsonb(t)-'settled_on' order by id) from transactions t) is distinct from (select jsonb_agg(to_jsonb(t) order by id) from saved_transactions t) then raise exception 'Transaction history changed';end if;

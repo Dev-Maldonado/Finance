@@ -86,6 +86,11 @@ try{
   const p={...pay(''),transaction_id:null,obligation_id:o.data!.id};const r=await db.rpc('settle_financial_entry',p);assert.equal(r.error,null,r.error?.message);
   const tx=await db.from('transactions').select('date,settled_on,amount').eq('id',r.data).single();assert.deepEqual(tx.data,{date:`${next}-05`,settled_on:today,amount:-15});
   assert.ok((await db.rpc('settle_financial_entry',{...p,request_id:randomUUID()})).error);assert.equal(await balance(),'1160.00');
+  const linked=await db.from('financial_obligations').select('status,transaction_id').eq('id',o.data!.id).single();assert.deepEqual(linked.data,{status:'paid',transaction_id:r.data});
+  const bogus=await admin.from('transactions').insert({user_id:users[0],account_id:account,description:'Invalid internal settlement',type:'expense',amount:'-15',date:`${next}-05`,status:'confirmed',settled_on:today,group_id:randomUUID()});assert.ok(bogus.error);
+  const reversed=await db.rpc('cancel_obligation_payment',{obligation_id:o.data!.id});assert.equal(reversed.error,null,reversed.error?.message);assert.equal(await balance(),'1175.00');
+  const cancelled=await db.from('transactions').select('status,settled_on').eq('id',r.data).single();assert.deepEqual(cancelled.data,{status:'cancelled',settled_on:today});
+
  });
  console.log(`${passed} settlement integration scenarios passed.`);
 }finally{for(const uid of users)assert.equal((await admin.auth.admin.deleteUser(uid)).error,null);}
