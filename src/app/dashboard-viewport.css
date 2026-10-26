@@ -1,0 +1,55 @@
+/* Desktop overview: controls must not push the primary figures below the fold.
+   All sections remain in the natural document flow and keep their full content. */
+@media(min-width:1024px) and (hover:hover) and (pointer:fine) {
+ .dashboard-workspace > .main > .topbar { height:56px; }
+ .dashboard-workspace .content { padding-top:20px; }
+ .dashboard-workspace .dashboard-welcome { display:grid;grid-template-columns:minmax(0,1fr) 84px auto;align-items:center;gap:16px;padding-top:0;margin-bottom:12px; }
+ .dashboard-workspace .dashboard-welcome > div:first-child { grid-column:1;max-width:100%;min-width:0; }
+ .dashboard-workspace .dashboard-welcome h1 { font-size:clamp(26px,2vw,32px);line-height:1.2;margin:6px 0; }
+ .dashboard-workspace .dashboard-welcome p { font-size:11px;line-height:1.6;margin:0;max-width:64ch; }
+ .dashboard-workspace .dashboard-wallet-art { position:relative;grid-column:2;grid-row:1;inset:auto;width:100px;height:88px;transform:scale(.65) rotate(8deg);transform-origin:center;overflow:visible;contain:none;z-index:0; }
+ .dashboard-workspace .dashboard-welcome > .actions { grid-column:3;grid-row:1;flex:none;margin:0; }
+ .dashboard-workspace .dashboard-welcome > .actions button { width:auto;min-width:154px;min-height:40px;padding:10px 16px; }
+ .dashboard-workspace .quick-entry-actions { margin:0 0 12px;gap:6px; }
+ .dashboard-workspace .quick-entry-actions button { min-height:32px;padding:6px 11px;font-size:10px; }
+ .dashboard-workspace .dashboard-page-controls { display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,1fr);gap:6px 12px;padding:10px;margin-bottom:12px; }
+ .dashboard-workspace .dashboard-page-controls > .period-tabs { grid-column:1;grid-row:1;align-self:start; }
+ .dashboard-workspace .dashboard-page-controls > .period-tabs button { flex-direction:row;gap:4px;padding:6px 3px;min-height:40px;font-size:9px;line-height:1.5;overflow-wrap:anywhere; }
+ .dashboard-workspace .dashboard-page-controls > .period-tabs button svg { width:12px;height:12px; }
+ .dashboard-workspace .dashboard-page-controls > .period-tabs button span { min-width:0; }
+ .dashboard-workspace .dashboard-page-controls > .date-range { grid-column:1;grid-row:2;align-self:end;line-height:1.5; }
+ .dashboard-workspace .dashboard-month-navigation { grid-column:2;grid-row:1/3;gap:4px;margin:0;padding:0; }
+ .dashboard-workspace .dashboard-month-navigation .invoice-month-picker { gap:6px; }
+ .dashboard-workspace .dashboard-month-navigation .invoice-month-picker :is(input,button) { min-height:36px;height:36px; }
+ .dashboard-workspace .dashboard-selected-month { font-size:9px;line-height:1.5; }
+ .dashboard-workspace .dashboard-month-context { margin:0 0 12px;font-size:9px;line-height:1.6; }
+ .dashboard-workspace .dashboard-v3 { gap:14px; }
+ .dashboard-workspace .dashboard-section-nav a { flex-direction:row;min-height:36px;padding:7px;gap:6px;font-size:10px; }
+ .dashboard-workspace .dashboard-section-nav a svg { width:16px;height:16px; }
+ .dashboard-workspace .dashboard-economic-dock { margin-top:0; }
+ .dashboard-workspace .dashboard-economic-ticker { grid-template-columns:minmax(70px,100px) repeat(3,minmax(0,1fr)) max-content 32px;gap:6px;padding:6px;align-items:center; }
+ .dashboard-workspace .economic-ticker-title { grid-column:1;grid-row:1;line-height:1.5; }
+ .dashboard-workspace .economic-ticker-rate:nth-of-type(1) { grid-column:2;grid-row:1; }
+ .dashboard-workspace .economic-ticker-rate:nth-of-type(2) { grid-column:3;grid-row:1; }
+ .dashboard-workspace .economic-ticker-rate:nth-of-type(3) { grid-column:4;grid-row:1; }
+ .dashboard-workspace .economic-ticker-rate { padding:7px 10px;gap:3px; }
+ .dashboard-workspace .economic-ticker-rate strong { font-size:14px; }
+ .dashboard-workspace .dashboard-economic-ticker > a { grid-column:5;grid-row:1;font-size:9px;margin:0; }
+ .dashboard-workspace .dashboard-economic-ticker > button { grid-column:6;grid-row:1; }
+ .dashboard-workspace .dashboard-section-heading { margin-bottom:8px; }
+}
+@media(min-width:1024px) and (max-width:1399px) and (hover:hover) and (pointer:fine) {
+ .dashboard-workspace .dashboard-page-controls > .period-tabs button svg { display:none; }
+ .dashboard-workspace .dashboard-welcome { grid-template-columns:minmax(0,1fr) 60px auto;gap:10px; }
+ .dashboard-workspace .dashboard-wallet-art { transform:scale(.5) rotate(8deg);width:80px; }
+ .dashboard-workspace .economic-ticker-title { font-size:8px; }
+ .dashboard-workspace .economic-ticker-rate { padding:7px; }
+}
+@media(min-width:1024px) and (max-height:760px) and (hover:hover) and (pointer:fine) {
+ .dashboard-workspace .content { padding-top:12px; }
+ .dashboard-workspace .dashboard-wallet-art { height:64px; }
+ .dashboard-workspace .quick-entry-actions { margin-bottom:8px; }
+ .dashboard-workspace .dashboard-section-nav a { min-height:32px;padding-block:5px; }
+ .dashboard-workspace .dashboard-v3 { gap:10px; }
+ .dashboard-workspace .economic-ticker-rate { padding-block:5px; }
+}

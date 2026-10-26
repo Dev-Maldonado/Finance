@@ -33,3 +33,7 @@ Dados salvos são validados. Presets relativos (este mês, anterior, últimos di
 ## Validação
 
 Resultados finais, commit e publicação em STATUS.md. Testes usam apenas usuários descartáveis no Supabase local. A suíte de organização cobre memória por tela, recarga, prioridade da URL, remoção de filtros, contas vencidas/próximas, ordem de faturas, layouts 320–1920px e isolamento entre usuários. A varredura de todas as páginas verifica final da página, menus, modais, gráficos/toque e textos/valores/botões fora da área disponível, inclusive com nomes longos e valores grandes/negativos. Testes financeiros existentes verificam a preservação dos cálculos e registros.
+
+## Correção posterior — início do dashboard desktop
+
+A checagem anterior de elementos dentro do documento não garantia que o primeiro valor financeiro aparecesse inteiro na abertura da página. O caso enviado em 1908×945 reproduziu valor principal terminando em 994px. Cabeçalho/CTA e faixa econômica foram compactados no desktop, com ajuste próprio para notebooks baixos. Todas as informações e seções permanecem acessíveis por rolagem natural. Nova regressão verifica a posição inicial do valor, a resolução exata e rolagem real por mouse/teclado até o final.
