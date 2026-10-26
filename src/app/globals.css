@@ -1444,7 +1444,7 @@ footer small {
   visibility: hidden;
   margin: 40px 0 15px;
 }
-.collapsed nav a {
+.collapsed .sidebar nav a {
   justify-content: center;
   padding: 13px;
 }

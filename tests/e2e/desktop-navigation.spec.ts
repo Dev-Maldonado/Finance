@@ -40,5 +40,13 @@ test('desktop menu exposes every module without its own scroll, fits notebook he
     await sidebar.getByRole('button',{name:'Sair',exact:true}).scrollIntoViewIfNeeded();await expect(sidebar.getByRole('button',{name:'Sair',exact:true})).toBeInViewport();
     expect(await sidebar.evaluate(el=>el.scrollTop)).toBe(0);expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(0);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(1280);
+    await page.setViewportSize({width:390,height:844});
+    const mobile=page.getByRole('navigation',{name:'Navegação rápida'});await expect(mobile).toBeVisible();
+    const mobileHeight=(await mobile.boundingBox())!.height;
+    await page.setViewportSize({width:1366,height:768});await page.evaluate(()=>window.scrollTo(0,0));
+    await sidebar.getByRole('button',{name:'Recolher menu',exact:true}).click();
+    await page.setViewportSize({width:390,height:844});await expect(mobile).toBeVisible();
+    await expect(sidebar).not.toBeVisible();expect((await mobile.boundingBox())!.height).toBe(mobileHeight);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);
   }finally{expect((await admin.auth.admin.deleteUser(uid)).error).toBeNull();}
 });
