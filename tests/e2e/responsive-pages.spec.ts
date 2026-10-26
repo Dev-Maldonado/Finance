@@ -36,11 +36,12 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
     expect((await admin.from('budgets').insert({ user_id: id, name: 'Orçamento dos compromissos da família', category_id: category.data!.id, amount: '1000', month: date })).error).toBeNull();
     for (const width of (mobile ? [320, 390, 768, 1024] : [1024, 1280, 1440, 1920])) {
       await page.setViewportSize({ width, height: [768, 1024].includes(width) ? 430 : 900 });
-      for (const path of ['/', '/contas', '/cartoes', '/transacoes', '/categorias', '/caixinhas', '/investimentos', '/planejamento', '/relatorios', '/configuracoes', `/caixinhas/${jar.id}`]) {
+      for (const path of ['/', '/contas', '/cartoes', '/transacoes', '/recorrentes', '/categorias', '/caixinhas', '/investimentos', '/planejamento', '/relatorios', '/configuracoes', `/caixinhas/${jar.id}`]) {
         const snapshotReady = page.waitForResponse(r => new URL(r.url()).pathname === '/api/snapshot' && r.ok());
         await page.goto(path); await snapshotReady; await expect(page.locator('.page-head h1')).toBeVisible();
         const loaded = path === '/cartoes' ? 'Compra parcelada da família' : path === '/categorias' ? 'Alimentação e compras da família em supermercados e restaurantes' : 'DescriçãoSemEspaços'.repeat(5);
         if (['/', '/cartoes', '/transacoes', '/categorias'].includes(path)) await expect(page.getByText(loaded, { exact: true }).first()).toBeVisible();
+        if (path === '/recorrentes') await expect(page.getByRole('article', { name: 'Total previsto a pagar', exact: true })).toBeVisible();
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
         await page.waitForTimeout(100);
         const spills = await page.locator('.content').evaluate(root => [...root.querySelectorAll('.panel, .stat, .page-head, .filters, .cards-grid')].filter(el => { const b = el.getBoundingClientRect(); return b.width > 0 && (b.left < -1 || b.right > document.documentElement.clientWidth + 1); }).map(el => el.className));
@@ -53,8 +54,8 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
         expect(spills, `${path} at ${width}px: components outside viewport`).toEqual([]);
         await expect.poll(async () => page.evaluate(() => ({ width: document.documentElement.scrollWidth, body: document.body.scrollWidth })), { message: `${path} at ${width}px` }).toEqual({ width, body: width });
         if (width === (mobile ? 390 : 1280)) { await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(100); await page.screenshot({ path: `test-results/responsive-${mobile ? 'touch' : 'desktop'}-${path.replaceAll('/', '-') || 'dashboard'}.png`, fullPage: true }); }
-        if ((mobile ? [320, 768].includes(width) : width === 1280) && ['/', '/contas', '/cartoes', '/transacoes', '/categorias', '/caixinhas', '/planejamento'].includes(path)) {
-          await page.locator('.page-head .actions button').first().click();
+        if ((mobile ? [320, 768].includes(width) : width === 1280) && ['/', '/contas', '/cartoes', '/transacoes', '/recorrentes', '/categorias', '/caixinhas', '/planejamento'].includes(path)) {
+          await page.locator(path === '/recorrentes' ? '.commitments-toolbar .actions button' : '.page-head .actions button').first().click();
           const dialog = page.getByRole('dialog'); await expect(dialog).toBeVisible();
           const bounds = await dialog.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
           const save = dialog.getByRole('button', { name: 'Salvar', exact: true }); await save.scrollIntoViewIfNeeded(); await expect(save).toBeInViewport();

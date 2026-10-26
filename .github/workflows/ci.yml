@@ -44,6 +44,7 @@ jobs:
           npm run test:integrity
           npm run test:imports
           npm run test:scheduling
+          npm run test:commitments
           npm run test:manual
           npm run test:savings
       - name: Install browser

@@ -1,4 +1,5 @@
 import { invoiceDate, shiftInvoiceMonth } from "./card-invoices";
+import type { Row } from './summary';
 
 export type RecurrenceFrequency = "weekly" | "monthly" | "annual";
 
@@ -10,4 +11,31 @@ export function nextRecurrenceDate(date: string, frequency: RecurrenceFrequency,
     return next.toISOString().slice(0, 10);
   }
   return invoiceDate(frequency === "annual" ? `${Number(date.slice(0, 4)) + 1}-${String(anchorMonth).padStart(2, "0")}` : shiftInvoiceMonth(date.slice(0, 7), 1), anchorDay);
+}
+
+/** A saved occurrence (including a cancellation/payment) replaces its projection. */
+export function recurringOccurrences(recurrences: Row[], transactions: Row[], start: string, end: string) {
+  const represented = new Set(transactions.map(t => String(t.source_id ?? '')).filter(Boolean));
+  return recurrences.flatMap(recurring => {
+    if (recurring.active === false || recurring.cancelled_at || !['weekly', 'monthly', 'annual'].includes(String(recurring.frequency))) return [];
+    const frequency = recurring.frequency as RecurrenceFrequency;
+    const next = String(recurring.next_date ?? '');
+    if (!next || next > end) return [];
+    const anchor = Number(recurring.anchor_day || next.slice(8)), anchorMonth = Number(recurring.anchor_month || next.slice(5, 7));
+    let date = next;
+    if (date < start) {
+      if (frequency === 'weekly') date = new Date(Date.parse(`${next}T12:00:00Z`) + Math.ceil((Date.parse(start) - Date.parse(next)) / (7 * 86400000)) * 7 * 86400000).toISOString().slice(0, 10);
+      else date = invoiceDate(frequency === 'annual' ? `${start.slice(0, 4)}-${String(anchorMonth).padStart(2, '0')}` : start.slice(0, 7), anchor);
+      if (date < start) date = nextRecurrenceDate(date, frequency, anchor, anchorMonth);
+    }
+    const result: { recurrence: Row; date: string; sourceId: string }[] = [];
+    let steps = 0;
+    while (date <= end && (!recurring.end_date || date <= String(recurring.end_date))) {
+      if (++steps > 500) throw Error('Selecione um intervalo menor para consultar as recorrências.');
+      const sourceId = `recurrence:${recurring.id}:${date}`;
+      if (!represented.has(sourceId)) result.push({ recurrence: recurring, date, sourceId });
+      date = nextRecurrenceDate(date, frequency, anchor, anchorMonth);
+    }
+    return result;
+  });
 }

@@ -3,6 +3,7 @@ import "./globals.css";
 import "./mobile.css";
 import "./dashboard-redesign.css";
 import "./dashboard-reference.css";
+import "./recurring-bills.css";
 import { PwaProvider } from "@/components/pwa";
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",

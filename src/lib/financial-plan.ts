@@ -1,4 +1,4 @@
-import { nextRecurrenceDate, type RecurrenceFrequency } from "./recurrence";
+import { recurringOccurrences } from "./recurrence";
 import { D, daysBetween, money } from '@/financial/engine';
 import { cardInvoices, shiftInvoiceMonth } from './card-invoices';
 import { dateShift, monthEnd, periodMetrics } from './dashboard';
@@ -38,19 +38,9 @@ export function forecastItems(snapshot: Snapshot, today: string, endDate: string
     item(`transaction:${t.id}`, date < today ? today : date, str(t, 'description'), str(t, 'amount'), D(str(t, 'amount')).gt(0) ? 'income' : 'expense', 'transaction');
   }
   // A generated recurring occurrence replaces its projection, including cancellations.
-  const represented = new Set(tx.map(t => str(t, 'source_id')).filter(Boolean));
-  for (const recurring of rows(snapshot, 'recurring_transactions').filter(r => r.active !== false && !r.cancelled_at && !savingsAccountIds.has(str(r,'account_id')))) {
-    let date = str(recurring, 'next_date');
-    if (!date || !['weekly', 'monthly', 'annual'].includes(str(recurring, 'frequency'))) continue;
-    const anchor = Number(recurring.anchor_day || date.slice(8));
-    for (let index = 0; date <= endDate && (!recurring.end_date || date <= str(recurring, 'end_date')) && index < 500; index++) {
-      const key = `recurrence:${recurring.id}:${date}`;
-      if (date >= today && !represented.has(key)) {
-        const amount = D(str(recurring, 'amount')).mul(recurring.type === 'expense' ? -1 : 1);
-        item(key, date, str(recurring, 'description'), amount.toString(), recurring.type === 'expense' ? 'expense' : 'income', 'recurring');
-      }
-      date = nextRecurrenceDate(date, str(recurring, 'frequency') as RecurrenceFrequency, anchor, Number(recurring.anchor_month || date.slice(5, 7)));
-    }
+  for (const { recurrence: recurring, date, sourceId } of recurringOccurrences(rows(snapshot, 'recurring_transactions').filter(r => !savingsAccountIds.has(str(r, 'account_id'))), tx, today, endDate)) {
+    const amount = D(str(recurring, 'amount')).mul(recurring.type === 'expense' ? -1 : 1);
+    item(sourceId, date, str(recurring, 'description'), amount.toString(), recurring.type === 'expense' ? 'expense' : 'income', 'recurring');
   }
   for (const invoice of cardInvoices(snapshot, today)) {
     if (invoice.due > endDate || D(invoice.pending).lte(0)) continue;

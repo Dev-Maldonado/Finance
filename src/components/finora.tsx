@@ -2,6 +2,7 @@
 import { transactionHistory, filterTransactionHistory } from "@/lib/transaction-history";
 import { DashboardWalletArt } from "./dashboard-overview";
 import { PurchaseHistory } from "./purchase-history";
+import { RecurringBills } from "./recurring-bills";
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
@@ -43,6 +44,7 @@ import {
   ChevronDown,
   X,
   AlertTriangle,
+  Repeat2,
 } from "lucide-react";
 import { Dashboard } from "./dashboard";
 import { Auth } from "./auth";
@@ -79,6 +81,7 @@ const nav = [
   ["contas", "Contas e Saldos", Wallet],
   ["cartoes", "Cartões", CreditCard],
   ["transacoes", "Transações", ArrowLeftRight],
+  ["recorrentes", "Contas Recorrentes", Repeat2],
   ["categorias", "Categorias", Tags],
   ["caixinhas", "Caixinhas", PiggyBank],
   ["investimentos", "Investimentos", ChartNoAxesCombined],
@@ -811,7 +814,7 @@ function Workspace({
               ))}
             </div>
           </div>
-          {!["cartoes", "investimentos"].includes(current[0]) && (
+          {!["cartoes", "investimentos", "recorrentes"].includes(current[0]) && (
             <div className={`period-bar ${current[0] === "dashboard" ? "dashboard-page-controls" : ""}`}>
               <div className="period-tabs">
                 {[
@@ -971,6 +974,11 @@ function Workspace({
                   )}
                 </div>
               )}
+              {current[0] === "recorrentes" && <RecurringBills snapshot={snapshot} today={today} onSaved={refresh}
+                onNew={(kind, month) => { const date = month === today.slice(0, 7) ? today : `${month}-01`; open(kind, kind === 'recurring' ? { type: 'expense', next_date: date, start_date: date } : { type: 'expense', date, status: 'pending' }); }}
+                onEditTransaction={row => setModal({ form: { ...forms.transaction, action: undefined, endpoint: '/api/transactions' }, initial: { ...row, amount: D(str(row, 'amount')).abs().toFixed(2) } })}
+                onRemoveTransaction={row => setRemoval({ kind: 'transaction', row })}
+                onEditInstallment={row => open('installment', row)} onEditObligation={row => open('obligation', row)} />}
               {current[0] === "transacoes" && (
                 <>
                   <label className="excluded-toggle">

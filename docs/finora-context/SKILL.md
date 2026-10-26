@@ -80,3 +80,7 @@ Análises seguem a composição específica da referência: barras agrupadas/lin
 ## Competência de transações futuras — 22/10/2026
 
 Receitas e despesas pendentes ou confirmadas entram nos indicadores, categorias, orçamentos, comparativos e relatórios exclusivamente na data registrada, inclusive em meses futuros. Este mês abrange o mês inteiro; períodos personalizados preservam seus limites. Totais do período incluem previstos, identificados nos cards/resultado/taxa; fluxo operacional usa somente confirmados com data até hoje. Saldo disponível, patrimônio, rendimentos recebidos e histórico efetivo para reserva não antecipam pendências nem valores futuros. Parcelas continuam por vencimento; transferências/aportes/pagamento de fatura não duplicam receitas ou gastos.
+
+## Contas Recorrentes — 26/10/2026
+
+Seção `/recorrentes` centraliza parcelas ainda a pagar, gastos fixos e programados por mês. Consulta utiliza os registros existentes, sem ledger paralelo; a projeção de recorrências é compartilhada com o planejamento. Escopos por ocorrência e a partir dela preservam pagamentos e meses anteriores. Migration 26 adiciona `recurring_transactions.series_id` para trechos da mesma série e RPC autenticada/idempotente; ocorrências isoladas reutilizam o source_id do gerador, inclusive cancelamentos. Resumo de cartão usa saldo pendente da fatura, sem atribuir pagamento parcial a parcelas arbitrárias. Ver [RECURRING-BILLS.md](../RECURRING-BILLS.md).

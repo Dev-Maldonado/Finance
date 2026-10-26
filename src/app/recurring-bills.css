@@ -1,0 +1,56 @@
+.recurring-bills { display: grid; gap: 20px; min-width: 0; }
+.recurring-bills .dashboard-amount { white-space: nowrap; min-width: 0; max-width: 100%; overflow-wrap: normal; }
+.commitments-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+.commitments-toolbar h2 { text-transform: capitalize; margin: 6px 0; }
+.commitments-toolbar p, .commitment-note { color: #596174; font-size: 12px; line-height: 1.7; }
+.commitments-toolbar .actions { flex-basis: 100%; flex-wrap: wrap; }
+.commitments-toolbar a { font-size: 12px; color: #5b35d5; padding: 8px; }
+.commitment-totals { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+.commitment-totals article { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; border: 1px solid #e9e6f2; border-radius: 16px; padding: 20px; min-width: 0; }
+.commitment-totals article > svg { grid-column: 2; grid-row: 1; }
+.commitment-totals article > span { grid-column: 1; grid-row: 1; font-size: 12px; }
+.commitment-totals strong { grid-column: 1 / -1; font-size: clamp(18px, 1.8vw, 27px); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.commitment-invoice + .commitment-invoice { margin-top: 22px; }
+.commitment-invoice-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding: 14px; background: #f7f5ff; border-radius: 12px; }
+.commitment-invoice-head > div { display: grid; gap: 5px; min-width: 0; }
+.commitment-invoice-head small { font-size: 11px; color: #596174; }
+.commitment-row { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid #eeedf6; min-width: 0; }
+.commitment-row:last-child { border-bottom: 0; }
+.commitment-icon { background: #f0ebff; border-radius: 11px; padding: 10px; color: #5b35d5; flex-shrink: 0; }
+.commitment-copy { flex: 1; min-width: 0; display: grid; gap: 5px; overflow-wrap: anywhere; }
+.commitment-copy > strong { font-size: 14px; }
+.commitment-copy > small { font-size: 11px; color: #596174; }
+.commitment-copy .badge { width: fit-content; font-size: 10px; margin-top: 3px; }
+.commitment-copy .commitment-overdue { color: #a5394d; background: #fff1f2; }
+.commitment-amount { font-size: 16px; font-variant-numeric: tabular-nums; }
+.commitment-row .actions { flex-wrap: wrap; }
+.commitment-empty { display: block; min-height: 0; margin: 0; padding: 24px 12px; font-size: 13px; color: #73788a; text-align: left; }
+.commitment-scopes { display: grid; gap: 10px; border: 0; padding: 0; margin: 18px 0 24px; }
+.commitment-scopes legend { font-size: 13px; font-weight: 600; padding: 0 0 10px; }
+.commitment-scopes label { display: flex; align-items: flex-start; gap: 12px; padding: 15px; border: 1px solid #e7e2f2; border-radius: 12px; cursor: pointer; }
+.commitment-scopes label.selected { border-color: #9474e7; background: #f7f3ff; }
+.commitment-scopes input { width: 17px; height: 17px; min-height: 0; margin: 2px 0 0; accent-color: #5b35d5; flex-shrink: 0; }
+.commitment-scopes label span { display: grid; gap: 5px; }
+.commitment-scopes small, .commitment-dialog .form-grid small { color: #73788a; font-size: 11px; line-height: 1.6; }
+.commitment-dialog .form-grid label { min-width: 0; }
+@media(max-width: 1100px) { .commitment-totals { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 650px) {
+  .recurring-bills { gap: 14px; }
+  .commitments-toolbar { align-items: stretch; }
+  .commitments-toolbar .invoice-month-picker { width: 100%; display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 8px; }
+  .commitments-toolbar .invoice-month-picker input { width: 100%; min-width: 0; padding-inline: 6px; font-size: 13px; }
+  .commitments-toolbar .invoice-month-picker button:last-child { grid-column: 1 / -1; }
+  .commitments-toolbar .actions { display: grid; grid-template-columns: minmax(0,1fr); }
+  .commitments-toolbar .actions button { justify-content: center; min-height: 44px; }
+  .commitment-totals { gap: 10px; }
+  .commitment-totals:has(.long-currency) { grid-template-columns: minmax(0,1fr); }
+  .commitment-totals article { padding: 15px; gap: 10px; }
+  .commitment-totals strong { font-size: clamp(16px, 4.7vw, 23px); }
+  .commitment-row { flex-wrap: wrap; gap: 12px; }
+  .commitment-copy { flex-basis: calc(100% - 60px); }
+  .commitment-row .actions { margin-left: auto; }
+  .commitment-row button { min-height: 44px; }
+  .commitment-row .commitment-amount { margin-left: 0; }
+  .commitment-scopes label { min-height: 64px; }
+}
+@media(prefers-reduced-motion: reduce) { .recurring-bills *, .commitment-dialog * { scroll-behavior: auto; } }
