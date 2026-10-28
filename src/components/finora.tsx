@@ -6,7 +6,8 @@ import { ActiveFilters } from './active-filters';
 import { useViewMemory } from './use-view-memory';
 import { pageViewSchema,presetRange } from '@/lib/view-preferences';
 import { PurchaseHistory } from "./purchase-history";
-import { RecurringBills } from "./recurring-bills";
+import type { MonthlyCommitment } from '@/lib/monthly-commitments';
+import { RecurringBills, OccurrenceChange } from "./recurring-bills";
 import { DesktopNavigation } from "./desktop-navigation";
 import { SettlementDialog, type SettlementTarget } from './settlement-dialog';
 import { ManualSavings } from "./manual-savings";
@@ -212,6 +213,7 @@ function Workspace({
   const [wealthSaving, setWealthSaving] = useState(false);
   const [settlement, setSettlement] = useState<SettlementTarget|null>(null);
   const [wealthFeedback, setWealthFeedback] = useState<WealthFeedback | null>(null);
+  const [recurringChange,setRecurringChange]=useState<{item:MonthlyCommitment;cancel:boolean}|null>(null);
   const [removal, setRemoval] = useState<{
     kind: RemovalKind;
     row: Row;
@@ -502,7 +504,7 @@ function Workspace({
     configuracoes: [],
   };
   const filteredTx = snapshot ? filterTransactionHistory(snapshot,
-    section === "transacoes" ? transactionHistory(snapshot, today) : [...rows(snapshot, "transactions")].sort((a,b) => str(b,"date").localeCompare(str(a,"date"))),
+    section === "transacoes" ? transactionHistory(snapshot, today, start, end) : [...rows(snapshot, "transactions")].sort((a,b) => str(b,"date").localeCompare(str(a,"date"))),
     { start, end, search, account: txAccount, category: txCategory, type: txType, status: txStatus, excluded: section === "transacoes" && showExcluded }) : [];
   const sum = (list: Row[], key: string) =>
     list.reduce((a, r) => a.plus(str(r, key) || 0), D(0));
@@ -553,14 +555,15 @@ function Workspace({
           }));
       })()
     : [];
+  function changeProjectedOccurrence(t:Row,cancel:boolean){setRecurringChange({cancel,item:{id:str(t,'id'),kind:'fixed',description:str(t,'description'),amount:D(str(t,'amount')).abs().toFixed(2),date:str(t,'date'),source:'Recorrência',categoryId:str(t,'category_id'),status:'Previsto · recorrência',recurrenceId:str(t,'recurrence_id'),occurrenceDate:str(t,'occurrence_date')}});}
   function transactionTable(list: Row[]) {
     if(!snapshot)return null;
     return list.length?<TransactionList list={list} snapshot={snapshot} today={today}
       onSettle={setSettlement}
       onEditPurchase={p=>setModal({form:{...forms.purchase,action:undefined,endpoint:'/api/purchases'},initial:p})}
       onRemovePurchase={p=>setRemoval({kind:'purchase',row:p})}
-      onEditTransaction={t=>setModal({form:{...forms.transaction,action:undefined,endpoint:'/api/transactions'},initial:{...t,amount:D(str(t,'amount')).abs().toFixed(2)}})}
-      onRemoveTransaction={t=>setRemoval({kind:'transaction',row:t})}/>:<Empty action={()=>open('transaction')}/>;
+      onEditTransaction={t=>t.projected?changeProjectedOccurrence(t,false):setModal({form:{...forms.transaction,action:undefined,endpoint:'/api/transactions'},initial:{...t,amount:D(str(t,'amount')).abs().toFixed(2)}})}
+      onRemoveTransaction={t=>t.projected?changeProjectedOccurrence(t,true):setRemoval({kind:str(t,'source_id').startsWith('recurrence:')?'recurringTransaction':'transaction',row:t})}/>:<Empty action={()=>open('transaction')}/>;
   }
   return (
     <div className={`workspace ${collapsed ? "collapsed" : ""} ${current[0] === "dashboard" ? "dashboard-workspace" : ""}`}>
@@ -986,7 +989,7 @@ function Workspace({
                   </Panel>
                   <Panel
                     title="Lançamentos recorrentes"
-                    subtitle="Ocorrências até hoje são geradas automaticamente como pendentes. Meses futuros ficam separados na projeção; o saldo muda somente na confirmação."
+                    subtitle="Ocorrências até hoje são geradas automaticamente como pendentes. As próximas ocorrências aparecem como previstas nas transações e nos indicadores do mês; o saldo das contas muda somente na confirmação."
                     action={
                       <button
                         onClick={async () => {
@@ -1003,7 +1006,7 @@ function Workspace({
                       </button>
                     }
                   >
-                    {rows(snapshot, "recurring_transactions").map((r) => (
+                    {rows(snapshot, "recurring_transactions").filter(r=>!r.deleted_at).map((r) => (
                       <div
                         className="list-row recurrence-row"
                         key={str(r, "id")}
@@ -1027,8 +1030,9 @@ function Workspace({
                               : "Pausada"}
                         </span>
                         <strong>{brl(str(r, "amount"))}</strong>
+                        <div className="actions">
                         {!r.cancelled_at && !(r.end_date && str(r, "next_date") > str(r, "end_date")) && (
-                          <div className="actions">
+                          <>
                             <button onClick={() => open("recurring", r)}>
                               Editar
                             </button>
@@ -1069,11 +1073,13 @@ function Workspace({
                             >
                               Encerrar
                             </button>
-                          </div>
+                          </>
                         )}
+                        <button onClick={()=>setRemoval({kind:'recurringRemoval',row:r})}>Excluir</button>
+                        </div>
                       </div>
                     ))}
-                    {!rows(snapshot, "recurring_transactions").length && (
+                    {!rows(snapshot, "recurring_transactions").filter(r=>!r.deleted_at).length && (
                       <p className="notice">
                         Cadastre despesas e receitas fixas. Novas ocorrências
                         ficam pendentes até sua conferência.
@@ -1599,6 +1605,7 @@ function Workspace({
           }}
         />
       )}
+      {recurringChange && snapshot && <OccurrenceChange snapshot={snapshot} item={recurringChange.item} cancel={recurringChange.cancel} onClose={()=>setRecurringChange(null)} onSaved={refresh}/>}
       {removal && (
         <DeleteDialog
           {...removal}

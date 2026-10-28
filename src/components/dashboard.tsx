@@ -95,7 +95,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <OverviewComposition income={current.income} expenses={current.expenses} net={current.net}/>
       <Block className="dashboard-available-panel" title="Quanto fica livre?" subtitle="Saldo atual após compromissos registrados até o fim deste mês">
         <div className="dashboard-liquidity"><span>MEU DISPONÍVEL · APÓS COMPROMISSOS</span><strong className={D(model.afterCommitments).lt(0) ? 'negative' : ''}>{brl(model.afterCommitments)}</strong></div>
-        <div className="dashboard-key-values"><div><span>Saldo das contas</span><b>{brl(summary.cash)}</b></div><div><span>Faturas pendentes e atrasadas</span><b>− {brl(dueTotals.pending)}</b></div><div><span>Despesas pendentes</span><b>− {brl(model.pendingExpenses)}</b></div></div>
+        <div className="dashboard-key-values"><div><span>Saldo das contas</span><b>{brl(summary.cash)}</b></div><div><span>Faturas pendentes e atrasadas</span><b>− {brl(dueTotals.pending)}</b></div><div><span>Despesas pendentes</span><b>− {brl(model.pendingExpenses)}</b></div>{D(model.recurringExpenses).gt(0) && <div><span>Gastos fixos ainda previstos</span><b>− {brl(model.recurringExpenses)}</b></div>}</div>
         <p className="dashboard-note">Estimativa de disponibilidade; não inclui receitas futuras, despesas não cadastradas ou parcelas de outros meses.</p>
       </Block>
     </section>

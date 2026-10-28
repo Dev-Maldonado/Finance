@@ -11,7 +11,9 @@ export type RemovalKind =
   | "category"
   | "budget"
   | "financialGoal"
-  | "recurring";
+  | "recurring"
+  | "recurringRemoval"
+  | "recurringTransaction";
 const labels: Record<RemovalKind, string> = {
   transaction: "lançamento",
   purchase: "compra",
@@ -21,6 +23,8 @@ const labels: Record<RemovalKind, string> = {
   budget: "orçamento",
   financialGoal: "meta",
   recurring: "recorrência",
+  recurringRemoval: "recorrência",
+  recurringTransaction: "lançamento recorrente",
 };
 const resources: Partial<Record<RemovalKind, string>> = {
   category: "categories",
@@ -47,6 +51,9 @@ export function DeleteDialog({
     element.showModal();
     return () => element.close();
   }, []);
+  const [includeHistory,setIncludeHistory]=useState(false);
+  const requestId=useRef(crypto.randomUUID());
+  const recurringRemoval=kind==="recurringRemoval"||kind==="recurringTransaction";
   const reverse = kind === "income" && row.status === "received";
   const verb =
     kind === "recurring" ? "Encerrar" : reverse ? "Estornar" : "Excluir";
@@ -68,7 +75,7 @@ export function DeleteDialog({
           try {
             const resource = resources[kind];
             const url =
-              kind === "recurring"
+              recurringRemoval ? "/api/recurring/removal" : kind === "recurring"
                 ? "/api/recurring"
                 : resource
                   ? `/api/data/${resource}?id=${encodeURIComponent(str(row, "id"))}`
@@ -85,7 +92,7 @@ export function DeleteDialog({
               body: resource
                 ? undefined
                 : JSON.stringify(
-                    kind === "recurring"
+                    recurringRemoval ? {recurrence_id:kind==='recurringRemoval'?row.id:null,transaction_id:kind==='recurringTransaction'?row.id:null,include_history:includeHistory,request_id:requestId.current} : kind === "recurring"
                       ? { recurrence_id: row.id, cancel: true }
                       : {
                           [kind === "purchase"
@@ -116,7 +123,7 @@ export function DeleteDialog({
         </div>
         <p>{str(row, "description") || str(row, "name")}</p>
         <p className="notice">
-          {kind === "recurring"
+          {kind === "recurringRemoval" ? (includeHistory ? "O cadastro e todas as suas ocorrências registradas serão excluídos da visualização e dos cálculos, inclusive as já pagas ou recebidas. O saldo das contas será recalculado. Outras recorrências não serão alteradas." : "O cadastro será retirado da lista e não gerará novas ocorrências. Os lançamentos já registrados, valores pagos e recebidos permanecerão nas transações.") : kind === "recurringTransaction" ? "Somente esta ocorrência será removida do histórico e dos totais, recalculando o saldo quando necessário. As demais ocorrências permanecem. O registro da correção é preservado e este lançamento não será gerado novamente." : kind === "recurring"
             ? "Nenhum novo lançamento será gerado. Ocorrências futuras pendentes serão canceladas; o histórico confirmado e as ocorrências até hoje ficam preservados."
             : kind === "category"
               ? "A categoria e suas subcategorias deixam de aparecer nos novos cadastros. Os lançamentos, classificações e totais históricos serão preservados."
@@ -128,6 +135,7 @@ export function DeleteDialog({
                   ? "O cadastro será removido. Registros financeiros vinculados serão preservados; confira suas referências após a alteração."
                   : `O registro sai dos totais${kind === "purchase" ? " e as parcelas são removidas das faturas" : " e o saldo é recalculado"}. O histórico da alteração é preservado.`}
         </p>
+        {kind==='recurringRemoval' && <label>Histórico das ocorrências<select aria-label="Histórico das ocorrências" value={includeHistory?'all':'keep'} onChange={e=>setIncludeHistory(e.target.value==='all')} disabled={busy}><option value="keep">Somente o cadastro</option><option value="all">Cadastro e lançamentos</option></select></label>}
         {error && (
           <p role="alert" className="error">
             {error}

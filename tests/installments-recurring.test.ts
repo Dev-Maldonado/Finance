@@ -50,8 +50,8 @@ test("future and generated recurring occurrences are separate, bounded and count
   ], transactions: [{ id: "october", account_id: "a", date: "2026-10-09", amount: "-59.90", type: "expense", status: "pending", source_id: "recurrence:monthly:2026-10-09" }] };
   const items = forecastItems(snapshot, "2026-10-08", "2027-01-31");
   expect(items.map(item => [item.date, item.amount])).toEqual([["2026-10-09", "-59.90"], ["2026-10-10", "-200.00"], ["2026-11-09", "-59.90"], ["2026-12-09", "-59.90"]]);
-  expect(periodMetrics(snapshot, "2026-10-01", "2026-10-31", false, "2026-10-08")).toMatchObject({expenses: "59.90", paidExpense: "0.00", expectedExpense: "59.90", cashNet: "0.00"});
+  expect(periodMetrics(snapshot, "2026-10-01", "2026-10-31", false, "2026-10-08")).toMatchObject({expenses: "259.90", paidExpense: "0.00", expectedExpense: "259.90", cashNet: "0.00"});
   snapshot.transactions = [{ id: "october", account_id: "a", date: "2026-10-09", amount: "-59.90", type: "expense", status: "confirmed", source_id: "recurrence:monthly:2026-10-09" }];
-  expect(periodMetrics(snapshot, "2026-10-01", "2026-10-31", false).expenses).toBe("59.90");
-  expect(periodMetrics(snapshot, "2026-11-01", "2026-11-30", false).expenses).toBe("0.00");
+  expect(periodMetrics(snapshot, "2026-10-01", "2026-10-31", false).expenses).toBe("259.90");
+  expect(periodMetrics(snapshot, "2026-11-01", "2026-11-30", false).expenses).toBe("59.90");
 });

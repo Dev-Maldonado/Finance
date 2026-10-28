@@ -3,6 +3,7 @@ import { cardInvoices, invoiceTotals, shiftInvoiceMonth } from './card-invoices'
 import { rows, str, type Snapshot } from './summary';
 import { forecastItems } from './financial-plan';
 import { aggregateCategories, categoryMatches, categoryLabel } from './categories';
+import { projectedRecurringExpenses } from './recurrence';
 import { cashDate, isSettled, transactionStatus } from './transaction-state';
 
 export const dateShift = (date: string, days: number) => new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
@@ -40,7 +41,7 @@ export function periodMetrics(s: Snapshot, start: string, end: string, fullInvoi
   // Competence follows the registered date, even for pending or future entries.
   // Cash, received yields and internal operations still require actual settlement.
   const settled = (t: ReturnType<typeof rows>[number]) => isSettled(t, asOf);
-  const tx = rows(s, 'transactions').filter(t => str(t, 'date') >= start && str(t, 'date') <= end &&
+  const tx = [...rows(s, 'transactions'), ...projectedRecurringExpenses(s, start, end)].filter(t => !t.deleted_at && str(t, 'date') >= start && str(t, 'date') <= end &&
     (['income', 'expense'].includes(str(t, 'type')) ? ['pending', 'confirmed'].includes(str(t, 'status')) : settled(t)));
   const settledTx = tx.filter(settled);
   const cashTx = rows(s, 'transactions').filter(t => settled(t) && cashDate(t) >= start && cashDate(t) <= end);

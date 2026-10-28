@@ -1,5 +1,6 @@
 import { invoiceDate, shiftInvoiceMonth } from "./card-invoices";
-import type { Row } from './summary';
+import { rows, str, type Row, type Snapshot } from './summary';
+import { D, money } from '@/financial/engine';
 
 export type RecurrenceFrequency = "weekly" | "monthly" | "annual";
 
@@ -17,7 +18,7 @@ export function nextRecurrenceDate(date: string, frequency: RecurrenceFrequency,
 export function recurringOccurrences(recurrences: Row[], transactions: Row[], start: string, end: string) {
   const represented = new Set(transactions.map(t => String(t.source_id ?? '')).filter(Boolean));
   return recurrences.flatMap(recurring => {
-    if (recurring.active === false || recurring.cancelled_at || !['weekly', 'monthly', 'annual'].includes(String(recurring.frequency))) return [];
+    if (recurring.active === false || recurring.cancelled_at || recurring.deleted_at || !['weekly', 'monthly', 'annual'].includes(String(recurring.frequency))) return [];
     const frequency = recurring.frequency as RecurrenceFrequency;
     const next = String(recurring.next_date ?? '');
     if (!next || next > end) return [];
@@ -38,4 +39,18 @@ export function recurringOccurrences(recurrences: Row[], transactions: Row[], st
     }
     return result;
   });
+}
+
+/** Same occurrence keys as the generator. Saved/cancelled/deleted rows suppress projections.
+ * Projections are pending presentation rows; they never enter the bank ledger or cash. */
+export function projectedRecurringExpenses(snapshot: Snapshot, start: string, end: string): Row[] {
+  const tx = rows(snapshot, 'transactions');
+  const accounts = new Set(rows(snapshot, 'financial_accounts').filter(a => ['bank', 'cash'].includes(str(a, 'kind')) && !a.archived).map(a => a.id));
+  return recurringOccurrences(rows(snapshot, 'recurring_transactions').filter(r => r.type === 'expense' && accounts.has(r.account_id)), tx, start, end)
+    .map(({recurrence: r, date, sourceId}) => ({
+      id: sourceId, source_id: sourceId, recurrence_id: r.id, occurrence_date: date,
+      account_id: r.account_id, category_id: r.category_id, description: r.description,
+      type: 'expense', amount: money(D(str(r, 'amount')).abs().neg()), date,
+      status: 'pending', projected: true,
+    }));
 }

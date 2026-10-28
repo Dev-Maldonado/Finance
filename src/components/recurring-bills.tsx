@@ -76,7 +76,7 @@ export function RecurringBills({ snapshot, today, onSaved, onNew, onEditTransact
   </div>;
 }
 
-function OccurrenceChange({ snapshot, item, cancel, onClose, onSaved }: { snapshot: Snapshot; item: MonthlyCommitment; cancel: boolean; onClose: () => void; onSaved: () => void }) {
+export function OccurrenceChange({ snapshot, item, cancel, onClose, onSaved }: { snapshot: Snapshot; item: MonthlyCommitment; cancel: boolean; onClose: () => void; onSaved: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null), title = useId(), requestId = useRef(crypto.randomUUID());
   const [scope, setScope] = useState<'occurrence' | 'future'>('occurrence'), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const r = rows(snapshot, 'recurring_transactions').find(r => r.id === item.recurrenceId) ?? {};

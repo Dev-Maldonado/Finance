@@ -448,3 +448,53 @@ Suíte completa de navegador aprovada: 42 cenários (7,4 min), incluindo todas a
 Validação final: build e TypeScript aprovados; quatro cenários direcionados aprovados após os refinamentos principais (1,2 min). Correção adicional do padding herdado da numeração mobile, que quebrava “01” em linhas, validada por duas regressões do dashboard no build final (28,6 s). Captura real de viewport confirma valor principal inteiro abaixo das barras fixas; título com espaço próprio, números de seção numa linha e gráficos sem contorno preto ao toque. Total: 165 unitários, 20 integrações financeiras, rodada completa de 42 browsers aprovada e repetições afetadas aprovadas. Validação em Chromium/emulação, sem aparelhos físicos. Publicação em novo commit em andamento.
 
 Publicação confirmada: commit `463171303d462909bf451918c104b8f33a030289` enviado ao main; Vercel `dpl_qrMB1mbWw3etZ6i88sa5Ud1w4WCs` READY em https://finance-two-lake.vercel.app/. Rota pública HTTP200, worker do commit, manifest standalone e sete marcadores dos estilos conferidos nos arquivos publicados. CI [40417852095](https://github.com/Dev-Maldonado/Finance/actions/runs/40417852095) em execução na última consulta; validação local concluída conforme acima. Nenhum índice, gráfico, filtro, ação ou informação financeira removido; sem mudanças em serviços financeiros, APIs, banco ou migrations. Sem pendências de implementação desta entrega; execução remota do CI ainda em acompanhamento.
+
+## 28/10/2026 — Exclusão de recorrentes e competência dos gastos fixos
+
+Causas confirmadas: ações eram ocultadas de recorrências encerradas; ocorrências
+canceladas não tinham remoção do histórico; `periodMetrics` somava apenas ledger
+materializado, ignorando previsões de despesas fixas no restante do mês/futuro.
+Correção compartilha projeções por identificador entre transações e métricas,
+sem gravar futuros ou antecipar caixa. Registro/cancelamento/remoção suprime a
+previsão, evitando duplicidade. Gráficos, categorias, orçamento e relatórios
+reutilizam o cálculo corrigido. Disponibilidade detalha os fixos ainda previstos.
+
+Exclusão de cadastro ativo/pausado/encerrado com escolha de preservar ocorrências
+ou remover também o histórico, incluindo valores já efetivados, explicitamente
+avisando recálculo do saldo. Ocorrências individuais e canceladas podem sair do
+histórico; auditoria e chaves impedem regeneração. Migration29 somente acrescenta
+campos anuláveis e RPC privada/idempotente; não exclui dados automaticamente.
+
+169 unitários, TypeScript/build e 20 integrações gerais aprovados; 13 testes de
+integridade, oito de agendamento, oito de contas recorrentes e oito de baixa
+aprovados. Cinco novas verificações de remoção aprovadas, incluindo saldo,
+idempotência e isolamento. Upgrade29 executado duas vezes preservando registros,
+agendas e saldos antigos. Nos testes de interface, corrigida posição do estado
+do diálogo antes das saídas condicionais de autenticação; cinco cenários
+específicos aprovados e sexto em conclusão. Nenhuma operação em dados reais.
+Próximos passos: concluir browser/regressão geral, aplicar migração incremental
+com comparação de preservação em produção e publicar em novo commit.
+
+Novos dois fluxos browser aprovados (22,3 s): competência futura consistente entre
+transações/dashboard, baixa sem duplicidade, exclusão com estorno do saldo,
+recorrência encerrada removível e remoção de registros já cancelados. Corrigido
+rótulo do seletor usado no teste, sem mudança de interface. Nova sexta verificação
+de banco confirma rollback integral se o histórico contiver movimento vinculado.
+169 unitários e 63 verificações financeiras/remoção aprovadas. Suíte completa de
+44 cenários browser em execução. CI da entrega visual anterior
+[40417852095](https://github.com/Dev-Maldonado/Finance/actions/runs/40417852095)
+concluído com sucesso; pendência histórica encerrada.
+
+Suíte completa aprovada: 44 cenários (8,3 min), incluindo varredura de todas as
+páginas em toque/desktop, regressões de caixa/competência, parcelas, CRUD,
+recorrências, relatórios, investimentos, caixinhas, PWA e proteção de registros.
+169 unitários e TypeScript repetidos aprovados. Build final aprovado; repetição
+dos dois fluxos novos com textos compactos do seletor de exclusão em andamento.
+
+Migration `202610280029` aplicada atomicamente ao Supabase de produção com
+comparação exata dos registros em 22 tabelas/views, omitindo apenas as duas novas
+colunas anuláveis. Preservados históricos, agendas e saldos; acesso à nova RPC
+negado a anônimos e concedido somente a autenticados com propriedade/idempotência.
+Nenhuma exclusão ou operação financeira real executada durante a validação.
+
+Build final e dois fluxos novos aprovados novamente (21,2 s); captura mobile revisada com opções de exclusão legíveis e aviso integral. Validações somente em Chromium/emulação e banco local descartável. Nenhuma pendência de implementação; publicação em novo commit no main em andamento.

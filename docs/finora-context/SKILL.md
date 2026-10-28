@@ -98,3 +98,13 @@ Selic/IPCA/Dólar juntos na faixa econômica e nos cards completos. IPCA usa SID
 ## Organização e responsividade — 26/10/2026
 
 Usuário autorizou reorganização visual de todas as áreas mantendo índices, gráficos, filtros, menus e funcionalidades, com nenhum conteúdo cortado. Ver [EXPERIENCE-REVIEW.md](../EXPERIENCE-REVIEW.md) para inventário. Faturas precedem cartões; listas compartilhadas adaptam tabela/cards, vencimentos agrupam urgência e formulários separam confirmação. Memória de visualização em sessionStorage por usuário/tela, validada, sem snapshots/tokens; relativos seguem hoje, URL explícita prevalece. Aguardar restauração antes de liberar filtros. Presets mobile em grade com todas as opções visíveis; altura natural, valores completos, tabelas com scroll interno e safe areas preservadas. Nenhuma mudança nas regras financeiras ou banco.
+
+## Gastos fixos e remoção de recorrências — 28/10/2026
+
+`periodMetrics` e Transações incluem despesas fixas previstas no intervalo, por
+`projectedRecurringExpenses`, sem gravar futuros ou antecipar caixa. Chaves de
+ocorrência já registradas, canceladas ou removidas suprimem a projeção; manter os
+tombstones do snapshot na deduplicação. UI oculta `deleted_at`, sem apagar a
+auditoria. Migration29/RPC `remove_recurring_records` remove cadastro ou ocorrência
+com idempotência; somente a opção explícita de histórico remove os lançamentos
+vinculados e recalcula inclusive valores já efetivados. Ver RECURRING-BILLS.md.

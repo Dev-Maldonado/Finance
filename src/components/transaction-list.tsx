@@ -55,6 +55,7 @@ export function TransactionList({list,snapshot,today,onEditPurchase,onRemovePurc
                         )[str(t, "type")]
                       }
                     </small>
+                    {t.projected && <small>Gasto fixo previsto · recorrência</small>}
                     {t.origin === "card" && <small className="installment-detail">Parcela {str(t, "number")} de {str(t, "installment_count")} · {brl(D(str(t, "amount")).abs().toFixed(2))}<br />Total da compra: {brl(str(t, "purchase_total"))} · Compra em {pretty(str(t, "purchase_date"))}</small>}
                     {t.type === "income" && t.status === "pending" && str(t, "date") < today && (
                       <small className="pending-receipt-warning" title="A data prevista passou. Edite o lançamento para confirmar o recebimento ou corrigir a data.">
@@ -87,6 +88,7 @@ export function TransactionList({list,snapshot,today,onEditPurchase,onRemovePurc
                   <strong>{brl(str(t, "amount"))}</strong>
                 </td>
                 <td className="transaction-actions">
+                  {t.status==='cancelled' && str(t,'source_id').startsWith('recurrence:') && <button onClick={()=>onRemoveTransaction(t)}>Remover do histórico</button>}
                   {t.origin === "card" && t.status !== "cancelled" && (() => {
                     const purchase = rows(snapshot, "credit_card_purchases").find(p => p.id === t.purchase_id);
                     return purchase ? <div className="actions"><button onClick={() => onEditPurchase(purchase)}>Editar compra</button><button onClick={() => onRemovePurchase(purchase)}>Excluir compra</button></div> : null;
@@ -97,7 +99,7 @@ export function TransactionList({list,snapshot,today,onEditPurchase,onRemovePurc
                     t.origin !== "card" && !t.group_id &&
                     t.status !== "cancelled" && (
                       <div className="actions">
-                        {['income','expense'].includes(str(t,'type'))&&!t.linked_income_id&&!isSettled(t,today)&&<button onClick={()=>onSettle({transaction:t,description:str(t,'description'),amount:D(str(t,'amount')).abs().toFixed(2),due:str(t,'date'),accountId:str(t,'account_id'),type:t.type==='income'?'income':'expense'})}>{t.type==='income'?'Receber':'Pagar'}</button>}
+                        {['income','expense'].includes(str(t,'type'))&&!t.linked_income_id&&!isSettled(t,today)&&<button onClick={()=>onSettle({transaction:t.projected?undefined:t,recurrenceId:t.projected?str(t,'recurrence_id'):undefined,occurrenceDate:t.projected?str(t,'occurrence_date'):undefined,description:str(t,'description'),amount:D(str(t,'amount')).abs().toFixed(2),due:str(t,'date'),accountId:str(t,'account_id'),type:t.type==='income'?'income':'expense'})}>{t.type==='income'?'Receber':'Pagar'}</button>}
                         <button
                           onClick={() => onEditTransaction(t)}
                         >

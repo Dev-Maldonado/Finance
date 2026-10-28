@@ -17,6 +17,7 @@
     "test:imports": "node --env-file=.env.local --import tsx scripts/import-test.ts",
     "test:scheduling": "node --env-file=.env.local --import tsx scripts/scheduling-test.ts",
     "test:settlements": "node --env-file=.env.local --import tsx scripts/settlements-test.ts",
+    "test:recurring-removal": "node --env-file=.env.local --import tsx scripts/recurring-removal-test.ts",
     "test:commitments": "node --env-file=.env.local --import tsx scripts/commitments-test.ts",
     "sync:benchmarks": "node --env-file=.env.local --import tsx scripts/sync-benchmarks.ts",
     "test:manual": "node --env-file=.env.local --import tsx scripts/manual-investment-test.ts",
