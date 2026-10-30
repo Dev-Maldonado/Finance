@@ -11,7 +11,7 @@ test('redesign preserves twelve visible areas, eight indicators, errors, large n
  const result=await admin.auth.admin.createUser({email,password,email_confirm:true});expect(result.error).toBeNull();const userId=result.data.user!.id;
  try {
   await page.route('**/api/economic-indicators*',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Provider unavailable in regression test'})}));
-  await page.goto('/');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
+  await page.goto('/inicio/completo');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
   await expect(page.locator('.dashboard-section')).toHaveCount(12);
   await expect(page.locator('.dashboard-metric')).toHaveCount(8);
   await expect(page.locator('.dashboard-metric-group')).toHaveCount(3);
@@ -84,7 +84,7 @@ test('reference overview keeps real totals, wealth history and all navigation on
   expect((await admin.from('transactions').insert([{type:'income',amount:'2431.80',description:'Recebimento confirmado'},{type:'expense',amount:'-711.79',description:'Despesa confirmada'}].map(t=>({...t,user_id:id,account_id:account.data!.id,status:'confirmed',date:today})))).error).toBeNull();
   const dates=[...new Set([first,today])];expect((await admin.from('net_worth_snapshots').insert(dates.map((date,i)=>({user_id:id,date,assets:i?'2220.01':'1800',liabilities:'0'})))).error).toBeNull();
   await page.route('**/api/economic-indicators*',r=>r.fulfill({status:503,json:{error:'Unavailable test source'}}));
-  await page.goto('/');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
+  await page.goto('/inicio/completo');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
   await expect(page.getByRole('article',{name:'Receitas do período',exact:true})).toContainText('R$ 2.431,80');
   const before=await(await page.request.get('/api/snapshot')).json();
   const composition=page.getByRole('article',{name:'Receitas versus despesas do período'});

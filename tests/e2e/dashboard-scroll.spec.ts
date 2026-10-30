@@ -9,7 +9,7 @@ test('dashboard shows the primary figures and naturally scrolls to every section
  try{
   expect((await admin.from('financial_accounts').insert({user_id:uid,name:'Conta do teste de rolagem',kind:'bank',initial_balance:'2500'})).error).toBeNull();
   await page.route('**/api/economic-indicators*',r=>r.fulfill({status:503,json:{error:'Unavailable test provider'}}));
-  await page.setViewportSize({width:1908,height:945});await page.goto('/');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
+  await page.setViewportSize({width:1908,height:945});await page.goto('/inicio/completo');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
   await expect(page.locator('.dashboard-metric')).toHaveCount(8);
   for(const size of [{width:1908,height:945},{width:1440,height:900},{width:1280,height:720},{width:1280,height:680},{width:1280,height:430}]){
    await page.setViewportSize(size);await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
@@ -23,8 +23,9 @@ test('dashboard shows the primary figures and naturally scrolls to every section
    await page.mouse.move(size.width-50,size.height/2);await page.mouse.wheel(0,100000);
    await expect(page.locator('#dashboard-confiabilidade')).toBeInViewport();
    await expect(page.locator('.content > footer')).toBeInViewport();
-   await page.keyboard.press('Home');await page.keyboard.press('Control+Home');
+   await page.keyboard.press('Control+Home');
    await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
+   await page.evaluate(async()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();await new Promise<void>(resolve=>{let previous=scrollY,stable=0;const frame=()=>{const now=scrollY;stable=now===previous?stable+1:0;previous=now;if(stable>=4)resolve();else requestAnimationFrame(frame);};requestAnimationFrame(frame);});});
    await page.keyboard.press('PageDown');await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(size.width);
    await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));

@@ -52,7 +52,7 @@ test('monthly bills combine installments, fixed and scheduled expenses; scoped e
     await nav.getByRole('button',{name:'Mês atual',exact:true}).click();await expect(value('Gastos fixos')).toHaveText('R$ 59,90');
     expect((await admin.from('transactions').select('*').eq('id',historical.data!.id).single()).data).toEqual(before.data);
     const balance=await admin.from('account_balances').select('balance').eq('id',account.data!.id).single();expect(balance.data!.balance).toBe('915.10');
-    await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Mais opções',exact:true}).click();await expect(page.getByRole('dialog',{name:'Todos os recursos'}).getByRole('link',{name:'Contas Recorrentes',exact:true})).toBeVisible();
+    await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Abrir menu',exact:true}).click();await expect(page.getByRole('dialog',{name:'Todos os recursos'}).getByRole('link',{name:'Contas Recorrentes',exact:true})).toBeVisible();
   }finally{expect((await admin.auth.admin.deleteUser(uid)).error).toBeNull();}
 });
 

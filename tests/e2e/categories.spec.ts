@@ -15,7 +15,7 @@ test('hierarchy groups monthly cash and installments once, filters roots and chi
   const user = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   expect(user.error).toBeNull();
   try {
-    await page.goto('/');
+    await page.goto('/inicio/completo');
     await page.getByLabel('E-mail').fill(email);
     await page.getByLabel('Senha', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Entrar na minha conta' }).click();

@@ -108,3 +108,22 @@ tombstones do snapshot na deduplicação. UI oculta `deleted_at`, sem apagar a
 auditoria. Migration29/RPC `remove_recurring_records` remove cadastro ou ocorrência
 com idempotência; somente a opção explícita de histórico remove os lançamentos
 vinculados e recalcula inclusive valores já efetivados. Ver RECURRING-BILLS.md.
+
+## Organização funcional em cinco módulos — 30/10/2026
+
+Pedido atual permite informações progressivas, preservando todos os recursos.
+Navegação principal: Início, Movimentações, Cartões, Patrimônio, Análises;
+Configurações é secundária. Mapeamento completo em [UX-MODULES.md](../UX-MODULES.md).
+`workspace-navigation.ts` resolve somente apresentação, mantendo URLs antigas.
+Início conserva os oito indicadores e acesso explícito a `/inicio/completo`, com
+os 12 grupos integrais anteriores; gráficos aprofundados em Análises, histórico
+patrimonial e caixinhas/investimentos em Patrimônio. Mesmos componentes, cálculos,
+serviços e backend; nenhuma migration. Botão global Adicionar reutiliza cadastros.
+Preservar mês/cartão/filtros entre subdivisões do mesmo contexto. Categorias em
+Configurações também acessíveis durante o cadastro em nova aba, sem perder rascunho.
+
+Rascunhos: reconfirmação da mesma sessão revalida o snapshot mantendo dados;
+sair/trocar usuário limpa cache e diálogos privados. `use-snapshot-sync.ts`
+avisa alterações entre abas por usuário, sem registros/tokens; a aba receptora
+reconsulta a API. Categorias criadas em outra aba ficam disponíveis no cadastro
+sem apagar os campos digitados. Formulários revalidam opções ao receber foco.

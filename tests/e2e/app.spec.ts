@@ -216,9 +216,8 @@ test("login, conta, transação, persistência e layout móvel", async ({
       page.getByRole("heading", { name: "Seu panorama financeiro" }),
     ).toBeVisible();
     await expect(page.getByText("Carregando seus dados…")).not.toBeVisible();
-    await page
-      .getByRole("link", { name: "Contas e Saldos", exact: true })
-      .click();
+    await page.getByRole("navigation",{name:"Navegação principal"}).getByRole("link",{name:"Movimentações",exact:true}).click();
+    await page.getByRole("navigation",{name:"Seções do módulo"}).getByRole("link", { name: "Contas e saldos", exact: true }).click();
     await page.getByRole("button", { name: "Nova conta", exact: true }).click();
     await page.getByLabel("Nome", { exact: true }).fill("Conta principal");
     await page.getByLabel("Saldo inicial (R$)").fill("1000");
@@ -227,7 +226,7 @@ test("login, conta, transação, persistência e layout móvel", async ({
     await expect(
       page.getByRole("heading", { name: "Conta principal" }),
     ).toBeVisible();
-    await page.getByRole("link", { name: "Transações", exact: true }).click();
+    await page.getByRole("navigation",{name:"Seções do módulo"}).getByRole("link", { name: "Todas", exact: true }).click();
     await page
       .getByRole("button", { name: "Novo lançamento", exact: true })
       .click();

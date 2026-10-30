@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 import { useState } from 'react';
 import { categoryTree, canonicalCategory, rootCategory, categoryLabel } from '@/lib/categories';
 import type { Row } from '@/lib/summary';
@@ -24,6 +25,7 @@ export function CategoryPicker({ categories, name = 'category_id', label = 'Cate
       <option value="">{filterMode ? 'Categoria e todas as subcategorias' : `Diretamente em ${root?.name}`}</option>
       {children.map(child => <option key={String(child.id)} value={String(child.id)}>{child.name}{child.archived ? " (arquivada)" : ""}</option>)}
     </select></span>}
+    {!filterMode&&<Link className="category-manage-link" href="/configuracoes/categorias" target="_blank" rel="noopener noreferrer">Gerenciar categorias ↗<span className="sr-only"> (abre em outra aba para preservar o cadastro)</span></Link>}
     {category && <small className="category-selected-path">{categoryLabel(categories, String(category.id))}</small>}
   </span>;
 }

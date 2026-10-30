@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, useRef } from 'react';
+import { createContext, useContext, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { OverviewResultChart, OverviewComposition } from './dashboard-overview';
 import { useReadableAmounts } from './use-readable-amounts';
@@ -12,6 +12,8 @@ import { dashboardModel, changeMetric, periodMetrics, monthEnd } from '@/lib/das
 import { invoiceMonthLabel, invoiceTotals, shiftInvoiceMonth, type CardInvoice } from '@/lib/card-invoices';
 import { savingsMetrics, savingsPeriodMetrics } from '@/lib/savings-metrics';
 import { cardColors } from '@/lib/card-color';
+import { HomeAgenda } from './home-agenda';
+import type {SettlementTarget} from './settlement-dialog';
 import { FlowChart, palette } from './chart';
 import { DashboardCategoryAnalysis } from './dashboard-category-analysis';
 import { WealthChart } from './wealth-chart';
@@ -20,10 +22,14 @@ import { forms, fieldOptionLabel } from './forms';
 import { EconomicIndicatorsCards } from './economic-indicators';
 import { FinancialPlanning } from './financial-planning';
 import { DataConfidence } from './data-confidence';
+import { dashboardGroups,type DashboardView } from '@/lib/workspace-navigation';
+const DashboardViewContext=createContext<DashboardView>('full');
 const brl = (value: string | number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
 const pretty = (value: string) => value.split('-').reverse().join('/');
 const pct = (value: string) => `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 function DashboardGroup({ id, index, title, subtitle, icon: Icon, children }: { id: string; index: string; title: string; subtitle: string; icon: typeof Wallet; children: React.ReactNode }) {
+  const view=useContext(DashboardViewContext);
+  if(!dashboardGroups[view].includes(id))return null;
   const context:Record<string,string>={panorama:'Posição de hoje + resultado do período',indicadores:'Hoje e período selecionado',planejamento:'Próximos compromissos',compromissos:'Histórico e futuro',analises:'Período selecionado',caixa:'Caixa efetivo e disponibilidade',faturas:'Vencimento das faturas',reservas:'Reservas e limites do mês',patrimonio:'Histórico e posições atuais',movimentacoes:'Período selecionado',economia:'Referências oficiais',confiabilidade:'Fontes e cobertura'};
   return <div className="dashboard-section" id={`dashboard-${id}`} role="region" aria-labelledby={`dashboard-heading-${id}`}><header className="dashboard-section-heading"><span className="dashboard-section-mark"><Icon size={18} /></span><div><h2 id={`dashboard-heading-${id}`}>{title}</h2><p>{subtitle}</p></div><span className="dashboard-context-tag">{context[id]}</span><span className="dashboard-section-number" aria-hidden="true">{index}</span></header>{children}</div>;
 }
@@ -39,8 +45,8 @@ function Delta({ current, previous, lowerBetter = false }: { current: string; pr
 function Metric({ label, value, display, detail, icon: Icon, current, previous, lowerBetter = false, tone = 'wealth' }: { label: string; value: string; display?: string; detail: string; icon: typeof Wallet; current?: string; previous?: string; lowerBetter?: boolean; tone?: FinancialTone }) {
   return <article className={`dashboard-metric financial-surface ${financialTone(value, tone)}`} aria-label={label}><div className="dashboard-metric-head"><span>{label}</span><span className="dashboard-metric-icon"><Icon size={18} /></span></div><strong className={display ? "metric-text-value" : undefined}>{display ?? brl(value)}</strong><p>{detail}</p>{current !== undefined && previous !== undefined && <Delta current={current} previous={previous} lowerBetter={lowerBetter} />}</article>;
 }
-export function Dashboard({ snapshot, summary, start, end, period, today, onPay, onSaveWealth, wealthSaving, wealthFeedback }: {
-  snapshot: Snapshot; summary: ReturnType<typeof financialSummary>; start: string; end: string; period: string; today: string;
+export function Dashboard({ snapshot, summary, start, end, period, today, onPay, onSaveWealth, wealthSaving, wealthFeedback, onSettle, view = 'full' }: {
+  onSettle?:(target:SettlementTarget)=>void; view?:DashboardView; snapshot: Snapshot; summary: ReturnType<typeof financialSummary>; start: string; end: string; period: string; today: string;
   onPay: (invoice: CardInvoice) => void; onSaveWealth: () => void;
   wealthSaving: boolean; wealthFeedback: WealthFeedback | null;
 }) {
@@ -83,9 +89,11 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     { name: 'Caixinhas registradas', value: summary.savings, color: '#41b69b' },
     { name: 'Investimentos em BRL', value: summary.investments, color: '#e7b869' },
   ];
-  return <div className="premium-dashboard dashboard-v2 dashboard-v3" ref={dashboardRef}>
-    <nav className="dashboard-section-nav" aria-label="Navegar pelas áreas do dashboard">{[{id:'panorama',label:'Panorama',Icon:Wallet},{id:'planejamento',label:'Planejamento',Icon:Target},{id:'analises',label:'Análises',Icon:ChartNoAxesCombined},{id:'faturas',label:'Faturas',Icon:CreditCard},{id:'patrimonio',label:'Patrimônio',Icon:TrendingUp},{id:'movimentacoes',label:'Movimentações',Icon:ArrowRight}].map(({id,label,Icon}) => <a key={id} href={`#dashboard-${id}`} onClick={()=>setActiveSection(id)} className={activeSection===id?'is-current':undefined} aria-current={activeSection===id?'location':undefined}><Icon size={19}/><span>{label}</span></a>)}</nav>
-    <div className="dashboard-economic-dock" ref={economicDockRef} />
+  return <DashboardViewContext.Provider value={view}><div data-dashboard-view={view} className="premium-dashboard dashboard-v2 dashboard-v3" ref={dashboardRef}>
+    {view==='full'&&<nav className="dashboard-section-nav" aria-label="Navegar pelas áreas do dashboard">{[{id:'panorama',label:'Panorama',Icon:Wallet},{id:'planejamento',label:'Planejamento',Icon:Target},{id:'analises',label:'Análises',Icon:ChartNoAxesCombined},{id:'faturas',label:'Faturas',Icon:CreditCard},{id:'patrimonio',label:'Patrimônio',Icon:TrendingUp},{id:'movimentacoes',label:'Movimentações',Icon:ArrowRight}].map(({id,label,Icon}) => <a key={id} href={`#dashboard-${id}`} onClick={()=>setActiveSection(id)} className={activeSection===id?'is-current':undefined} aria-current={activeSection===id?'location':undefined}><Icon size={19}/><span>{label}</span></a>)}</nav>}
+    {(['home','full','economy'].includes(view))&&<div className="dashboard-economic-dock" ref={economicDockRef} />}
+    {view==='home'&&<EconomicIndicatorsCards dockTarget={economicDockRef} compactOnly sourcesHref="/analises/economia"/>}
+    {view==='home'&&<div className="module-detail-links"><Link href="/movimentacoes/compromissos"><CalendarDays size={16}/>Próximos vencimentos</Link><Link href="/movimentacoes/planejamento"><Target size={16}/>Planejamento, metas e projeções</Link><Link href="/inicio/completo">Todos os indicadores e gráficos <ArrowRight size={15}/></Link></div>}
     <DashboardGroup id="panorama" index="01" title="Panorama financeiro" subtitle="O que você possui hoje e o que o período gerou." icon={Wallet}>
 
     <section className="dashboard-hero" aria-label="Panorama patrimonial">
@@ -122,6 +130,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     </div>
 
     </DashboardGroup>
+    {view==='home'&&onSettle&&<HomeAgenda snapshot={snapshot} start={start} end={end} today={today} onSettle={onSettle}/>}
     <DashboardGroup id="planejamento" index="03" title="Planejamento financeiro" subtitle="Decisões de hoje, compromissos e próximos passos." icon={Target}>
 
     <FinancialPlanning snapshot={snapshot} today={today} variant="compact" expandDetails />
@@ -224,5 +233,5 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
     <DataConfidence snapshot={snapshot} today={today} expandedByDefault />
 
     </DashboardGroup>
-  </div>;
+  </div></DashboardViewContext.Provider>;
 }

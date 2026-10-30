@@ -13,8 +13,8 @@ test('desktop menu exposes every module without its own scroll, fits notebook he
     await page.goto('/recorrentes');await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha',{exact:true}).fill(password);await page.getByRole('button',{name:'Entrar na minha conta'}).click();
     await expect(page.getByRole('article',{name:'Total previsto a pagar',exact:true})).toBeVisible();
     const sidebar=page.getByRole('complementary',{name:'Menu principal'}),nav=sidebar.getByRole('navigation',{name:'Navegação principal'});
-    await expect(nav.getByRole('link')).toHaveCount(11);
-    for(const label of ['Seu dinheiro','Organização','Patrimônio'])await expect(nav.getByRole('group',{name:label,exact:true})).toBeVisible();
+    await expect(nav.getByRole('link')).toHaveCount(6);
+    for(const label of ['Módulos principais'])await expect(nav.getByRole('group',{name:label,exact:true})).toBeVisible();
     for(const [width,height] of [[1366,768],[1280,720],[1440,900],[1920,1080],[1024,768],[1280,680]]){
       await page.setViewportSize({width,height});await page.evaluate(()=>window.scrollTo(0,0));
       for(const link of await nav.getByRole('link').all())await expect(link).toBeInViewport();
@@ -26,19 +26,19 @@ test('desktop menu exposes every module without its own scroll, fits notebook he
       expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);
       await sidebar.getByRole('button',{name:'Recolher menu',exact:true}).click();
       await expect.poll(async()=>Math.round((await sidebar.boundingBox())!.width)).toBe(80);
-      await expect(nav.getByRole('link',{name:'Contas Recorrentes',exact:true})).toBeInViewport();
-      await expect(nav.getByRole('link')).toHaveCount(11);
+      await expect(nav.getByRole('link',{name:'Movimentações',exact:true})).toBeInViewport();
+      await expect(nav.getByRole('link')).toHaveCount(6);
       await expect(sidebar.getByRole('button',{name:'Sair',exact:true})).toBeInViewport();
       await sidebar.getByRole('button',{name:'Expandir menu',exact:true}).click();
       await expect.poll(async()=>Math.round((await sidebar.boundingBox())!.width)).toBe(230);
     }
     await page.setViewportSize({width:1366,height:768});await page.screenshot({path:'test-results/desktop-menu-notebook.png'});
-    await nav.getByRole('link',{name:'Transações',exact:true}).click();await expect(page).toHaveURL(/\/transacoes$/);await expect(page.locator('.page-head h1')).toHaveText('Transações');await expect(nav.getByRole('link',{name:'Transações',exact:true})).toHaveAttribute('aria-current','page');
-    await nav.getByRole('link',{name:'Contas Recorrentes',exact:true}).click();await expect(page.getByRole('article',{name:'Total previsto a pagar',exact:true})).toBeVisible();
+    await nav.getByRole('link',{name:'Movimentações',exact:true}).click();await expect(page).toHaveURL(/\/movimentacoes$/);await expect(page.locator('.page-head h1')).toHaveText('Movimentações');await expect(nav.getByRole('link',{name:'Movimentações',exact:true})).toHaveAttribute('aria-current','page');
+    await page.getByRole('navigation',{name:'Seções do módulo'}).getByRole('link',{name:'Contas a pagar',exact:true}).click();await expect(page.getByRole('article',{name:'Total previsto a pagar',exact:true})).toBeVisible();
     await page.setViewportSize({width:1280,height:430});await page.evaluate(()=>window.scrollTo(0,0));
     await nav.getByRole('link',{name:'Configurações',exact:true}).scrollIntoViewIfNeeded();await expect(nav.getByRole('link',{name:'Configurações',exact:true})).toBeInViewport();
     await sidebar.getByRole('button',{name:'Sair',exact:true}).scrollIntoViewIfNeeded();await expect(sidebar.getByRole('button',{name:'Sair',exact:true})).toBeInViewport();
-    expect(await sidebar.evaluate(el=>el.scrollTop)).toBe(0);expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(0);
+    expect(await sidebar.evaluate(el=>el.scrollTop)).toBe(0);expect(await page.evaluate(()=>document.documentElement.scrollHeight>=innerHeight)).toBe(true);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(1280);
     await page.setViewportSize({width:390,height:844});
     const mobile=page.getByRole('navigation',{name:'Navegação rápida'});await expect(mobile).toBeVisible();

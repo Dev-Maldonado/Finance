@@ -8,7 +8,7 @@ export default async function Page({
   const { section } = await params;
   return (
     <Finora
-      section={section?.[0] ?? "dashboard"}
+      section={section?.[0] ?? "inicio"}
       detail={section?.[1]}
       configured={Boolean(supabasePublicConfig())}
     />

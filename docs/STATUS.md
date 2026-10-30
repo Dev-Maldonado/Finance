@@ -500,3 +500,75 @@ Nenhuma exclusão ou operação financeira real executada durante a validação.
 Build final e dois fluxos novos aprovados novamente (21,2 s); captura mobile revisada com opções de exclusão legíveis e aviso integral. Validações somente em Chromium/emulação e banco local descartável. Nenhuma pendência de implementação; publicação em novo commit no main em andamento.
 
 Publicação confirmada: commit `8283ebd7ed6c821d087833a6527336af61904c70` enviado ao main; Vercel `dpl_AymCbfLd2HK9odULY7RyU11J5fZH` READY em https://finance-two-lake.vercel.app/. HTTP200, worker do commit, manifest standalone e seis marcadores dos recursos novos conferidos nos bundles públicos. Migration29 presente no Supabase, RPC autenticada e preservação dos registros reais confirmadas. CI [40775051064](https://github.com/Dev-Maldonado/Finance/actions/runs/40775051064) em execução na última consulta; validação local concluída com 169 unitários, 63 verificações financeiras/remoção, upgrades idempotentes e 44 browsers, além de dois fluxos repetidos no build final. Sem pendências de implementação; CI remoto ainda em acompanhamento.
+
+## 30/10/2026 — Organização em cinco módulos
+
+Inventário de rotas, formulários, painéis e ações concluído em UX-MODULES.md.
+Implementação em andamento: Início, Movimentações, Cartões, Patrimônio e Análises;
+configurações secundárias, links reais entre subdivisões e compatibilidade com
+URLs antigas. Início mantém os oito indicadores e acesso explícito aos 12 grupos
+do Dashboard completo. Gráficos/relatórios e patrimônio reutilizam os componentes
+existentes. Botão global Adicionar reutiliza formulários; categorias gerenciáveis
+em outra aba para preservar rascunhos. Sem alterações em serviços financeiros,
+APIs, autenticação, dados ou migrations. Sem recursos novos de IA.
+
+172 unitários aprovados; verificações locais aprovadas: 20 gerais, oito de
+investimentos manuais, 15 de caixinhas, oito de contas recorrentes, oito de baixa
+e seis de remoção recorrente. Primeira varredura mobile dos novos módulos e
+12 formulários globais aprovada; ajustado seletor ambíguo no teste de caixinhas.
+Refinamentos: grade mais compacta no resumo mobile e próximos gastos fixos/
+programados usando os mesmos identificadores e ação de baixa já existentes.
+Próximo passo: build final, varredura geral/novas rotas, revisão das capturas e
+publicação em novo commit após os testes.
+
+Primeira rodada completa de navegador: 39/47 cenários aprovados. Ajustes em
+andamento: expectativas antigas de navegação nos testes, ambiguidade de link
+repetido de Cartões no menu mobile e altura inicial em notebook 1280×720. Teste
+de baixa foi tornado independente da virada do mês (30/10 + dois dias já cai no
+mês seguinte): selecionar a despesa exata, sem presumir apenas uma linha. Nenhum
+cálculo alterado. Conferência AST: oito Metric e propriedades de FlowChart,
+DashboardCategoryAnalysis, WealthChart, FinancialPlanning e DataConfidence iguais
+às originais. Comparação de registros em 14 tabelas e percurso por todas as novas
+abas aprovados, assim como varredura mobile e todos os formulários do menu global.
+CI anterior 40775051064 concluído com sucesso; pendência histórica encerrada.
+
+Rodada direcionada posterior: 18/19 aprovados; último ajuste de altura de notebook
+concluído. Verificação final de encaixe/rolagem por mouse e teclado e valores
+negativos grandes aprovada (dois cenários). Menu mobile sem link duplicado,
+atalhos e navegação agrupados no topo desktop; resumo mobile mais compacto e
+cadastros recorrentes com links explícitos para histórico e vencimentos.
+Suíte completa de 48 cenários em execução. Detectada durante a conferência a
+necessidade de preservar âncoras antigas de grupos avançados na raiz; compatibilidade
+adicionada, com build e repetição dos novos fluxos previstos após esta rodada.
+
+Rodada completa seguinte: 47/48 aprovados; teste de abertura das categorias em
+outra aba revelou perda de rascunho por limpeza de cache ao reconfirmar a mesma
+sessão. Corrigido: manter dados durante revalidação do mesmo usuário, limpar
+cache/diálogos privados ao sair ou trocar de usuário. Novo teste de troca de conta
+entre abas aprovado. Rascunho preservado na repetição; teste ampliado detectou
+que uma categoria criada na outra aba não aparecia imediatamente. Sincronização
+adicionada por aviso sem dados via BroadcastChannel (fallback storage somente
+com nonce); reconsulta autenticada mantém o rascunho. Sem transporte de registros
+ou tokens. Formulários também reconsultam opções ao retornar à janela.
+
+Âncoras antigas e botão global de investimento na própria página corrigidos;
+indicadores oficiais/confiabilidade não recebem filtro temporal sem efeito em
+suas novas páginas. Build/172 unitários aprovados, varredura das 44 regressões
+originais em execução e repetição dos cinco fluxos novos pendente do build final.
+
+Validação de entrega concluída: 44 regressões originais aprovadas (9,2 min),
+mais cinco cenários novos aprovados; repetição dos cinco e do registro patrimonial
+no build final aprovada (6/6, 2,3 min). Categoria criada em outra aba aparece no
+formulário original, preservando descrição e valor digitados. Troca de conta
+remove rascunhos e dados privados; avisos entre abas não carregam registros.
+Âncoras antigas e criação global de investimento na própria página aprovadas.
+Percurso por todas as abas, comparação de registros em 14 tabelas, filtros/mês
+entre abas e layouts 320–1920px conferidos. Capturas desktop/mobile revisadas.
+
+172 unitários e TypeScript/build aprovados. 93 verificações integradas locais
+aprovadas: gerais20, integridade13, importação7, agendamento8, compromissos8,
+baixas8, remoção6, investimentos8 e caixinhas15. Conferência AST preservou as oito
+expressões de indicadores e os parâmetros originais dos componentes financeiros.
+Sem alterações em APIs, cálculos, serviços financeiros ou migrations; nenhum
+registro real usado nos testes. Emulação Chromium, sem aparelhos físicos.
+Sem pendências de implementação; publicação em novo commit no main em andamento.

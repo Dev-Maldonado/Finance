@@ -25,3 +25,6 @@
 - 23. PLANO DE EXECUÇÃO: [requisitos](references/secao-23.md)
 - 24. CRITÉRIOS DE ACEITAÇÃO: [requisitos](references/secao-24.md)
 - 25. INSTRUÇÃO FINAL — EXECUTE O DESENVOLVIMENTO: [requisitos](references/secao-25.md)
+
+- Reorganização funcional atual (30/10/2026): [UX-MODULES.md](../UX-MODULES.md).
+  Cinco módulos, destinos completos, URLs antigas e dashboard integral preservados.

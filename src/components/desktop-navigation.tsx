@@ -1,26 +1,6 @@
 import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
-
-type NavItem = readonly [string, string, LucideIcon];
-const groups = [
-  { label: 'Seu dinheiro', paths: ['dashboard', 'contas', 'transacoes', 'cartoes', 'recorrentes'] },
-  { label: 'Organização', paths: ['categorias', 'planejamento', 'relatorios'] },
-  { label: 'Patrimônio', paths: ['caixinhas', 'investimentos'] },
-];
-export function DesktopNavigation({ items, current, collapsed, onNavigate }: {
-  items: readonly NavItem[]; current: string; collapsed: boolean; onNavigate: () => void;
-}) {
-  const link = ([path, label, Icon]: NavItem) => <Link key={path} href={path === 'dashboard' ? '/' : `/${path}`} className={current === path ? 'active' : ''} aria-current={current === path ? 'page' : undefined} aria-label={label} title={label} onClick={onNavigate}>
-    <Icon size={20} />{!collapsed && <span>{label}</span>}{!collapsed && path === 'caixinhas' && <small className="new">Manual</small>}
-  </Link>;
-  const assigned = new Set([...groups.flatMap(group => group.paths), 'configuracoes']);
-  const extra = items.filter(([path]) => !assigned.has(path));
-  return <nav className="desktop-navigation" aria-label="Navegação principal">
-    {groups.map(group => <div className="sidebar-group" key={group.label} role="group" aria-label={group.label}>
-      {!collapsed && <span className="sidebar-group-label">{group.label}</span>}
-      {items.filter(([path]) => group.paths.includes(path)).map(link)}
-    </div>)}
-    {!!extra.length && <div className="sidebar-group" role="group" aria-label="Outros recursos">{extra.map(link)}</div>}
-    <div className="sidebar-settings">{items.filter(([path]) => path === 'configuracoes').map(link)}</div>
-  </nav>;
+import { Settings } from 'lucide-react';
+import { MainModuleLinks } from './workspace-navigation';
+export function DesktopNavigation({ current, onNavigate }: { current:string; onNavigate:()=>void }) {
+ return <nav className="desktop-navigation" aria-label="Navegação principal"><div className="sidebar-group" role="group" aria-label="Módulos principais"><MainModuleLinks current={current} onNavigate={onNavigate}/></div><div className="sidebar-settings"><Link href="/configuracoes" aria-label="Configurações" title="Configurações" className={current==='configuracoes'?'active':''} aria-current={current==='configuracoes'?'page':undefined} onClick={onNavigate}><Settings size={20}/><span>Configurações</span></Link></div></nav>;
 }

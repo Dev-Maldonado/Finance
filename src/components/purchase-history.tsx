@@ -11,14 +11,14 @@ import { purchaseViewSchema } from '@/lib/view-preferences';
 import { CategoryPicker } from './category-picker';
 const brl = (value: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
 const pretty = (value: string) => value.split('-').reverse().join('/');
-export function PurchaseHistory({ snapshot, month, today, cardId, onCardChange, onEdit, onRemove }: { snapshot: Snapshot; month: string; today: string; cardId: string; onCardChange: (id: string) => void; onEdit: (row: Row) => void; onRemove: (row: Row) => void }) {
+export function PurchaseHistory({ snapshot, month, today, cardId, onCardChange, onEdit, onRemove, installmentsOnly=false }: { installmentsOnly?:boolean; snapshot: Snapshot; month: string; today: string; cardId: string; onCardChange: (id: string) => void; onEdit: (row: Row) => void; onRemove: (row: Row) => void }) {
   const [categoryId, setCategory] = useState(''), [search, setSearch] = useState('');
   const [status, setStatus] = useState<PurchaseFilters['status']>('active');
   const [period, setPeriod] = useState<PurchaseFilters['period']>('all');
   const [start, setStart] = useState(today.slice(0, 7) + '-01'), [end, setEnd] = useState(today);
   useViewMemory(snapshot.user.id,'purchases',{categoryId,search,status,period,start,end},saved=>{const r=purchaseViewSchema.safeParse(saved);if(r.success){setCategory(r.data.categoryId);setSearch(r.data.search);setStatus(r.data.status);setPeriod(r.data.period);setStart(r.data.start);setEnd(r.data.end);}});
   function clear(){onCardChange('');setCategory('');setStatus('active');setSearch('');setPeriod('all');}
-  const purchases = filteredPurchases(snapshot, { cardId, categoryId, status, search, period, month, start, end });
+  const purchases = filteredPurchases(snapshot, { cardId, categoryId, status, search, period, month, start, end }).filter(p=>!installmentsOnly||Number(p.installments)>1);
   const metrics = purchaseMetrics(snapshot, purchases, month, today);
   const invoices = new Map(rows(snapshot, 'credit_card_invoices').map(i => [i.id, i]));
   function installmentDetails(p: Row) {
@@ -26,10 +26,10 @@ export function PurchaseHistory({ snapshot, month, today, cardId, onCardChange, 
       .sort((a,b) => str(invoices.get(a.invoice_id) || {}, 'due_date').localeCompare(str(invoices.get(b.invoice_id) || {}, 'due_date')) || Number(a.number) - Number(b.number));
     const monthParts = parts.filter(part => str(invoices.get(part.invoice_id) || {}, 'due_date').startsWith(month));
     const detail = (part: Row) => <span key={str(part, 'id')}>Parcela {part.number} de {p.installments} · {brl(str(part, 'amount'))}<small>Vence em {pretty(str(invoices.get(part.invoice_id) || {}, 'due_date'))}</small></span>;
-    return <><strong>{p.installments} {Number(p.installments) === 1 ? 'parcela' : 'parcelas'}</strong>{monthParts.map(detail)}{!monthParts.length && <small>Sem parcela em {invoiceMonthLabel(month)}</small>}<details><summary>Ver todas as parcelas</summary>{parts.map(detail)}</details></>;
+    return <><strong>{p.installments} {Number(p.installments) === 1 ? 'parcela' : 'parcelas'}</strong>{monthParts.map(detail)}{!monthParts.length && <small>Sem parcela em {invoiceMonthLabel(month)}</small>}<details open={installmentsOnly||undefined}><summary>Ver todas as parcelas</summary>{parts.map(detail)}</details></>;
   }
-  return <section id="compras-registradas" className="panel purchase-history screen-anchor" aria-label="Compras registradas">
-    <div className="panel-head"><div><h2>Compras registradas</h2><p>O cartão selecionado é compartilhado com as faturas. Valores integrais das compras ficam separados das parcelas do mês.</p></div><label className="excluded-toggle"><input type="checkbox" checked={status !== 'active'} onChange={e => setStatus(e.target.checked ? 'all' : 'active')} />Mostrar compras excluídas</label></div>
+  return <section id="compras-registradas" className="panel purchase-history screen-anchor" aria-label={installmentsOnly?"Compras parceladas":"Compras registradas"}>
+    <div className="panel-head"><div><h2>{installmentsOnly?"Compras parceladas":"Compras registradas"}</h2><p>O cartão selecionado é compartilhado com as faturas. Valores integrais das compras ficam separados das parcelas do mês.</p></div><label className="excluded-toggle"><input type="checkbox" checked={status !== 'active'} onChange={e => setStatus(e.target.checked ? 'all' : 'active')} />Mostrar compras excluídas</label></div>
     <div className="transaction-filters purchase-filters" aria-label="Filtrar compras">
       <label>Cartão<select aria-label="Filtrar compras por cartão" value={cardId} onChange={e => onCardChange(e.target.value)}><option value="">Todos os cartões</option>{rows(snapshot, 'credit_cards').map(card => <option key={str(card, 'id')} value={str(card, 'id')}>{card.name}</option>)}</select></label>
       <label>Categoria<CategoryPicker categories={rows(snapshot, 'categories')} label="Filtrar compras por categoria" value={categoryId} onChange={setCategory} filterMode allowUncategorized /></label>

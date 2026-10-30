@@ -28,7 +28,7 @@ test('financial planning distinguishes future cash, safe spending and essential 
       const date = new Date(`${today.slice(0, 7)}-01T12:00:00Z`); date.setUTCMonth(date.getUTCMonth() - offset);
       const expense = await admin.from('transactions').insert({ user_id: userId, account_id: account.data!.id, category_id: category.data!.id, description: 'Essenciais do mês', type: 'expense', amount: '-100', date: date.toISOString().slice(0, 10), status: 'confirmed' }); expect(expense.error).toBeNull();
     }
-    await page.goto('/');
+    await page.goto('/inicio/completo');
     await page.getByLabel('E-mail').fill(email);
     await page.getByLabel('Senha', { exact: true }).fill(password);
     const initialSnapshot = page.waitForResponse(response => new URL(response.url()).pathname === '/api/snapshot' && response.ok());

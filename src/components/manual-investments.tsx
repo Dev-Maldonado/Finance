@@ -1,4 +1,5 @@
 "use client";
+import { useSearchParams } from "next/navigation";
 import { useMobileChart } from "./mobile-chart";
 import { useState, useRef, useEffect } from 'react';
 import { Plus, Pencil, Trash2, ArrowUpRight, ArrowDownRight, Coins, Layers, X } from 'lucide-react';
@@ -16,12 +17,14 @@ const kindOptions: [string,string][] = [['fund','Fundo de investimento'],['crypt
 const buyFields: FormDef['fields'] = [{key:'quantity',label:'Quantidade adquirida',type:'decimal'},{key:'amount',label:'Valor total investido (R$)',type:'decimal'},{key:'date',label:'Data da compra',type:'date'}];
 const assetFields: FormDef['fields'] = [{key:'name',label:'Nome do investimento'},{key:'manual_kind',label:'Tipo',options:kindOptions}];
 export function ManualInvestments({ snapshot, today, onSaved }: { snapshot: Snapshot; today:string;onSaved:()=>void }) {
+  const searchParams=useSearchParams();
   const model = manualPortfolio(snapshot,today);
   const [modal,setModal] = useState<{form:FormDef;initial?:Row}|null>(null);
   const [remove,setRemove] = useState<{row:Row;kind:'purchase'|'price';name:string}|null>(null);
   const openBuy = (asset:Row,row?:Row) => setModal({ form:{title:'Adicionar compra',editTitle:'Editar compra',endpoint:`/api/manual-investments/purchase?asset_id=${asset.id}`,fields:buyFields},initial:row });
   const openPrice = (asset:Row,row?:Row) => setModal({ form:{title:'Atualizar valor da unidade',editTitle:'Corrigir atualização mensal',endpoint:`/api/manual-investments/price?asset_id=${asset.id}`,fields:[{key:'price',label:'Valor atual por unidade ou cota (R$)',type:'decimal',help:'Uma atualização por mês. Informar novamente no mesmo mês corrige o registro anterior; zero indica perda total.'},{key:'date',label:'Data da atualização',type:'date'}]},initial:row });
   const openAsset = (asset:Row) => setModal({form:{title:'Editar investimento',editTitle:'Editar investimento',endpoint:'/api/manual-investments/asset',fields:assetFields},initial:asset});
+  useEffect(()=>{const url=new URL(window.location.href);if(url.searchParams.get('adicionar')==='1'){setModal({form:{title:'Novo investimento',endpoint:'/api/manual-investments/create',fields:[...assetFields,...buyFields]}});url.searchParams.delete('adicionar');window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);}},[searchParams]);
   const partial = model.pending > 0;
   const displayCurrent = model.priced ? brl(model.current) : model.positions.some(p=>D(p.pos.quantity).gt(0)) ? 'Aguardando atualização' : brl('0');
   const mobileChart = useMobileChart();

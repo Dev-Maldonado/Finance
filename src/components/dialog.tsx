@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useId } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { FormDef,type Field } from "./forms";
 import { installmentPreview, purchaseTotal, type PurchaseEntryMethod } from "@/lib/installments";
@@ -29,6 +30,12 @@ export function Dialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const qc=useQueryClient();
+  useEffect(()=>{
+    const refreshOptions=()=>{void qc.invalidateQueries({queryKey:['snapshot']});};
+    window.addEventListener('focus',refreshOptions);
+    return()=>window.removeEventListener('focus',refreshOptions);
+  },[qc]);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);

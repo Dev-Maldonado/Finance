@@ -1,8 +1,13 @@
 "use client";
 import { transactionHistory, filterTransactionHistory } from "@/lib/transaction-history";
+import { useRouter } from "next/navigation";
+import { dashboardGroups, workspaceLocation } from "@/lib/workspace-navigation";
+import { ModuleNavigation } from "./workspace-navigation";
+import { GlobalAdd } from "./global-add";
 import { DashboardWalletArt } from "./dashboard-overview";
 import { TransactionList } from './transaction-list';
 import { ActiveFilters } from './active-filters';
+import { useSnapshotSync } from "./use-snapshot-sync";
 import { useViewMemory } from './use-view-memory';
 import { pageViewSchema,presetRange } from '@/lib/view-preferences';
 import { PurchaseHistory } from "./purchase-history";
@@ -201,7 +206,7 @@ export function Finora(props: {
   );
 }
 function Workspace({
-  section,
+  section: routeSection,
   configured,
   detail,
 }: {
@@ -209,6 +214,16 @@ function Workspace({
   configured: boolean;
   detail?: string;
 }) {
+  const location = workspaceLocation(routeSection, detail);
+  const section = location.screen;
+  const isHome=location.module==='inicio';
+  const router=useRouter();
+  useEffect(()=>{
+    if(location.module!=='inicio'||location.view!=='home')return;
+    const preserveAnchor=()=>{const hash=window.location.hash;const id=hash.replace(/^#dashboard-/, '');if(hash.startsWith('#dashboard-')&&dashboardGroups.full.includes(id)&&!dashboardGroups.home.includes(id))router.replace(`/inicio/completo${window.location.search}${hash}`);};
+    preserveAnchor();window.addEventListener('hashchange',preserveAnchor);return()=>window.removeEventListener('hashchange',preserveAnchor);
+  },[location.module,location.view,router]);
+  const [adding,setAdding] = useState(false);
   const qc = useQueryClient();
   const [wealthSaving, setWealthSaving] = useState(false);
   const [settlement, setSettlement] = useState<SettlementTarget|null>(null);
@@ -292,12 +307,25 @@ function Workspace({
       return;
     }
     const db = browserDb();
-    db.auth.getSession().then(({ data }) => setSession(Boolean(data.session)));
+    let activeUser:string|null=null,authEventSeen=false;
+    db.auth.getSession().then(({ data }) => {
+      if(authEventSeen)return;
+      activeUser=data.session?.user.id??null;
+      setSession(Boolean(data.session));
+    });
     const {
       data: { subscription },
     } = db.auth.onAuthStateChange((_event, s) => {
+      authEventSeen=true;
+      const nextUser=s?.user.id??null,changed=nextUser!==activeUser;
+      activeUser=nextUser;
+      // Reconfirming this user's session must not unmount an unsaved form.
+      // A different user or sign-out always clears all private cached data.
+      if(!nextUser||changed){
+        qc.clear();setModal(null);setRemoval(null);setSettlement(null);setRecurringChange(null);setAdding(false);setNotice('');setWealthFeedback(null);
+      }
+      else if(_event==='SIGNED_IN')void qc.invalidateQueries({queryKey:['snapshot']});
       setSession(Boolean(s));
-      if (!s || _event === "SIGNED_IN") qc.clear();
     });
     return () => subscription.unsubscribe();
   }, [configured, qc]);
@@ -320,8 +348,9 @@ function Workspace({
     },
   });
   const snapshot = query.data;
+  const notifySnapshotChange=useSnapshotSync(snapshot?.user.id,()=>{void qc.invalidateQueries({queryKey:["snapshot"]});});
   const today = localDate();
-  const viewReady=useViewMemory(session&&snapshot?snapshot.user.id:undefined,`page:${section}:${detail??''}`,{period,start,end,account:txAccount,category:txCategory,type:txType,status:txStatus,excluded:showExcluded,search,card:selectedCard,invoiceMonth,chartMode},saved=>{
+  const viewReady=useViewMemory(session&&snapshot?snapshot.user.id:undefined,`page:${section}:${location.legacy&&section==='caixinhas'?detail??'':''}`,{period,start,end,account:txAccount,category:txCategory,type:txType,status:txStatus,excluded:showExcluded,search,card:selectedCard,invoiceMonth,chartMode},saved=>{
     const parsed=pageViewSchema.safeParse(saved);if(!parsed.success)return;const v=parsed.data;
     if(v.period){setPeriod(v.period);const range=presetRange(v.period,localDate());if(range){setStart(range.start);setEnd(range.end);}else if(v.start&&v.end){setStart(v.start);setEnd(v.end);}}
     if(v.account!==undefined)setTxAccount(v.account);if(v.category!==undefined)setTxCategory(v.category);if(v.type!==undefined)setTxType(v.type);if(v.status!==undefined)setTxStatus(v.status);if(v.excluded!==undefined)setShowExcluded(v.excluded);if(v.search!==undefined)setSearch(v.search);if(v.card!==undefined)setSelectedCard(v.card);if(v.chartMode)setChartMode(v.chartMode);
@@ -391,6 +420,7 @@ function Workspace({
     setModal({form,initial:Object.keys(seed).length?seed:undefined});
   }
   const refresh = () => {
+    notifySnapshotChange();
     void qc.invalidateQueries({ queryKey: ["snapshot"] });
   };
   async function saveWealth() {
@@ -409,6 +439,7 @@ function Workspace({
         message: alreadyRegistered ? "Posição patrimonial de hoje atualizada." : "Posição patrimonial de hoje registrada.",
         detail: `${pretty(position.date)} · Patrimônio líquido: ${brl(D(position.assets).minus(position.liabilities).toFixed(2))}. ${outsidePeriod ? "O período foi ajustado para o mês atual para mostrar o registro." : "Salvar novamente hoje atualiza este registro, sem duplicar o histórico."}`,
       });
+      notifySnapshotChange();
       await qc.invalidateQueries({ queryKey: ["snapshot"] });
     } catch (error) {
       setWealthFeedback({ kind: "error", message: "Não foi possível registrar a posição.", detail: error instanceof Error ? error.message : String(error) });
@@ -470,7 +501,7 @@ function Workspace({
         }}
       />
     );
-  const current = nav.find((n) => n[0] === section) ?? nav[0];
+  const current:readonly [string,string,typeof Wallet] = nav.find((n) => n[0] === section) ?? [section,location.title,ChartNoAxesCombined];
   const controls: Record<string, [string, string][]> = {
     dashboard: [["transaction", "Novo lançamento"]],
     contas: [
@@ -577,7 +608,7 @@ function Workspace({
           }}
         />
       )}
-      <MobileNavigation items={nav} current={current[0]} email={snapshot?.user.email} refreshing={query.isFetching} onRefresh={() => { void refresh(); }} onLogout={async () => { await browserDb().auth.signOut(); setSession(false); qc.clear(); }} />
+      <MobileNavigation items={nav} current={location.module} canAdd={Boolean(snapshot&&viewReady)} onAdd={()=>setAdding(true)} email={snapshot?.user.email} refreshing={query.isFetching} onRefresh={() => { void refresh(); }} onLogout={async () => { await browserDb().auth.signOut(); setSession(false); qc.clear(); }} />
       <aside
         id="main-navigation"
         aria-label="Menu principal"
@@ -593,7 +624,7 @@ function Workspace({
           )}
         </Link>
         <span className="nav-label">SEU ESPAÇO FINANCEIRO</span>
-        <DesktopNavigation items={nav} current={current[0]} collapsed={collapsed} onNavigate={() => setMobile(false)} />
+        <DesktopNavigation current={location.module} onNavigate={() => setMobile(false)} />
         {!collapsed && (
           <div className="sidebar-privacy"><ShieldCheck size={14} /><span>Ambiente privado</span></div>
         )}
@@ -649,10 +680,10 @@ function Workspace({
             </button>
             <span className="breadcrumb">
               Meu espaço <ChevronRight size={13} />{" "}
-              <strong>{current[1]}</strong>
+              <strong>{location.title}</strong>
             </span>
           </div>
-          <div className="top-actions">
+          <div className="top-actions"><button className="primary global-add-trigger" disabled={!snapshot||!viewReady} onClick={()=>setAdding(true)}><Plus size={16}/>Adicionar</button>
             <span className="private">
               <ShieldCheck size={14} />
               Ambiente privado
@@ -672,27 +703,27 @@ function Workspace({
           </div>
         </header>
         <main className="content">
-          <div className={`page-head ${current[0] === "dashboard" ? "dashboard-page-head dashboard-welcome" : ""}`}>
+          <div className={`page-head ${isHome ? "dashboard-page-head dashboard-welcome" : ""}`}>
             <div>
               <span className="eyebrow">
-                {current[0] === "dashboard"
+                {isHome
                   ? "SEU DINHEIRO, COM CLAREZA"
-                  : "FINORA / " + current[1].toUpperCase()}
+                  : "FINORA / " + location.title.toUpperCase()}
               </span>
               <h1>
-                {current[0] === "dashboard"
+                {isHome
                   ? "Seu panorama financeiro"
-                  : current[1]}
+                  : location.title}
               </h1>
               <p>
-                {current[0] === "dashboard"
+                {isHome
                   ? "Tudo o que importa para cuidar do seu presente e construir seu futuro."
                   : "Organize, acompanhe e decida com informações transparentes."}
               </p>
             </div>
-            {current[0] === "dashboard" && <DashboardWalletArt/>}
+            {isHome && <DashboardWalletArt/>}
             <div className="actions">
-              {(controls[current[0]] ?? []).map(([key, label], i, all) => (
+              {(section==='dashboard'&&!isHome?[]:controls[current[0]] ?? []).map(([key, label], i, all) => (
                 <button
                   key={key}
                   disabled={!snapshot||!viewReady}
@@ -705,8 +736,10 @@ function Workspace({
               ))}
             </div>
           </div>
-          {['dashboard','transacoes','recorrentes','contas'].includes(current[0])&&<div className="quick-entry-actions" role="group" aria-label="Atalhos de lançamentos"><button disabled={!snapshot||!viewReady} className="financial-surface tone-income" onClick={()=>open('income')}><ArrowDownLeft size={16}/>Nova receita</button><button disabled={!snapshot||!viewReady} className="financial-surface tone-expense" onClick={()=>open('expense')}><ArrowUpRight size={16}/>Nova despesa</button><button disabled={!snapshot||!viewReady} onClick={()=>open('transfer')}><ArrowLeftRight size={16}/>Transferência</button></div>}
-          {!["cartoes", "investimentos", "recorrentes"].includes(current[0]) && (
+          <div className="module-tools"><ModuleNavigation location={location}/>
+          {(isHome||['transacoes','recorrentes','contas'].includes(current[0]))&&<div className="quick-entry-actions" role="group" aria-label="Atalhos de lançamentos"><button disabled={!snapshot||!viewReady} className="financial-surface tone-income" onClick={()=>open('income')}><ArrowDownLeft size={16}/>Nova receita</button><button disabled={!snapshot||!viewReady} className="financial-surface tone-expense" onClick={()=>open('expense')}><ArrowUpRight size={16}/>Nova despesa</button><button disabled={!snapshot||!viewReady} onClick={()=>open('transfer')}><ArrowLeftRight size={16}/>Transferência</button></div>}
+          </div>
+          {!["cartoes", "investimentos", "recorrentes"].includes(current[0]) && !(section==='dashboard'&&['economy','confidence'].includes(location.view)) && !(location.module==='movimentacoes'&&location.tab==='recorrentes'&&!location.legacy) && (
             <div className={`period-bar ${current[0] === "dashboard" ? "dashboard-page-controls" : ""}`}>
               <div className="period-tabs">
                 {[
@@ -727,10 +760,10 @@ function Workspace({
                   </button>
                 ))}
               </div>
-              {current[0] === "dashboard" && (
-                <div className="dashboard-month-navigation" role="group" aria-label="Navegação mensal do dashboard">
+              {section === "dashboard" && (
+                <div className="dashboard-month-navigation" role="group" aria-label={isHome?"Navegação mensal do dashboard":"Navegação mensal do módulo"}>
                   <span>Visualizar mês</span>
-                  <InvoiceMonthPicker disabled={!viewReady} month={start.slice(0, 7)} today={today} label="Mês do dashboard" previousLabel="Voltar um mês" onChange={selectDashboardMonth} />
+                  <InvoiceMonthPicker disabled={!viewReady} month={start.slice(0, 7)} today={today} label={isHome?"Mês do dashboard":"Mês de referência"} previousLabel="Voltar um mês" onChange={selectDashboardMonth} />
                   <span className="dashboard-selected-month" aria-live="polite">{invoiceMonthLabel(start.slice(0, 7))}</span>
                 </div>
               )}
@@ -770,7 +803,7 @@ function Workspace({
               </div>
             </div>
           )}
-          {current[0] === "dashboard" && ["month", "calendar"].includes(period) && end > today && (
+          {current[0] === "dashboard" && ["home","full","analysis"].includes(location.view) && ["month", "calendar"].includes(period) && end > today && (
             <p className="dashboard-month-context">Receitas e despesas incluem lançamentos pendentes e finalizados nas datas deste mês. Previstos não são recebimentos ou pagamentos efetivos; saldo disponível e patrimônio mostram a posição atual.</p>
           )}
           {notice && (
@@ -789,6 +822,8 @@ function Workspace({
             <>
               {current[0] === "dashboard" && (
                 <Dashboard
+                  view={location.view}
+                  onSettle={setSettlement}
                   snapshot={snapshot}
                   summary={summary}
                   start={start}
@@ -870,7 +905,7 @@ function Workspace({
                   )}
                 </div>
               )}
-              {current[0] === "recorrentes" && <RecurringBills snapshot={snapshot} today={today} onSaved={refresh}
+              {current[0] === "recorrentes" && <RecurringBills focus={location.tab==='programadas'?'scheduled':'all'} snapshot={snapshot} today={today} onSaved={refresh}
                 onSettle={setSettlement}
                 onNew={(kind, month) => { const date = month === today.slice(0, 7) ? today : `${month}-01`; open(kind, kind === 'recurring' ? { type: 'expense', next_date: date, start_date: date } : { type: 'expense', date, status: 'pending' }); }}
                 onEditTransaction={row => setModal({ form: { ...forms.transaction, action: undefined, endpoint: '/api/transactions' }, initial: { ...row, amount: D(str(row, 'amount')).abs().toFixed(2) } })}
@@ -878,15 +913,15 @@ function Workspace({
                 onEditInstallment={row => open('installment', row)} onEditObligation={row => open('obligation', row)} />}
               {current[0] === "transacoes" && (
                 <>
-                  <label className="excluded-toggle">
+                  {(location.legacy||location.tab==='todas')&&<label className="excluded-toggle">
                     <input
                       type="checkbox"
                       checked={showExcluded}
                       onChange={(e) => { setShowExcluded(e.target.checked); if (!e.target.checked && txStatus === "cancelled") setTxStatus(""); }}
                     />
                     Mostrar lançamentos excluídos
-                  </label>
-                  <Panel
+                  </label>}
+                  {(location.legacy||location.tab==='todas')&&<Panel
                     title="Histórico de transações"
                     subtitle="Contas e parcelas por vencimento, da data mais recente à mais antiga. Pagamentos de fatura são movimentos de caixa, não novas despesas."
                     action={
@@ -986,8 +1021,9 @@ function Workspace({
                       ...(showExcluded?[{key:'excluded',label:'Histórico',value:'Inclui excluídos',remove:()=>{setShowExcluded(false);if(txStatus==='cancelled')setTxStatus('');}}]:[])
                     ]}/>
                     {transactionTable(filteredTx)}
-                  </Panel>
-                  <Panel
+                  </Panel>}
+                  {!location.legacy&&location.tab==='recorrentes'&&<p className="module-focus-note">Gerencie os cadastros recorrentes abaixo. <Link href="/movimentacoes">Ver ocorrências e histórico</Link> · <Link href="/movimentacoes/compromissos">Consultar vencimentos por mês</Link></p>}
+                  {(location.legacy||location.tab==='recorrentes')&&<Panel
                     title="Lançamentos recorrentes"
                     subtitle="Ocorrências até hoje são geradas automaticamente como pendentes. As próximas ocorrências aparecem como previstas nas transações e nos indicadores do mês; o saldo das contas muda somente na confirmação."
                     action={
@@ -1085,8 +1121,8 @@ function Workspace({
                         ficam pendentes até sua conferência.
                       </p>
                     )}
-                  </Panel>
-                  <ImportPanel snapshot={snapshot} onSaved={refresh} />
+                  </Panel>}
+                  {location.legacy&&<ImportPanel snapshot={snapshot} onSaved={refresh} />}
                 </>
               )}
               {current[0] === "categorias" && (
@@ -1097,7 +1133,7 @@ function Workspace({
               )}
               {current[0] === "cartoes" && (
                 <>
-                  <nav className="screen-jump-links" aria-label="Áreas dos cartões"><a href="#faturas-do-mes">Faturas e itens</a><a href="#meus-cartoes">Meus cartões</a><a href="#compras-registradas">Compras registradas</a></nav>
+                  {location.tab==='resumo'&&<nav className="screen-jump-links" aria-label="Áreas dos cartões"><a href="#faturas-do-mes">Faturas e itens</a><a href="#meus-cartoes">Meus cartões</a><a href="#compras-registradas">Compras registradas</a></nav>}
                   <div className="invoice-month-toolbar">
                     <div>
                       <h2>Faturas por mês</h2>
@@ -1112,7 +1148,7 @@ function Workspace({
                       onChange={setInvoiceMonth}
                     />
                   </div>
-                  <div id="faturas-do-mes" className="screen-anchor"><Panel
+                  {['resumo','faturas'].includes(location.tab)&&<div id="faturas-do-mes" className="screen-anchor"><Panel
                     title={`Faturas de ${invoiceMonthLabel(invoiceMonth)}`}
                     subtitle="Total, pagamentos e saldo de cada cartão no mês selecionado"
                   >
@@ -1136,8 +1172,8 @@ function Workspace({
                         })
                       }
                     />
-                  </Panel></div>
-                  <section id="meus-cartoes" className="screen-anchor" aria-label="Meus cartões"><div className="screen-section-title"><h2>Meus cartões</h2><p>Limites e compromissos gerais · as faturas do mês estão acima.</p></div>
+                  </Panel></div>}
+                  {location.tab==='resumo'&&<section id="meus-cartoes" className="screen-anchor" aria-label="Meus cartões"><div className="screen-section-title"><h2>Meus cartões</h2><p>Limites e compromissos gerais · as faturas do mês estão acima.</p></div>
                   <div className="cards-grid">
                     {rows(snapshot, "credit_cards").filter(c => !selectedCard || c.id === selectedCard).map((c) => (
                       <Panel
@@ -1157,13 +1193,13 @@ function Workspace({
                       <Empty action={() => open("card")} />
                     )}
                   </div>
-                  </section>
-                  <PurchaseHistory snapshot={snapshot} month={invoiceMonth} today={today} cardId={selectedCard} onCardChange={setSelectedCard}
+                  </section>}
+                  {['resumo','compras','parcelas'].includes(location.tab)&&<PurchaseHistory installmentsOnly={location.tab==='parcelas'} snapshot={snapshot} month={invoiceMonth} today={today} cardId={selectedCard} onCardChange={setSelectedCard}
                     onEdit={p => setModal({ form: { ...forms.purchase, action: undefined, endpoint: "/api/purchases" }, initial: p })}
-                    onRemove={p => setRemoval({ kind: "purchase", row: p })} />
+                    onRemove={p => setRemoval({ kind: "purchase", row: p })} />}
                 </>
               )}
-              {current[0] === "caixinhas" && <ManualSavings snapshot={snapshot} today={today} start={start} end={end} detail={detail} onOpen={open} onSaved={refresh} />}
+              {current[0] === "caixinhas" && <ManualSavings snapshot={snapshot} today={today} start={start} end={end} detail={location.legacy?detail:undefined} onOpen={open} onSaved={refresh} />}
               {current[0] === "investimentos" && <ManualInvestments snapshot={snapshot} today={today} onSaved={refresh} />}
               {current[0] === "planejamento" && (
                 <>
@@ -1545,6 +1581,8 @@ function Workspace({
                   </Panel>
                 </>
               )}
+              {section === "importacao"&&<ImportPanel snapshot={snapshot} onSaved={refresh}/>}
+              {section === "category-report"&&<CategoryExpensesReport snapshot={snapshot} expenses={periodExpenses} today={today}/>}
               {current[0] === "configuracoes" && (
                 <>
                   <DataConfidence snapshot={snapshot} today={today} />
@@ -1592,6 +1630,7 @@ function Workspace({
           </footer>
         </main>
       </div>
+      {adding&&<GlobalAdd onClose={()=>setAdding(false)} onAdd={open}/>}
       {settlement&&snapshot&&<SettlementDialog snapshot={snapshot} target={settlement} today={today} onClose={()=>setSettlement(null)} onSaved={()=>{refresh();setNotice('Pagamento/recebimento registrado. Vencimento preservado e saldo atualizado.');}}/>}
       {modal && snapshot && (
         <Dialog

@@ -23,7 +23,7 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
       { type: 'expense', amount: '-29.08', description: 'Despesa prevista para o período', status: 'pending' },
     ].map(t => ({ ...t, date, user_id: id, account_id: account.data!.id, category_id: category.data!.id })))).error).toBeNull();
     await page.route('**/api/economic-indicators*', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
-    await page.goto('/'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
+    await page.goto('/inicio/completo'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
     await expect(page.getByRole('article', { name: 'Saldo disponível', exact: true })).toBeVisible();
     const purchase = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action: 'purchase', request_id: randomUUID(), payload: { card_id: card.data!.id, category_id: category.data!.id, description: 'Compra parcelada da família', amount: '1500.01', installments: 10, date } } }); expect(purchase.ok(), await purchase.text()).toBe(true);
     const send = async (url: string, payload: Record<string, unknown>) => {
@@ -36,11 +36,11 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
     expect((await admin.from('budgets').insert({ user_id: id, name: 'Orçamento dos compromissos da família', category_id: category.data!.id, amount: '1000', month: date })).error).toBeNull();
     for (const width of (mobile ? [320, 390, 768, 1024] : [1024, 1280, 1440, 1920])) {
       await page.setViewportSize({ width, height: [768, 1024].includes(width) ? 430 : 900 });
-      for (const path of ['/', '/contas', '/cartoes', '/transacoes', '/recorrentes', '/categorias', '/caixinhas', '/investimentos', '/planejamento', '/relatorios', '/configuracoes', `/caixinhas/${jar.id}`]) {
+      for (const path of ['/inicio/completo', '/contas', '/cartoes', '/transacoes', '/recorrentes', '/categorias', '/caixinhas', '/investimentos', '/planejamento', '/relatorios', '/configuracoes', `/caixinhas/${jar.id}`]) {
         const snapshotReady = page.waitForResponse(r => new URL(r.url()).pathname === '/api/snapshot' && r.ok());
         await page.goto(path); await snapshotReady; await expect(page.locator('.page-head h1')).toBeVisible();
         const loaded = path === '/cartoes' ? 'Compra parcelada da família' : path === '/categorias' ? 'Alimentação e compras da família em supermercados e restaurantes' : 'DescriçãoSemEspaços'.repeat(5);
-        if (['/', '/cartoes', '/transacoes', '/categorias'].includes(path)) await expect(page.getByText(loaded, { exact: true }).first()).toBeVisible();
+        if (['/inicio/completo', '/cartoes', '/transacoes', '/categorias'].includes(path)) await expect(page.getByText(loaded, { exact: true }).first()).toBeVisible();
         if (path === '/recorrentes') {await expect(page.getByRole('article', { name: 'Total previsto a pagar', exact: true })).toBeVisible();await expect(page.getByRole('article',{name:'Saldo atual das contas',exact:true})).toHaveClass(/tone-danger/);}
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
         await page.waitForTimeout(100);
@@ -62,7 +62,7 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
         expect(spills, `${path} at ${width}px: components outside viewport`).toEqual([]);
         await expect.poll(async () => page.evaluate(() => ({ width: document.documentElement.scrollWidth, body: document.body.scrollWidth })), { message: `${path} at ${width}px` }).toEqual({ width, body: width });
         if (width === (mobile ? 390 : 1280)) { await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(100); await page.screenshot({ path: `test-results/responsive-${mobile ? 'touch' : 'desktop'}-${path.replaceAll('/', '-') || 'dashboard'}.png`, fullPage: true }); }
-        if ((mobile ? [320, 768].includes(width) : width === 1280) && ['/', '/contas', '/cartoes', '/transacoes', '/recorrentes', '/categorias', '/caixinhas', '/planejamento'].includes(path)) {
+        if ((mobile ? [320, 768].includes(width) : width === 1280) && ['/inicio/completo', '/contas', '/cartoes', '/transacoes', '/recorrentes', '/categorias', '/caixinhas', '/planejamento'].includes(path)) {
           await page.locator(path === '/recorrentes' ? '.commitments-toolbar .actions button' : '.page-head .actions button').first().click();
           const dialog = page.getByRole('dialog'); await expect(dialog).toBeVisible();
           const bounds = await dialog.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
@@ -72,7 +72,7 @@ for (const mobile of [true, false]) test(`all pages fit and reach the end (${mob
           for (const field of await fields.all()) { await field.scrollIntoViewIfNeeded(); await expect(field).toBeInViewport(); }
           await dialog.getByRole('button', { name: 'Fechar', exact: true }).click(); await expect(dialog).not.toBeVisible();
         }
-        if (path === '/' && mobile) {
+        if (path === '/inicio/completo' && mobile) {
           for (const heading of ['#dashboard-panorama', '#dashboard-analises', '#dashboard-faturas', '#dashboard-patrimonio']) {
             const section = page.locator(heading); await section.scrollIntoViewIfNeeded();
             expect(await page.evaluate(() => document.documentElement.scrollWidth), `${heading} at ${width}px`).toBe(width);

@@ -18,7 +18,7 @@ test('complete dashboard distinguishes results, bills and cash; savings stay man
     const category = await admin.from('categories').insert({ user_id: userId, name: 'Alimentação' }).select('id').single();
     const card = await admin.from('credit_cards').insert({ user_id: userId, name: 'Cartão principal', account_id: account.data!.id, last_four: '1234', color: '#172938', credit_limit: '2000', closing_day: 5, due_day: 10 }).select('id').single();
     expect(card.error).toBeNull();
-    await page.goto('/');
+    await page.goto('/inicio/completo');
     const unauthorizedJob = await page.request.get('/api/benchmarks'); expect(unauthorizedJob.status()).toBe(401);
     const unauthorizedRefresh = await page.request.post('/api/benchmarks', { headers: { Origin: 'http://localhost:3000' } }); expect(unauthorizedRefresh.status()).toBe(401);
     await page.getByLabel('E-mail').fill(email);

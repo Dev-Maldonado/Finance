@@ -9,6 +9,7 @@ import "./practical-finance.css";
 import "./experience.css";
 import "./dashboard-viewport.css";
 import "./dashboard-organization.css";
+import "./workspace-organization.css";
 import { PwaProvider } from "@/components/pwa";
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",

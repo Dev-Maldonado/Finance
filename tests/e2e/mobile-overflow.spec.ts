@@ -22,17 +22,17 @@ test('populated mobile pages fit the physical viewport before and after chart to
       { type: 'expense', amount: '-29.08', description: 'Despesa prevista para o período', status: 'pending' },
     ].map(t => ({ ...t, date, user_id: id, account_id: account.data!.id, category_id: category.data!.id })))).error).toBeNull();
     await page.route('**/api/economic-indicators*', route => route.fulfill({ status: 503, json: { error: 'Unavailable test source' } }));
-    await page.goto('/'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
+    await page.goto('/inicio/completo'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill(password); await page.getByRole('button', { name: 'Entrar na minha conta' }).click();
     await expect(page.getByRole('article', { name: 'Saldo disponível', exact: true })).toBeVisible();
     const purchase = await page.request.post('/api/operations', { headers: { Origin: 'http://localhost:3000' }, data: { action: 'purchase', request_id: randomUUID(), payload: { card_id: card.data!.id, category_id: category.data!.id, description: 'Compra parcelada da família', amount: '1500.01', installments: 10, date } } }); expect(purchase.ok(), await purchase.text()).toBe(true);
     for (const width of [320, 360, 375, 390, 412, 430, 768]) {
       await page.setViewportSize({ width, height: 900 });
-      for (const path of ['/', '/cartoes', '/transacoes', '/categorias']) {
+      for (const path of ['/inicio/completo', '/cartoes', '/transacoes', '/categorias']) {
         await page.goto(path); await expect(page.locator('.page-head h1')).toBeVisible();
         const loaded = path === '/cartoes' ? 'Compra parcelada da família' : path === '/categorias' ? 'Alimentação e compras da família em supermercados e restaurantes' : 'DescriçãoSemEspaços'.repeat(5);
         await expect(page.getByText(loaded, { exact: true }).first()).toBeVisible();
         await expect.poll(async () => page.evaluate(() => ({ width: document.documentElement.scrollWidth, body: document.body.scrollWidth })), { message: `${path} at ${width}px` }).toEqual({ width, body: width });
-        if (path === '/') {
+        if (path === '/inicio/completo') {
           for (const heading of ['#dashboard-panorama', '#dashboard-analises', '#dashboard-faturas', '#dashboard-patrimonio']) {
             const section = page.locator(heading); await section.scrollIntoViewIfNeeded();
             expect(await page.evaluate(() => document.documentElement.scrollWidth), `${heading} at ${width}px`).toBe(width);
