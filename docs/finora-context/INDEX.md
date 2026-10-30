@@ -28,3 +28,6 @@
 
 - Reorganização funcional atual (30/10/2026): [UX-MODULES.md](../UX-MODULES.md).
   Cinco módulos, destinos completos, URLs antigas e dashboard integral preservados.
+
+- Refinamento visual e responsividade (30/10/2026): [VISUAL-QUALITY.md](../VISUAL-QUALITY.md).
+  Alturas naturais, grades, textos/valores, tabelas, modais, acessibilidade e validação.

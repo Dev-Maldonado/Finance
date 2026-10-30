@@ -586,3 +586,57 @@ Sem pendências de implementação ou migração. CI remoto
 [41119728280](https://github.com/Dev-Maldonado/Finance/actions/runs/41119728280)
 em execução na última consulta; não declarar concluído sem verificar. Mobile/PWA
 validado em Chromium e emulação Android/iOS/tablet; sem aparelhos físicos.
+
+## 30/10/2026 — Refinamento visual geral e responsividade
+
+Pedido atual preserva a organização em cinco módulos e todas as funcionalidades.
+Auditoria inicial reproduziu valores principais com fonte pequena demais em 320px.
+Implementação visual compartilhada em andamento: ampliação de cards antes de
+reduzir fonte, foco/rolagem acessível em tabelas, formulários com rodapé alcançável,
+tipografia/superfícies consistentes, skeleton e animações sem ocultação de conteúdo.
+Inventário e critérios em VISUAL-QUALITY.md. Sem mudanças financeiras ou de banco.
+CI anterior 41119728280 concluído com sucesso. Próximo passo: validar as oito
+larguras, zoom/paisagem/modais e rodar regressões completas antes de publicar.
+
+Primeiras verificações direcionadas aprovadas: legibilidade em 320px, zoom
+125/200% por viewport/DPR, paisagem e formulários longos, skeleton, movimento
+reduzido e rolagem de tabela pelo teclado. Em execução: matriz completa dos
+módulos nas oito larguras e as 49 regressões anteriores. Capturas iniciais
+mostraram a necessidade de aguardar os dados efetivos, além do título da página,
+antes da medição: a matriz agora exige o fim do skeleton e ações habilitadas.
+Revisão também reservou a altura correta do skeleton e preservou a classe de
+carregamento para manter a compatibilidade dos testes existentes.
+
+Matriz com dados carregados identificou overflow no relatório/simulador em
+320–390px (tracks min-content), além de descrições longas sem espaços em
+movimentações recentes do dashboard em 1024px. Correções na origem: minmax(0,1fr)
+e reorganização das grades, quebra de texto de descrições sem alterar números.
+48/49 regressões anteriores aprovadas; a única falha foi o simulador 320px acima.
+Repetição no build corrigido e matriz final pendentes. Unidade172, integração20,
+TypeScript/build iniciais aprovados; nenhuma mudança em regras financeiras.
+
+Matriz final intermediária: 10/10 cenários aprovados (31 destinos x oito larguras,
+textos longos, valores monetários, zoom, paisagem, skeleton, movimento reduzido,
+tabelas pelo teclado). Regressões de rolagem touch e desktop repetidas: 2/2.
+Revisão preservou cards mobile nas compras, ampliou o seletor mensal em telas
+estreitas e retirou reticências da identificação da conta. Último build desses
+refinamentos e repetição final pendentes; nenhum resultado pendente é aprovação.
+
+Repetição das regressões de navegação/CRUD/autenticação e layouts: 7/7 aprovadas
+(7,9 min), incluindo touch/desktop, todos os módulos, 12 cadastros globais,
+rascunhos entre abas e valores grandes/negativos. Assim, as 49 regressões originais
+estão aprovadas (48 na primeira varredura + touch corrigido, com sete repetidas).
+10 cenários visuais novos aprovados; build de entrega e repetição desses dez
+para os últimos ajustes estritamente CSS em andamento.
+
+Validação de entrega concluída no último build: 10/10 cenários visuais aprovados
+(4,1 min), incluindo os cards de compras mobile preservados, seletor mensal amplo,
+31 destinos em 320/360/390/430/768/1024/1440/1920px, fontes/valores completos,
+scroll até o rodapé, teclado, zoom 125/200% por viewport/DPR, paisagem, skeleton
+e movimento reduzido. Capturas reais carregadas de módulos e gráficos revisadas.
+59 cenários distintos de browser aprovados na tarefa (49 existentes + 10 novos);
+172 unitários, integração geral20, TypeScript e build aprovados. AST confirmou
+os oito indicadores e props financeiras originais; sem mudanças em APIs, serviços,
+regras financeiras ou migrations. Somente usuários descartáveis locais usados.
+Sem pendências de implementação. Emulação Chromium; sem aparelhos físicos.
+Publicação do commit no main e verificação da Vercel em andamento.

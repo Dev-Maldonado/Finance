@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { dashboardGroups, workspaceLocation } from "@/lib/workspace-navigation";
 import { ModuleNavigation } from "./workspace-navigation";
 import { GlobalAdd } from "./global-add";
+import {useContentExperience,ContentSkeleton} from "./content-experience";
+import {useReadableAmounts} from "./use-readable-amounts";
 import { DashboardWalletArt } from "./dashboard-overview";
 import { TransactionList } from './transaction-list';
 import { ActiveFilters } from './active-filters';
@@ -18,7 +20,7 @@ import { SettlementDialog, type SettlementTarget } from './settlement-dialog';
 import { ManualSavings } from "./manual-savings";
 import { ManualInvestments } from "./manual-investments";
 import { financialTone, type FinancialTone } from "@/lib/financial-tone";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { WealthRegistrationFeedback, type WealthFeedback } from "./wealth-registration-feedback";
 import Link from "next/link";
 import {
@@ -347,6 +349,9 @@ function Workspace({
       return data;
     },
   });
+  const contentRef=useRef<HTMLDivElement>(null);
+  useContentExperience(contentRef,session===true);
+  useReadableAmounts(contentRef,".premium-dashboard,.transaction-list,.recurring-bills",session===true);
   const snapshot = query.data;
   const notifySnapshotChange=useSnapshotSync(snapshot?.user.id,()=>{void qc.invalidateQueries({queryKey:["snapshot"]});});
   const today = localDate();
@@ -702,7 +707,7 @@ function Workspace({
             </span>
           </div>
         </header>
-        <main className="content">
+        <main className="content" ref={contentRef}>
           <div className={`page-head ${isHome ? "dashboard-page-head dashboard-welcome" : ""}`}>
             <div>
               <span className="eyebrow">
@@ -811,7 +816,7 @@ function Workspace({
           )}
           {recurrenceWarning && <p className="error" role="alert">{recurrenceWarning}</p>}
           {!viewReady&&snapshot&&<p className="loading" role="status">Restaurando sua seleção…</p>}
-          {query.isPending && <p className="loading" role="status">Carregando seus dados…</p>}
+          {query.isPending && <ContentSkeleton/>}
           {query.error && (
             <div className="error" role="alert">
               {query.error.message}

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useId } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useContentExperience } from "./content-experience";
 import { X } from "lucide-react";
 import { FormDef,type Field } from "./forms";
 import { installmentPreview, purchaseTotal, type PurchaseEntryMethod } from "@/lib/installments";
@@ -39,6 +40,7 @@ export function Dialog({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
+  useContentExperience(dialog,true);
   const formElement = useRef<HTMLFormElement>(null);
   const key = useRef(crypto.randomUUID());
   const titleId = useId();

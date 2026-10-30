@@ -1,0 +1,125 @@
+/* Shared visual system. No financial rules, records or controls are changed. */
+:root { --surface-line:#e5e7f0; --surface-muted:#596174; --surface-radius:16px; --surface-shadow:0 4px 20px #35208005; }
+.workspace,.dialog,.auth { font-family:'Finora Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+.workspace .content { min-inline-size:0; inline-size:100%; }
+.workspace :is(.cards-grid,.stats,.report-grid,.module-tools,.panel-head,.list-row,.manual-investment-grid,.manual-investment-values) { min-inline-size:0; }
+.workspace :is(.panel,.stat) { border-color:var(--surface-line); box-shadow:var(--surface-shadow); }
+.workspace .panel:not(.dashboard-block) { border-radius:var(--surface-radius); }
+.workspace .panel-head { align-items:flex-start; gap:14px 20px; }
+.workspace .panel-head :is(h2,h3) { font-weight:650; letter-spacing:-.25px; line-height:1.5; }
+.workspace .panel-head p { color:var(--surface-muted); line-height:1.75; }
+.workspace :is(.list-row,.manual-history-row,.commitment-row) { line-height:1.6; }
+.workspace :is(.list-row,.manual-history-row,.commitment-row)>div { min-inline-size:0; }
+.workspace :is(.list-row,.manual-history-row,.commitment-row) :is(strong,small) { overflow-wrap:anywhere; }
+.workspace :is(.stat,.report-grid>div) { font-variant-numeric:tabular-nums; }
+.workspace :is(.stat,.report-grid>div)>strong { line-height:1.35; }
+.workspace :is(button,a,summary),.dialog :is(button,a,summary) { -webkit-tap-highlight-color:transparent; }
+.workspace button,.dialog button { transition:background-color .15s,border-color .15s,box-shadow .15s; }
+.workspace button:not(:disabled):hover,.dialog button:not(:disabled):hover { border-color:#cabdea; }
+.workspace :is(button,a,summary,input,select,textarea):focus-visible,.dialog :is(button,a,summary,input,select,textarea):focus-visible { outline:2px solid #8260d8; outline-offset:3px; }
+.workspace :is(button,a):active,.dialog button:active { filter:brightness(.97); }
+.workspace :is(.module-tabs,.period-tabs) [aria-current=page],.workspace .period-tabs .selected { font-weight:650; }
+.workspace :is(.screen-jump-links,.module-tabs) a { line-height:1.5; }
+.workspace .table-wrap { inline-size:100%; min-inline-size:0; max-inline-size:100%; max-block-size:none; overflow:auto; }
+.workspace .table-wrap table:has(th:nth-child(5)):not(.transaction-list table,.purchase-history table) { min-inline-size:680px; }
+.workspace .table-wrap :is(th,td) { line-height:1.6; vertical-align:top; }
+.workspace .table-wrap th { color:#596174; font-weight:650; }
+.workspace .table-wrap tbody tr { transition:background-color .12s; }
+.workspace .table-wrap tbody tr:hover { background-color:#faf9fe; }
+.table-wrap[data-table-overflow] { border-radius:12px; scrollbar-width:thin; scrollbar-color:#c7b7ed #f4f1fa; }
+.table-wrap[data-table-overflow]::before { content:'↔ Role para consultar todas as colunas'; display:block; position:sticky; inset-inline-start:0; inline-size:100%; padding:9px 10px; color:#655580; background:#f6f3fd; font-size:11px; line-height:1.5; white-space:normal; }
+.table-wrap[data-table-overflow]:focus-visible { outline:2px solid #8260d8; outline-offset:3px; }
+.dialog { border-color:var(--surface-line); border-radius:20px; box-shadow:0 20px 80px #26213b24; inline-size:min(640px,calc(100% - 24px)); max-inline-size:calc(100% - 24px); max-block-size:calc(var(--mobile-viewport-height,100dvh) - 24px); overflow:auto; scroll-padding-block:24px 110px; }
+.dialog::backdrop { background:#24203366; backdrop-filter:blur(4px); }
+.dialog :is(form,fieldset,.form-grid,.form-grid>label,.dialog-head>div) { min-inline-size:0; max-inline-size:100%; }
+.dialog .dialog-head { align-items:flex-start; gap:16px; }
+.dialog .dialog-head h2 { line-height:1.35; letter-spacing:-.4px; overflow-wrap:anywhere; }
+.dialog label { line-height:1.6; color:#514860; }
+.dialog :is(input,select,textarea) { min-inline-size:0; max-inline-size:100%; scroll-margin-block:90px; border-color:#dedbea; }
+.dialog textarea { resize:vertical; min-block-size:100px; }
+.dialog .field-help { color:#655e75; font-size:12px; line-height:1.7; }
+.dialog .dialog-footer { position:sticky; inset-block-end:-1px; z-index:5; margin-inline:-1px; padding:16px 1px 2px; background:#fff; box-shadow:0 -10px 14px #fff; gap:10px; }
+.dialog .dialog-footer button { min-block-size:42px; line-height:1.5; }
+.dialog .installment-preview .table-wrap { max-block-size:none; }
+.dialog .installment-preview table { min-inline-size:340px; }
+.workspace .empty,.workspace .filtered-empty { border:1px dashed #e1dbef; background:#fcfbff; border-radius:14px; padding:24px 18px; }
+.workspace :is(.empty,.filtered-empty) :is(h3,p) { line-height:1.7; overflow-wrap:anywhere; }
+.workspace .error,.dialog .error { line-height:1.7; overflow-wrap:anywhere; }
+.workspace .dismissible-notice { gap:12px; align-items:flex-start; }
+.workspace .dismissible-notice button { flex-shrink:0; }
+/* Give primary monetary values room before reducing typography. */
+.workspace :is(.dashboard-metrics-grid,.stats,.report-grid,.manual-investment-values,.forecast-totals,.invoice-totals)>[data-amount-expanded] { grid-column:1/-1; min-inline-size:0; }
+.workspace .dashboard-metrics-grid:has(>[data-amount-expanded]) { grid-template-columns:minmax(0,1fr) !important; }
+.content-skeleton.loading { padding:8px 0 24px; color:inherit; text-align:initial; min-block-size:420px; }
+.skeleton-summary { display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin-block-end:20px; }
+.content-skeleton .skeleton-summary>i { min-block-size:110px; }
+.skeleton-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.skeleton-grid>div,.skeleton-detail { padding:20px; border:1px solid #e8e5f0; border-radius:16px; background:#fff; }
+.content-skeleton :is(i,b) { display:block; min-block-size:12px; background:#ece9f5; border-radius:8px; }
+.skeleton-grid b { min-block-size:28px; inline-size:70%; margin-block:18px; }
+.skeleton-grid i:last-child { inline-size:85%; }
+.skeleton-detail { margin-block-start:20px; display:grid; gap:18px; }
+.content-skeleton i { animation:surface-pulse 1.3s ease-in-out infinite alternate; }
+@keyframes surface-pulse { to { background-color:#f5f3fa; } }
+@media(max-width:1023px),(hover:none) and (pointer:coarse) {
+ .workspace .panel:not(.dashboard-block) { padding:18px; }
+ .workspace .panel-head h2 { font-size:16px; }
+ .workspace .panel-head p { font-size:12px; }
+ .workspace .module-tabs a { font-size:11px; min-block-size:44px; }
+ .workspace :is(.panel-head .actions,.page-head .actions) { inline-size:100%; }
+ .workspace :is(.panel-head,.page-head) .actions button { flex:1 1 auto; }
+ .workspace .list-row { flex-wrap:wrap; gap:10px 14px; }
+ .workspace .list-row>div:first-child { flex:1 1 150px; }
+ .workspace .list-row .actions { flex:1 1 100%; justify-content:flex-end; }
+ .dialog { border-radius:22px 22px 0 0; inline-size:min(650px,100%); max-inline-size:100%; max-block-size:calc(var(--mobile-viewport-height,100dvh) - env(safe-area-inset-top,0px) - 12px); padding-inline:max(20px,env(safe-area-inset-left,0px)) max(20px,env(safe-area-inset-right,0px)); }
+ .dialog .dialog-footer { padding-block-end:max(6px,env(safe-area-inset-bottom,0px)); }
+ .dialog .dialog-footer button { min-block-size:44px; flex:1 1 100px; }
+ .dialog .form-grid { gap:18px; }
+ .workspace .manual-investment-values { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .skeleton-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:430px) {
+ .workspace .panel:not(.dashboard-block) { padding:16px; }
+ .workspace .stats,.workspace .manual-investment-stats { grid-template-columns:minmax(0,1fr); }
+ .skeleton-summary { grid-template-columns:minmax(0,1fr); }
+ .skeleton-summary>i:not(:first-child) { min-block-size:48px; }
+ .workspace .forecast-horizons { grid-template-columns:minmax(0,1fr); }
+ .workspace .manual-history-row { flex-wrap:wrap; gap:10px; }
+}
+@media(max-height:480px) {
+ .dialog { margin-block:auto; max-block-size:calc(var(--mobile-viewport-height,100dvh) - 12px); scroll-padding-block-start:14px; }
+ .dialog .dialog-head { margin-block-end:16px; }
+ .dialog .dialog-footer { padding-block-start:10px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .workspace *,.dialog *,.content-skeleton * { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+}
+@media print { .content-skeleton { display:none; }.dialog .dialog-footer { position:static; } }
+.workspace :is(.stat>small,.list-row small,.manual-history-row small) { color:#655f75; font-size:12px; line-height:1.7; }
+.table-wrap[data-table-overflow] .transaction-actions { position:static; box-shadow:none; }
+.content .dashboard-amount { white-space:nowrap; overflow-wrap:normal; word-break:normal; max-inline-size:100%; font-variant-numeric:tabular-nums; }
+@media(max-width:1023px),(hover:none) and (pointer:coarse) {
+ .workspace :is(.text-link,.clear-view-filters,.category-manage-link) { min-block-size:44px; display:inline-flex; align-items:center; }
+ .workspace details>summary { min-block-size:44px; align-content:center; }
+}
+/* Report/simulator grids must not inherit min-content tracks from older rules. */
+.workspace .report-grid { grid-template-columns:repeat(3,minmax(0,1fr)); min-inline-size:0; max-inline-size:100%; }
+.workspace .report-grid>div { min-inline-size:0; max-inline-size:100%; }
+.workspace .report-grid :is(span,small,strong) { overflow-wrap:anywhere; }
+@media(max-width:900px) { .workspace .report-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:430px) { .workspace .report-grid { grid-template-columns:minmax(0,1fr); } }
+
+/* Long imported descriptions must wrap inside the dashboard grid as well. */
+.workspace :is(.dashboard-recent,.dashboard-position,.dashboard-shortcut)>div strong { overflow-wrap:anywhere; }
+
+/* Preserve the existing purchase cards on phones; wide tables apply above them. */
+@media(min-width:761px) { .workspace .purchase-history .table-wrap table { min-inline-size:760px; } }
+
+.workspace:not(.collapsed) .profile small { white-space:normal; overflow:visible; overflow-wrap:anywhere; text-overflow:clip; max-inline-size:100%; }
+
+@media(max-width:767px) {
+ .workspace .invoice-month-picker { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; inline-size:100%; gap:8px; }
+ .workspace .invoice-month-picker input { inline-size:100%; min-inline-size:0; text-align:center; padding-inline:8px; }
+ .workspace .invoice-month-picker button { min-block-size:44px; }
+ .workspace .invoice-month-picker button:last-child { grid-column:1/-1; }
+}

@@ -127,3 +127,17 @@ sair/trocar usuário limpa cache e diálogos privados. `use-snapshot-sync.ts`
 avisa alterações entre abas por usuário, sem registros/tokens; a aba receptora
 reconsulta a API. Categorias criadas em outra aba ficam disponíveis no cadastro
 sem apagar os campos digitados. Formulários revalidam opções ao receber foco.
+
+## Refinamento visual e responsividade — 30/10/2026
+
+Preservar todos os destinos/recursos de UX-MODULES.md. Ajustes atuais em
+[VISUAL-QUALITY.md](../VISUAL-QUALITY.md), CSS compartilhado visual-quality.css.
+Altura natural, grades minmax(0,1fr), descrições longas com quebra, valores
+monetários ampliam o card antes de reduzir fonte; não mudar textos ou cálculos.
+Tabelas extensas têm scroll localizado, indicação visual e foco por teclado.
+Modais respeitam viewport/safe areas e mantêm ações alcançáveis; nenhuma segunda
+rolagem vertical na prévia de parcelas. Skeleton não apresenta valores fictícios.
+Animações de entrada nunca ocultam conteúdo e respeitam movimento reduzido.
+Auditoria deve aguardar dados efetivos, fontes e fim do skeleton antes de medir;
+verificar também ranges de texto, além das bordas dos elementos. Testes locais,
+usuários descartáveis; resultados e publicação em STATUS.md.
