@@ -640,3 +640,15 @@ os oito indicadores e props financeiras originais; sem mudanças em APIs, servi�
 regras financeiras ou migrations. Somente usuários descartáveis locais usados.
 Sem pendências de implementação. Emulação Chromium; sem aparelhos físicos.
 Publicação do commit no main e verificação da Vercel em andamento.
+
+Publicação confirmada: fonte `4b62ee08cbe5afb27bf94c68c9bbd212630da9dc`
+no main. Vercel `dpl_BH6f4eANgtXqYgRTs4RcnFZUqask` READY em
+https://finance-two-lake.vercel.app/. Raiz e 12 destinos adicionais HTTP200;
+worker identifica o commit, manifest standalone e CSS novo (skeleton, tabelas
+acessíveis e ampliação de valores) confirmados nos bundles publicados.
+59 cenários de browser distintos, 172 unitários e 20 verificações integradas
+locais aprovados, TypeScript/build aprovados. Sem pendências de implementação,
+sem migrations nem mudanças financeiras. Capturas desktop/mobile revisadas.
+CI remoto [41131632637](https://github.com/Dev-Maldonado/Finance/actions/runs/41131632637)
+ainda em execução na última consulta (backup/restore; nenhuma falha registrada).
+Não declarar esse CI concluído sem nova consulta. Sem testes em aparelhos físicos.
