@@ -572,3 +572,17 @@ expressões de indicadores e os parâmetros originais dos componentes financeiro
 Sem alterações em APIs, cálculos, serviços financeiros ou migrations; nenhum
 registro real usado nos testes. Emulação Chromium, sem aparelhos físicos.
 Sem pendências de implementação; publicação em novo commit no main em andamento.
+
+Publicação confirmada: commit `3f64ec7cafff1e7f3992a6ae861df62c126b174f`
+enviado ao main. Vercel `dpl_DM97Zo9THdY5Tq53s2YQHgCYhEqA` READY em
+https://finance-two-lake.vercel.app/. Raiz e 12 destinos novos HTTP200; worker
+identifica o commit, manifest standalone e marcadores de navegação/estilos novos
+conferidos nos bundles publicados. Cinco fluxos novos e registro patrimonial
+repetidos no build final: 6/6 aprovados. Total de cenários distintos aprovados:
+49 browsers, 172 unitários e 93 verificações integradas locais; TypeScript/build
+aprovados. Capturas revisadas e todos os destinos do inventário acessíveis.
+
+Sem pendências de implementação ou migração. CI remoto
+[41119728280](https://github.com/Dev-Maldonado/Finance/actions/runs/41119728280)
+em execução na última consulta; não declarar concluído sem verificar. Mobile/PWA
+validado em Chromium e emulação Android/iOS/tablet; sem aparelhos físicos.
