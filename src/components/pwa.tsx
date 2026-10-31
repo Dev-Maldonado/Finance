@@ -1,10 +1,12 @@
 "use client";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Download, RefreshCw, WifiOff, X } from "lucide-react";
+import {useViewportLayout} from './use-viewport-layout';
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 const PwaContext = createContext({ installed: false, install: () => {} });
 export const usePwa = () => useContext(PwaContext);
 export function PwaProvider({ children }: { children: React.ReactNode }) {
+  useViewportLayout();
   const [installed, setInstalled] = useState(false);
   const [offline, setOffline] = useState(false);
   const [instructions, setInstructions] = useState(false);
@@ -61,9 +63,13 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.dataset.keyboardOpen = String(keyboardOpen);
       document.documentElement.style.setProperty("--mobile-keyboard-inset", `${keyboardOpen && viewport ? Math.max(0, innerHeight - viewport.height - viewport.offsetTop) : 0}px`);
       document.documentElement.style.setProperty("--mobile-viewport-height", `${viewport?.height || innerHeight}px`);
+      document.documentElement.style.setProperty("--app-viewport-top", `${viewport?.offsetTop || 0}px`);
+      document.documentElement.style.setProperty("--app-viewport-bottom", `${Math.max(0,innerHeight-(viewport?.height || innerHeight)-(viewport?.offsetTop || 0))}px`);
     };
     window.addEventListener("orientationchange", resetViewport);
     viewport?.addEventListener("resize", keyboard);
+    viewport?.addEventListener("scroll", keyboard);
+    window.addEventListener("resize", keyboard);
     window.addEventListener("focusin", keyboard);
     window.addEventListener("focusout", keyboard);
     keyboard();
@@ -75,6 +81,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       navigator.serviceWorker?.removeEventListener("controllerchange", controllerChange);
       window.removeEventListener("orientationchange", resetViewport);
       viewport?.removeEventListener("resize", keyboard); window.removeEventListener("focusin", keyboard); window.removeEventListener("focusout", keyboard);
+      viewport?.removeEventListener("scroll", keyboard);window.removeEventListener("resize", keyboard);
     };
   }, []);
   useEffect(() => {
@@ -96,11 +103,11 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     else waiting.postMessage({ type: "SKIP_WAITING" });
   };
   return <PwaContext.Provider value={{ installed, install }}>
-    {children}
     <div className="mobile-app-notices" aria-live="polite">
       {offline && <div className="mobile-connection"><WifiOff size={18} /><span>Sem conexão. Reconecte para consultar e salvar seus dados.</span></div>}
       {(waiting || reloadAvailable) && <div className="mobile-update"><RefreshCw size={18} /><span>Nova versão disponível</span><button onClick={applyUpdate}>Atualizar</button></div>}
     </div>
+    {children}
     <dialog className="dialog pwa-install-dialog" ref={instructionDialog} onCancel={() => setInstructions(false)} aria-labelledby="install-title">
       <div className="dialog-head"><h2 id="install-title"><Download size={22} /> Instalar FINORA</h2><button className="icon-button" aria-label="Fechar instruções" onClick={() => setInstructions(false)}><X /></button></div>
       <p>Tenha seu espaço financeiro na tela inicial, com a mesma conta e todos os recursos.</p>

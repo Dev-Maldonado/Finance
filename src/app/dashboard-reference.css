@@ -202,5 +202,5 @@
  .dashboard-month-navigation .invoice-month-picker button:last-child { grid-column:auto; min-height:44px; }
 }
 @media(min-width:1100px) {
- .dashboard-v3 .dashboard-section { scroll-margin-top:160px; }
+ .dashboard-v3 .dashboard-section { scroll-margin-top:12px; }
 }

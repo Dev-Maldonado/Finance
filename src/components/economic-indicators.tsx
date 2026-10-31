@@ -14,7 +14,6 @@ function reference(date:string|null|undefined){return date?date.split('-').rever
 export function EconomicIndicatorsCards({dockTarget,compactOnly=false,sourcesHref="#dashboard-economia"}:{dockTarget?:RefObject<HTMLDivElement|null>;compactOnly?:boolean;sourcesHref?:string}={}) {
  const [dock,setDock]=useState<HTMLDivElement|null>(null),force=useRef(false);
  useEffect(()=>{setDock(dockTarget?.current??null);},[dockTarget]);
- useEffect(()=>{if(!dock)return;const root=dock.closest<HTMLElement>('.premium-dashboard');const size=()=>root?.style.setProperty('--economic-dock-height',`${dock.getBoundingClientRect().height}px`);const observer=new ResizeObserver(size);observer.observe(dock);size();return()=>observer.disconnect();},[dock]);
  const query=useQuery<EconomicIndicators>({queryKey:['economic-indicators'],staleTime:3600000,refetchInterval:3600000,retry:1,queryFn:async()=>{const manual=force.current;force.current=false;const response=await fetch(`/api/economic-indicators${manual?'?refresh=1':''}`);if(!response.ok)throw Error('Indicadores indisponíveis');return response.json();}});
  const refresh=()=>{force.current=true;void query.refetch();};
  return <>{!compactOnly&&<section className="economic-indicators" aria-label="Indicadores econômicos oficiais">

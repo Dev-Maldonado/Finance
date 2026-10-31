@@ -16,7 +16,7 @@
 .dashboard-v2 .dashboard-section-nav { display:flex; flex-wrap:wrap; gap:8px; margin-top:-15px; padding:0 0 20px; border-bottom:1px solid var(--dash-border); }
 .dashboard-v2 .dashboard-section-nav a { display:flex; align-items:center; gap:14px; padding:10px 14px; border-radius:9px; font-size:11px; background:#fff; color:#596174; border:1px solid #e8eaf1; }
 .dashboard-v2 .dashboard-section-nav a:hover { background:#f0ebff; border-color:#dcd2f7; color:var(--dash-purple); }
-.dashboard-v2 .dashboard-section { min-width:0; scroll-margin-top:110px; }
+.dashboard-v2 .dashboard-section { min-width:0; scroll-margin-top:12px; }
 .dashboard-v2 .dashboard-section-heading { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 .dashboard-v2 .dashboard-section-mark { display:grid; place-items:center; width:25px; height:25px; flex-shrink:0; border:1px solid #e3ddf4; border-radius:7px; color:var(--dash-purple); background:#f2eefb; }
 .dashboard-v2 .dashboard-section-heading h2 { font-size:12px; font-weight:700; letter-spacing:.15px; text-transform:uppercase; margin:0; }
@@ -470,7 +470,7 @@
 
 @media (max-width:1023px), (hover:none) and (pointer:coarse) {
  .dashboard-v2 .dashboard-economic-dock { top:calc(66px + env(safe-area-inset-top,0px)); }
- .dashboard-v2 .dashboard-section { scroll-margin-top:190px; }
+ .dashboard-v2 .dashboard-section { scroll-margin-top:12px; }
  html[data-keyboard-open=true] .dashboard-v2 .dashboard-economic-dock { position:static; }
 }
 

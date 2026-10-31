@@ -652,3 +652,38 @@ sem migrations nem mudanças financeiras. Capturas desktop/mobile revisadas.
 CI remoto [41131632637](https://github.com/Dev-Maldonado/Finance/actions/runs/41131632637)
 ainda em execução na última consulta (backup/restore; nenhuma falha registrada).
 Não declarar esse CI concluído sem nova consulta. Sem testes em aparelhos físicos.
+
+## 30/10/2026 — Correção estrutural de enquadramento e rolagem
+
+Pedido anexado e confirmação do usuário: cortes em celular e PC. Preservados
+31 destinos principais/antigos, campos, menus, gráficos, indicadores e cálculos.
+Inventário em UX-MODULES.md; causas e arquitetura em LAYOUT-INTEGRITY.md.
+CI anterior 41131632637 conferido como concluído com sucesso nesta retomada.
+
+Causas reproduzidas antes da correção: paisagem 568x320 deixava só 48,75px de
+leitura entre cabeçalho/faixa econômica/navegação; avisos PWA simultâneos tinham
+reserva insuficiente. Modal não acompanhava mudanças de offsetTop/scroll da
+visualViewport com teclado aberto. Dois testes falharam nesses pontos esperados.
+
+Correção: medir alturas reais e reservar seu espaço; retornar índices e avisos ao
+fluxo normal quando necessário; acompanhar altura/deslocamento da viewport nos
+modais e menus, medir rodapés e revelar controles focados. Documento com altura
+natural em dvh, sem overflow-x:clip no html. Âncoras usam a reserva medida uma vez.
+Sidebar segue o documento se exceder a janela. Medição anterior redundante da
+faixa econômica removida; consultas e dados oficiais permanecem iguais.
+
+Validação concluída: 49/49 regressões existentes aprovadas (11,4 min), 12/12
+cenários da matriz visual (5,5 min) e 7/7 cenários de geometria/sobreposição:
+seis repetidos no build de entrega (1,4 min), mais âncoras (13 s). Total68 casos
+browser distintos aprovados. Matriz percorreu 31 destinos em 320x568, 375x667,
+390x844, 430x932, 768x1024, 1024x768, 1366x768, 1440x900, 1920x1080 e 2560x1440;
+zoom equivalente viewport/DPR125/150/200%, paisagem, controles reais de 13
+cadastros em três tamanhos, ancestrais que recortam textos, avisos simultâneos,
+viewport deslocada com teclado, foco sem interceptação e fim das páginas.
+Capturas desktop/mobile e rodapés com avisos PWA revisados.
+
+172 unitários, integração geral20, TypeScript e build aprovados. AST confirmou
+oito indicadores e props financeiras preservadas; sem modificações em APIs,
+serviços, cálculos ou migrations. Somente usuários descartáveis locais usados.
+Sem pendências de implementação. Testes Chromium/emulação, sem aparelhos físicos
+ou Safari nativo. Publicação do commit e verificação da Vercel em andamento.

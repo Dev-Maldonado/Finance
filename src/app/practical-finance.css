@@ -18,7 +18,7 @@
 .dashboard-v3 .dashboard-economic-ticker > a { grid-column:3; grid-row:2; }
 .dashboard-v3 .dashboard-economic-ticker > button { grid-column:4; grid-row:1/3; }
 .dashboard-v3 .economic-indicators { grid-template-columns:repeat(3,minmax(0,1fr)) auto; }
-.dashboard-v3 .dashboard-section { scroll-margin-top:calc(var(--economic-dock-height,100px) + 24px); }
+.dashboard-v3 .dashboard-section { scroll-margin-top:12px; }
 .economic-stale { color:#9a6919; }
 @media(max-width:650px) {
  .commitment-cash-summary { grid-template-columns:minmax(0,1fr); }
@@ -32,5 +32,5 @@
  .dashboard-v3 .economic-ticker-title { grid-column:1; grid-row:2; font-size:8px; }
  .dashboard-v3 .dashboard-economic-ticker > a { grid-column:2; grid-row:2; }
  .dashboard-v3 .dashboard-economic-ticker > button { grid-column:3; grid-row:2; justify-self:end; min-width:44px; min-height:44px; }
- .dashboard-v3 .dashboard-section { scroll-margin-top:calc(var(--economic-dock-height,120px) + 12px); }
+ .dashboard-v3 .dashboard-section { scroll-margin-top:12px; }
 }

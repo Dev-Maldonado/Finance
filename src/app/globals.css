@@ -9,11 +9,18 @@
   --background: #f7f8fc;
   --green: #159b77;
   --pink: #de627b;
+  --app-header-height: 0px;
+  --app-bottom-space: 0px;
+  --app-scroll-top: 12px;
+  --app-scroll-bottom: 16px;
 }
 * {
   box-sizing: border-box;
 }
+html { min-height:100%; scroll-padding-block:var(--app-scroll-top) var(--app-scroll-bottom); }
 body {
+  min-height:100dvh;
+  min-width:0;
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   color: var(--ink);
@@ -74,7 +81,7 @@ button.primary:hover {
 }
 .workspace {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 .sidebar {
   position: fixed;
@@ -1329,7 +1336,7 @@ footer small {
   line-height: 1.8;
 }
 .auth {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 1fr 1fr;
 }

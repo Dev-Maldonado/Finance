@@ -31,3 +31,5 @@
 
 - Refinamento visual e responsividade (30/10/2026): [VISUAL-QUALITY.md](../VISUAL-QUALITY.md).
   Alturas naturais, grades, textos/valores, tabelas, modais, acessibilidade e validação.
+
+- Enquadramento/rolagem estrutural (30/10/2026): [LAYOUT-INTEGRITY.md](../LAYOUT-INTEGRITY.md).

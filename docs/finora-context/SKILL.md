@@ -141,3 +141,13 @@ Animações de entrada nunca ocultam conteúdo e respeitam movimento reduzido.
 Auditoria deve aguardar dados efetivos, fontes e fim do skeleton antes de medir;
 verificar também ranges de texto, além das bordas dos elementos. Testes locais,
 usuários descartáveis; resultados e publicação em STATUS.md.
+
+## Integridade estrutural de layout — 30/10/2026
+
+Ver [LAYOUT-INTEGRITY.md](../LAYOUT-INTEGRITY.md). Reservas de scroll e espaço
+inferior passam a ser medidas, incluindo cabeçalho, índices e avisos PWA. Em pouca
+altura, índices/avisos retornam ao fluxo normal; nunca escondê-los. Posicionamento
+de modais considera altura e deslocamento de visualViewport (resize e scroll),
+com campos focados fora da área do rodapé sticky. Não repor offsets fixos ou
+`overflow-x:clip` no html para mascarar falhas. Validar ancestrais que recortam texto,
+interceptação real por barras, 10 resoluções e zoom 125/150/200%, além do fim da página.
