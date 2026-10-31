@@ -703,5 +703,35 @@ data após a geração. Nenhum código financeiro, regra ou banco alterado.
 
 Repetição local completa das integrações: geral20, integridade13, importação7,
 agendamento8, remoção6, compromissos8, baixas8, investimentos8, caixinhas15 =93
-verificações aprovadas. Correção do teste será enviada em commit separado, sem
-novo deploy da interface; novo CI integral precisa ser verificado antes de encerrar.
+verificações aprovadas. Correção enviada no commit 03e6fa91c2a0b375dcd8149dc66ff6fe96485e3d.
+A Vercel também publicou esse commit (dpl_8Hut8utsdMhakMdEfMRYa428Jr7K READY).
+Nova execução integral local: 68 cenários browser aprovados em 12,9 minutos.
+CI remoto 41163140568 concluído com sucesso, incluindo testes browser e integrações.
+31 rotas públicas, manifest e worker conferidos. Sem pendências dessa correção.
+
+## 31/10/2026 — Refinamento visual e reações contextuais
+
+Novo pedido: modernização compartilhada e animações ligadas a ações confirmadas,
+preservando funcionalidades e cálculos. Implementação em andamento: efeitos de
+entrada/saída/transferência, metas, avaliações manuais e confirmações; cartões
+interativos, atualização visual de indicadores e gráficos, superfícies e navegação.
+Movimento reduzido reativo, efeitos limitados e sem interferir no layout corrigido.
+Validações e publicação desta etapa serão registradas após execução.
+
+Implementação visual concluída: provider efêmero compartilhado, classificação de
+reações após confirmação do servidor, feedback de receita/despesa/transferência,
+meta de caixinha e valorização manual. Pendente/futuro/correção têm check neutro.
+Inclinação/brilho dos cartões, atualização suave dos indicadores, gráficos380ms,
+controles/superfícies/menus refinados. Movimento reduzido reativo e limpeza por
+navegação/sessão/visibilidade; sem mudanças financeiras, API ou banco.
+
+Validação parcial desta etapa: 187 unitários aprovados, TypeScript/build aprovados,
+20 integrações aprovadas, 2 novos cenários browser aprovados em20,4s. Esses cenários
+conferem efeitos após gravação real, saldo persistido, pendência/futuro/erro sem
+falso sucesso, transferência/meta/valorização, movimento reduzido, inclinação e
+larguras320/390/768/1440. Capturas revisadas. Suíte integral de71 browser em andamento.
+
+Revisão independente concluída; confetes elevados acima da confirmação e anúncios
+consecutivos com texto idêntico recebem nova região de conteúdo. Autenticação
+revalidada após remover o role redundante da região live vazia. Teste adicional de
+indicadores aprovado: valor final exato animado; filtros não simulam ganhos.

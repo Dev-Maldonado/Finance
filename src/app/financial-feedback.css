@@ -1,0 +1,44 @@
+/* Decorative, ephemeral effects never participate in document sizing or hit testing. */
+.financial-feedback { --effect-color:#5b35d5; --effect-soft:#f0ebff; position:fixed; z-index:90; inset-inline-end:max(24px,env(safe-area-inset-right,0px)); inset-block-end:calc(var(--app-bottom-space,0px) + 24px); width:min(340px,calc(100vw - 32px)); pointer-events:none; isolation:isolate; }
+.financial-feedback-income { --effect-color:#138363; --effect-soft:#eaf8f1; }
+.financial-feedback-expense { --effect-color:#bf4560; --effect-soft:#fff0f3; }
+.financial-feedback-goal { --effect-color:#926416; --effect-soft:#fff6db; }
+.financial-feedback-growth { --effect-color:#138363; --effect-soft:#eaf8f1; }
+.financial-confirmation { display:flex; gap:12px; align-items:flex-start; padding:16px; border:1px solid color-mix(in srgb,var(--effect-color) 18%,white); background:#fff; border-radius:18px; color:#242638; box-shadow:0 10px 36px #28203e1a; animation:financial-confirmation-in 220ms ease-out both; }
+.financial-confirmation>div { min-width:0; flex:1; }
+.financial-confirmation strong { display:block; font-size:14px; font-weight:650; line-height:1.5; }
+.financial-confirmation>div>span { display:block; font-size:12px; line-height:1.6; color:#596174; margin-top:3px; overflow-wrap:anywhere; }
+.financial-confirmation-icon { display:grid; place-items:center; flex-shrink:0; width:34px; height:34px; border-radius:11px; color:var(--effect-color); background:var(--effect-soft); }
+.financial-confirmation-icon svg { width:19px; height:19px; }
+.financial-confirmation-icon .lucide-check { stroke-dasharray:30; stroke-dashoffset:30; animation:financial-check 360ms 90ms ease-out forwards; }
+.financial-effect-stage { position:absolute; inset:auto 0 0; height:240px; overflow:clip; pointer-events:none; z-index:-1; }
+.financial-particle { display:block; position:absolute; left:50%; bottom:42px; color:var(--effect-color); opacity:0; animation:financial-money-in 1300ms calc(var(--particle-i)*75ms) cubic-bezier(.22,.75,.25,1) both; }
+.financial-particle .lucide-banknote { border-radius:3px; background:var(--effect-soft); box-shadow:0 2px 5px #2426380c; }
+.financial-feedback-expense .financial-particle { animation-name:financial-money-out; }
+.financial-feedback-goal .financial-particle { bottom:90px; animation-name:financial-confetti; animation-duration:1500ms; }
+.financial-feedback-goal .financial-particle i { display:block; width:6px; height:11px; border-radius:2px; background:#8d6be0; }
+.financial-feedback-goal .particle-1 i { background:#d6a544; }
+.financial-feedback-goal .particle-2 i { background:#44a68b; border-radius:50%; width:7px; height:7px; }
+.financial-feedback-growth .financial-particle { animation-name:financial-sparkle; }
+.financial-growth-line { position:absolute; width:180px; height:80px; left:50%; bottom:92px; margin-left:-90px; overflow:visible; }
+.financial-growth-line path { fill:none; stroke:var(--effect-color); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:240; stroke-dashoffset:240; animation:financial-growth 1400ms ease-out both; }
+.financial-transfer-route { display:flex; gap:8px; align-items:center; margin-top:12px; color:var(--effect-color); font-size:10px; line-height:1.4; }
+.financial-transfer-route>span { display:flex; flex:1; min-width:0; align-items:center; gap:5px; overflow-wrap:anywhere; }
+.financial-transfer-route>span svg { flex-shrink:0; }
+.financial-transfer-route>i { position:relative; width:36px; flex-shrink:0; display:grid; place-items:center; }
+.financial-transfer-route>i .lucide-coins { position:absolute; left:0; top:-9px; opacity:0; animation:financial-transfer 1100ms 150ms ease-in-out 2; }
+@keyframes financial-confirmation-in { from { opacity:.2; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes financial-check { to { stroke-dashoffset:0; } }
+@keyframes financial-money-in { 0% { opacity:0; transform:translate(calc(var(--particle-x)*.5),8px) rotate(0deg); } 20% { opacity:.85; } 72% { opacity:.85; } 100% { opacity:0; transform:translate(var(--particle-x),-156px) rotate(var(--particle-turn)); } }
+@keyframes financial-money-out { 0% { opacity:0; transform:translate(calc(var(--particle-x)*.2),-105px) rotate(0deg); } 20% { opacity:.8; } 100% { opacity:0; transform:translate(var(--particle-x),-12px) rotate(var(--particle-turn)); } }
+@keyframes financial-confetti { 0% { opacity:0; transform:translate(0,-70px) rotate(0deg); } 15% { opacity:1; } 55% { opacity:.9; } 100% { opacity:0; transform:translate(var(--particle-x),-15px) rotate(190deg); } }
+@keyframes financial-sparkle { 0% { opacity:0; transform:translate(var(--particle-x),-32px) scale(.5); } 40% { opacity:.8; } 100% { opacity:0; transform:translate(var(--particle-x),-136px) scale(1); } }
+@keyframes financial-growth { 0% { opacity:0; stroke-dashoffset:240; } 25% { opacity:.7; } 75% { opacity:.7; stroke-dashoffset:0; } 100% { opacity:0; stroke-dashoffset:0; } }
+@keyframes financial-transfer { 0% { opacity:0; transform:translateX(-12px); } 25% { opacity:1; } 75% { opacity:1; } 100% { opacity:0; transform:translateX(30px); } }
+@media(max-width:767px) { .financial-feedback { inset-inline-end:max(16px,env(safe-area-inset-right,0px)); inset-block-end:calc(var(--app-bottom-space,80px) + 12px); width:min(340px,calc(100vw - 32px)); }.financial-effect-stage { height:210px; } }
+@media(max-height:480px) { .financial-feedback { inset-block-end:calc(var(--app-bottom-space,0px) + 8px); }.financial-effect-stage { height:140px; }.financial-confirmation { padding:12px; } }
+.financial-feedback[data-reduced-motion=true] * { animation:none !important; }
+.financial-feedback[data-reduced-motion=true] .lucide-check { stroke-dashoffset:0; }
+.financial-feedback[data-reduced-motion=true] .financial-transfer-route>i .lucide-coins { display:none; }
+@media(prefers-reduced-motion:reduce) { .financial-feedback * { animation:none !important; }.financial-effect-stage { display:none; }.financial-confirmation-icon .lucide-check { stroke-dashoffset:0; }.financial-transfer-route>i .lucide-coins { display:none; } }
+@media print { .financial-feedback,.financial-feedback-live { display:none; } }

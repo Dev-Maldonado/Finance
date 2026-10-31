@@ -1,0 +1,34 @@
+/* Stateful presentation: these effects never change a displayed financial value. */
+.workspace .bank-card {
+  transform-origin:center;
+  transition:transform 200ms cubic-bezier(.2,.8,.2,1),box-shadow 200ms ease;
+}
+.workspace .bank-card::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  opacity:0;
+  background:radial-gradient(ellipse at var(--card-light-x,50%) var(--card-light-y,30%),#fff4 0%,#fff0 62%);
+  transition:opacity 180ms ease;
+}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .workspace .bank-card[data-card-active] {
+    transform:perspective(900px) scale(.98) rotateX(var(--card-rotate-x,0deg)) rotateY(var(--card-rotate-y,0deg));
+    box-shadow:0 12px 24px #35208016;
+  }
+  .workspace .bank-card[data-card-active]::after { opacity:1; }
+}
+.workspace [data-value-updating] { text-shadow:0 0 14px #8d70d21a; }
+.workspace :is(.overview-composition-track,.progress)>i { transition:width 380ms ease-out; }
+.workspace :is(.chart,.manual-chart,.overview-result-plot) { isolation:isolate; }
+@media(prefers-reduced-motion:reduce) {
+  .workspace .bank-card,.workspace .bank-card::after,.workspace :is(.overview-composition-track,.progress)>i { transition:none; }
+  .workspace .bank-card[data-card-active] { transform:none; }
+  .workspace .bank-card::after { opacity:0; }
+}
+@media print {
+  .workspace .bank-card { transform:none !important; }
+  .workspace .bank-card::after { display:none; }
+}

@@ -151,3 +151,12 @@ de modais considera altura e deslocamento de visualViewport (resize e scroll),
 com campos focados fora da área do rodapé sticky. Não repor offsets fixos ou
 `overflow-x:clip` no html para mascarar falhas. Validar ancestrais que recortam texto,
 interceptação real por barras, 10 resoluções e zoom 125/150/200%, além do fim da página.
+
+## Movimento contextual e visual compartilhado — 31/10/2026
+
+Ver [CONTEXTUAL-MOTION.md](../CONTEXTUAL-MOTION.md). Efeitos apenas após sucesso
+real de uma ação; pendências/futuros/correções têm confirmação neutra. Aporte não é
+lucro, metas só celebram ao cruzar objetivo existente e crescimento exige avaliação
+manual válida. Provider único, efeitos limitados/efêmeros, sem dados persistidos,
+sem interferir em cliques ou geometria. Movimento reduzido reativo também nos
+gráficos e cartões. Preservar valores finais exatos nos indicadores animados.

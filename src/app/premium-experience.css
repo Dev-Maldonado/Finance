@@ -1,0 +1,184 @@
+/* Presentation polish only. Geometry, financial colors and available controls stay intact. */
+:root {
+  --finora-ease: cubic-bezier(.2,.75,.25,1);
+  --finora-focus: #7954d7;
+  --surface-line: #e4e5ef;
+  --surface-muted: #596174;
+  --surface-shadow: 0 2px 4px #29213f02, 0 8px 26px #35208005;
+}
+
+/* A quiet frame keeps the figures and their semantic colors in the foreground. */
+.workspace { background-color:#f7f8fc; }
+.workspace > .sidebar { background:#fcfcff; border-inline-end-color:#e6e6f0; }
+.workspace .topbar { background:#ffffffed; border-block-end-color:#e9e8f1; }
+.workspace :is(.panel,.stat,.manual-investment-card,.monthly-invoice) {
+  border-color:var(--surface-line);
+  box-shadow:var(--surface-shadow);
+}
+.workspace :is(.panel,.stat,.manual-investment-card,.monthly-invoice,.module-navigation) {
+  transition:border-color 180ms var(--finora-ease),box-shadow 180ms var(--finora-ease);
+}
+.workspace .financial-surface { border-color:var(--finance-border,var(--surface-line)); }
+.workspace :is(.page-head,.dialog-head) h1 { color:#242638; }
+.workspace .page-head h1 { font-weight:720; letter-spacing:-.8px; text-wrap:balance; }
+.workspace .page-head p { color:#62687c; }
+.workspace .eyebrow { color:#7256ad; letter-spacing:1.65px; }
+.workspace .panel-head { padding-block-end:12px; border-block-end:1px solid #f0eef6; }
+.workspace .panel-head :is(h2,h3) { color:#2d2a40; font-weight:680; }
+.workspace :is(.stat,.dashboard-metric,.account-balance,.manual-investment-values) strong {
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.45px;
+}
+.workspace :is(.stat>div>span,.dashboard-metric-head>span:first-child) { font-weight:600; }
+.workspace :is(.stat i,.dashboard-metric-icon,.home-agenda-icon,.asset-icon) {
+  box-shadow:inset 0 0 0 1px #35208007,0 2px 5px #35208004;
+}
+.workspace .dashboard-v2 .dashboard-hero-main {
+  background:linear-gradient(125deg,#4525ad,#6439dd 68%,#7550e5);
+  border-color:#6743cd;
+  box-shadow:inset 0 1px 0 #ffffff25,0 8px 24px #4e2ca51a;
+}
+.workspace .dashboard-section-mark { box-shadow:inset 0 1px 0 #ffffffb0; }
+.workspace .dashboard-economic-dock { border-color:#e5e4ef; box-shadow:0 3px 16px #35208005; }
+.workspace .dashboard-comparison .comparison-header,
+.workspace .table-wrap thead { background:#f6f6fb; }
+.workspace .table-wrap th { letter-spacing:.1px; color:#596174; }
+.workspace .table-wrap td { border-block-end-color:#eeedf5; }
+.workspace :is(.list-row,.manual-history-row,.commitment-row,.home-agenda-row,.category-child-row) {
+  border-color:#eeedf5;
+  transition:background-color 160ms var(--finora-ease),border-color 160ms var(--finora-ease);
+}
+.workspace :is(.list-row,.manual-history-row,.commitment-row,.home-agenda-row,.category-child-row):focus-within {
+  background-color:#f9f7fe;
+}
+.workspace .category-children { border-block-start-color:#ebe7f2; }
+.workspace .category-children>summary { color:#4f416b; font-weight:600; }
+.workspace .category-child-list { border-inline-start-color:#ddd3ef; }
+.workspace .progress { background-color:#eceaf4; border-radius:999px; }
+.workspace .progress span { border-radius:inherit; transition:width 450ms var(--finora-ease),background-color 200ms; }
+.workspace .badge { font-weight:600; box-shadow:inset 0 0 0 1px #25213a05; }
+
+/* Navigation retains its size and destinations; selected states carry the hierarchy. */
+.workspace .sidebar .desktop-navigation a {
+  color:#626479;
+  transition:background-color 180ms var(--finora-ease),color 180ms var(--finora-ease),box-shadow 180ms var(--finora-ease);
+}
+.workspace .sidebar .desktop-navigation a[aria-current=page] {
+  color:#5430c1;
+  background:linear-gradient(100deg,#eee8fd,#f4f0ff);
+  box-shadow:inset 3px 0 0 #7552dc,inset 0 0 0 1px #e3d9f8;
+}
+.workspace .module-navigation { background:#fff; border-color:#e5e3ef; }
+.workspace .module-tabs a { color:#63687c; }
+.workspace .module-tabs a[aria-current=page] {
+  color:#5430c1;
+  background:#f0ebfd;
+  box-shadow:inset 0 0 0 1px #dfd4f7,0 2px 5px #49318805;
+}
+.workspace .period-tabs button.selected {
+  color:#5530bc;
+  background:#f1ecfd;
+  box-shadow:inset 0 0 0 1px #dfd5f7;
+}
+.workspace .screen-jump-links a { border-color:#e4dff0; }
+.workspace .active-filter-summary { background:#faf9fd; border-color:#ebe6f3; }
+.workspace .active-filter-chips :is(button,.filter-context-chip) { background:#fff; border-color:#e0d8ef; }
+
+/* Refined controls without changing target sizes, order or native form behavior. */
+.workspace button,.dialog button,.mobile-menu-sheet button,.auth-form button {
+  transition:background-color 160ms var(--finora-ease),border-color 160ms var(--finora-ease),box-shadow 160ms var(--finora-ease),filter 160ms var(--finora-ease);
+}
+.workspace button.primary,.dialog button.primary,.auth-form button.primary {
+  background:linear-gradient(110deg,#5b35d5,#6942da);
+  border-color:#5b35d5;
+  box-shadow:inset 0 1px 0 #ffffff20,0 4px 10px #5b35d51a;
+}
+.workspace button.primary:not(:disabled):hover,.dialog button.primary:not(:disabled):hover,.auth-form button.primary:not(:disabled):hover {
+  background:linear-gradient(110deg,#4e2bbb,#5c35ca);
+  border-color:#5530c2;
+  box-shadow:inset 0 1px 0 #ffffff20,0 5px 14px #5b35d526;
+}
+.workspace button:not(:disabled):active,.dialog button:not(:disabled):active,.auth-form button:not(:disabled):active {
+  box-shadow:inset 0 2px 4px #29213f0b;
+}
+.workspace :is(input,select,textarea),.dialog :is(input,select,textarea),.auth-form :is(input,select,textarea) {
+  accent-color:#6841d4;
+  caret-color:#5b35d5;
+  transition:border-color 160ms var(--finora-ease),box-shadow 160ms var(--finora-ease),background-color 160ms;
+}
+.workspace :is(input,select,textarea):not(:disabled):hover,.dialog :is(input,select,textarea):not(:disabled):hover {
+  border-color:#c8bfdd;
+}
+.workspace :is(input,select,textarea):focus-visible,.dialog :is(input,select,textarea):focus-visible,.auth-form :is(input,select,textarea):focus-visible {
+  outline:2px solid var(--finora-focus);
+  outline-offset:2px;
+  border-color:#a58cd9;
+  box-shadow:0 0 0 5px #7552d809;
+}
+.workspace :is(button,a,summary):focus-visible,.dialog :is(button,a,summary):focus-visible,.mobile-menu-sheet :is(button,a,summary):focus-visible {
+  outline:2px solid var(--finora-focus);
+  outline-offset:3px;
+}
+.workspace button:disabled,.dialog button:disabled { filter:saturate(.6); }
+.dialog { border-color:#ded9eb; box-shadow:0 24px 80px #29213f2b,0 4px 12px #29213f0a; }
+.dialog .dialog-head { padding-block-end:16px; border-block-end:1px solid #eeebf5; }
+.dialog .dialog-head h2 { color:#2d2a40; font-weight:680; }
+.dialog .dialog-head .eyebrow { color:#7256ad; }
+.dialog .dialog-head>.icon-button { border:1px solid #eae6f3; background:#faf9fd; border-radius:12px; }
+.dialog .form-introduction strong { color:#423651; }
+.dialog .form-payment-section { background:#faf9fd; border-color:#e9e3f3; }
+.dialog .purchase-method-option.selected { box-shadow:inset 0 0 0 1px #d3c3f2; }
+.dialog :is(.notice,.error) { border-radius:12px; }
+.global-add-grid button,.global-add-investment { box-shadow:0 2px 6px #35208003; }
+.global-add-grid button>svg:first-child,.global-add-investment>svg:first-child { color:#6946c5; }
+.workspace :is(.empty,.filtered-empty) { background:#fdfcff; border-color:#ddd6ed; }
+.workspace :is(.empty,.filtered-empty)>svg { color:#967fbd; }
+.workspace :is(.empty,.filtered-empty) h3 { color:#443652; }
+.workspace .dismissible-notice { border-color:#e0d6f2; background:#f7f3ff; color:#51406f; }
+.content-skeleton :is(.skeleton-grid>div,.skeleton-detail) { box-shadow:var(--surface-shadow); }
+
+/* Animations never gate visibility, remove content or move fixed/sticky ancestors. */
+@media(prefers-reduced-motion:no-preference) {
+  .dialog[open],.mobile-menu-sheet[open] { animation:finora-surface-open 180ms var(--finora-ease); }
+  .dialog[open]::backdrop,.mobile-menu-sheet[open]::backdrop { animation:finora-backdrop-open 180ms ease-out; }
+  .workspace .page-head { animation:finora-heading-arrive 220ms var(--finora-ease); }
+  .workspace .module-tabs a[aria-current=page] svg,.workspace .mobile-bottom-nav a[aria-current=page] svg { animation:finora-icon-settle 240ms var(--finora-ease); }
+  .workspace :is(.module-tabs,.period-tabs,.screen-jump-links) :is(a,button) { transition:color 160ms,background-color 160ms,box-shadow 160ms; }
+  .workspace .category-children>summary>svg { transition:rotate 160ms var(--finora-ease); }
+  .workspace .category-children:not([open])>summary>svg { rotate:-90deg; }
+}
+@media(hover:hover) and (pointer:fine) {
+  .workspace :is(.stat,.manual-investment-card,.monthly-invoice):hover { box-shadow:0 3px 8px #29213f04,0 10px 28px #35208009; }
+  .workspace .panel:focus-within { border-color:#d8cdee; }
+  .workspace :is(.list-row,.manual-history-row,.commitment-row,.home-agenda-row,.category-child-row):hover { background-color:#fbfaff; }
+  .workspace .sidebar .desktop-navigation a:not([aria-current=page]):hover { color:#5430c1; background:#f3f0fb; }
+  .workspace :is(.module-detail-links,.module-context) a:hover { text-decoration:underline; text-underline-offset:4px; }
+}
+@media(max-width:1023px),(hover:none) and (pointer:coarse) {
+  .workspace .mobile-app-header { background:#fcfcfff5; border-block-end-color:#e6e4ef; }
+  .workspace .mobile-header-actions button { border-color:#e4def0; box-shadow:0 2px 4px #35208004; }
+  .workspace .mobile-bottom-nav { background:#fffffffa; border-block-start-color:#e6e2ee; box-shadow:0 -4px 18px #35208008; }
+  .workspace .mobile-bottom-nav a[aria-current=page] { color:#5632bf; background:#f0ebfd; box-shadow:inset 0 0 0 1px #e4daf8; }
+  .workspace .mobile-bottom-nav a[aria-current=page]::before { background:#7750d7; }
+  .workspace .panel-head { padding-block-end:10px; }
+  .workspace .page-head h1 { letter-spacing:-.65px; }
+  .mobile-menu-sheet { border-color:#e4deef; }
+  .mobile-module-grid a { background:#fcfbff; border-color:#e9e4f2; }
+  .mobile-main-modules a[aria-current=page] { box-shadow:inset 0 0 0 1px #e1d6f6; }
+}
+@keyframes finora-surface-open { from { opacity:.85; } to { opacity:1; } }
+@keyframes finora-backdrop-open { from { opacity:.65; } to { opacity:1; } }
+@keyframes finora-heading-arrive { from { translate:0 3px; } to { translate:0 0; } }
+@keyframes finora-icon-settle { from { scale:.93; } to { scale:1; } }
+@media(prefers-reduced-motion:reduce) {
+  .workspace *,.dialog *,.dialog,.mobile-menu-sheet,.mobile-menu-sheet *,.auth-form * {
+    animation:none !important;
+    transition:none !important;
+    scroll-behavior:auto !important;
+  }
+  .dialog::backdrop,.mobile-menu-sheet::backdrop { animation:none !important; }
+}
+@media print {
+  .workspace :is(.panel,.stat,.manual-investment-card,.monthly-invoice) { box-shadow:none; }
+  .workspace *,.dialog { animation:none !important; transition:none !important; }
+}

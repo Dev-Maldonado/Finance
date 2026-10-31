@@ -1,4 +1,5 @@
 'use client';
+import { useChartMotion } from './use-motion-preference';
 import Link from 'next/link';
 import { PiggyBank, ArrowRight, Pencil } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -11,6 +12,7 @@ const pretty=(d:string)=>d.split('-').reverse().join('/');
 const pct=(v:string|null)=>v===null?'Sem base percentual':`${D(v).gt(0)?'+':''}${v.replace('.',',')}%`;
 export function ManualSavings({snapshot,today,start,end,detail,onOpen}:{snapshot:Snapshot;today:string;start:string;end:string;detail:string|undefined;onOpen:(key:string,initial?:Row)=>void;onSaved:()=>void}) {
  const mobile=useMobileChart();
+  const chartMotion = useChartMotion();
  const goals=rows(snapshot,'savings_goals').filter(g=>!detail||g.id===detail);
  return <>
   <div className="banner"><PiggyBank size={32}/><div><h2>Um lugar para cada sonho.</h2><p>Você informa o saldo. Seus depósitos e retiradas ficam separados do rendimento.</p></div><button onClick={()=>onOpen('savingsBalance')}>Informar rendimento</button></div>
@@ -27,7 +29,7 @@ export function ManualSavings({snapshot,today,start,end,detail,onOpen}:{snapshot
      const h=allHistory.find(h=>h.date===str(update,'date'));
      return <div className="manual-history-row" key={str(update,'id')}><div><strong>{pretty(str(update,'date'))} · {brl(str(update,'balance'))}</strong><span>Rendimento acumulado: {h?.profit===null||!h?'—':brl(h.profit)} · {pct(h?.percent??null)}</span></div><button aria-label={`Corrigir saldo de ${goal.name} em ${pretty(str(update,'date'))}`} onClick={()=>onOpen('savingsBalance',update)}><Pencil size={14}/></button></div>;
     })}{!p.updates.length&&<p className="planning-note">Informe o saldo total para começar seu histórico mensal. Os registros anteriores permanecem preservados.</p>}</div></details>
-    {detail&&!!history.length&&<><div className="manual-chart" aria-label="Evolução mensal da caixinha"><ResponsiveContainer width="100%" height="100%"><LineChart data={history.map(h=>({...h,balance:Number(h.balance),profit:h.profit===null?null:Number(h.profit)}))}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="date" tickFormatter={pretty} fontSize={10}/><YAxis width={65} fontSize={10}/><Tooltip trigger={mobile?'click':'hover'} formatter={v=>brl(String(v))} labelFormatter={v=>pretty(String(v))}/><Line dataKey="balance" name="Saldo" stroke="#5b35d5" strokeWidth={3} isAnimationActive={false}/><Line dataKey="profit" name="Rendimento acumulado, sem aportes" stroke="#198667" strokeWidth={2} isAnimationActive={false}/></LineChart></ResponsiveContainer></div><div className="manual-chart-legend"><span><i style={{background:"#5b35d5"}}/>Saldo informado</span><span><i style={{background:"#198667"}}/>Rendimento, sem aportes</span></div><MobileChartData points={history.map(h=>({label:pretty(h.date),values:[{label:'Saldo',value:Number(h.balance)},{label:'Rendimento acumulado',value:h.profit===null?null:Number(h.profit)}]}))}/></>}
+    {detail&&!!history.length&&<><div className="manual-chart" aria-label="Evolução mensal da caixinha"><ResponsiveContainer width="100%" height="100%"><LineChart data={history.map(h=>({...h,balance:Number(h.balance),profit:h.profit===null?null:Number(h.profit)}))}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="date" tickFormatter={pretty} fontSize={10}/><YAxis width={65} fontSize={10}/><Tooltip isAnimationActive={false} trigger={mobile?'click':'hover'} formatter={v=>brl(String(v))} labelFormatter={v=>pretty(String(v))}/><Line dataKey="balance" name="Saldo" stroke="#5b35d5" strokeWidth={3} {...chartMotion}/><Line dataKey="profit" name="Rendimento acumulado, sem aportes" stroke="#198667" strokeWidth={2} {...chartMotion}/></LineChart></ResponsiveContainer></div><div className="manual-chart-legend"><span><i style={{background:"#5b35d5"}}/>Saldo informado</span><span><i style={{background:"#198667"}}/>Rendimento, sem aportes</span></div><MobileChartData points={history.map(h=>({label:pretty(h.date),values:[{label:'Saldo',value:Number(h.balance)},{label:'Rendimento acumulado',value:h.profit===null?null:Number(h.profit)}]}))}/></>}
     <Link className="text-link" href={detail?'/caixinhas':`/caixinhas/${goal.id}`}>{detail?'Voltar para todas':'Ver evolução mensal'} <ArrowRight size={14}/></Link>
    </article>;
   })}</div>

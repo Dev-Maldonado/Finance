@@ -33,3 +33,5 @@
   Alturas naturais, grades, textos/valores, tabelas, modais, acessibilidade e validação.
 
 - Enquadramento/rolagem estrutural (30/10/2026): [LAYOUT-INTEGRITY.md](../LAYOUT-INTEGRITY.md).
+
+- Visual e animações contextuais (31/10/2026): [CONTEXTUAL-MOTION.md](../CONTEXTUAL-MOTION.md).

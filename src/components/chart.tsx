@@ -1,4 +1,5 @@
 "use client";
+import { useChartMotion } from './use-motion-preference';
 import { useMobileChart, MobileChartData } from "./mobile-chart";
 import {
   ResponsiveContainer,
@@ -23,6 +24,7 @@ export function FlowChart({
   variant?: 'area' | 'reference';
 }) {
   const mobileChart = useMobileChart();
+  const chartMotion = useChartMotion();
   const Chart = variant === 'reference' ? ComposedChart : AreaChart;
   return (
     <>
@@ -74,12 +76,12 @@ export function FlowChart({
             }
           />
           {variant === 'reference' ? <>
-            <Bar dataKey="income" name="Receitas" fill="#159b77" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
-            <Bar dataKey="expense" name="Gastos" fill="#d95370" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
-            <Bar dataKey="yield" name="Rendimentos recebidos" fill="#6940e6" radius={[2, 2, 0, 0]} maxBarSize={16} isAnimationActive={false} />
-            <Line dataKey="income" name="Evolução das receitas" tooltipType="none" legendType="none" type="monotone" stroke="#6940e6" strokeWidth={1.8} dot={false} isAnimationActive={false} />
+            <Bar dataKey="income" name="Receitas" fill="#159b77" radius={[2, 2, 0, 0]} maxBarSize={16} {...chartMotion} />
+            <Bar dataKey="expense" name="Gastos" fill="#d95370" radius={[2, 2, 0, 0]} maxBarSize={16} {...chartMotion} />
+            <Bar dataKey="yield" name="Rendimentos recebidos" fill="#6940e6" radius={[2, 2, 0, 0]} maxBarSize={16} {...chartMotion} />
+            <Line dataKey="income" name="Evolução das receitas" tooltipType="none" legendType="none" type="monotone" stroke="#6940e6" strokeWidth={1.8} dot={false} {...chartMotion} />
           </> : <><Area
-            isAnimationActive={false}
+            {...chartMotion}
             type="monotone"
             dataKey="income"
             name="Entradas"
@@ -88,7 +90,7 @@ export function FlowChart({
             fill="url(#flow-income)"
           />
           <Area
-            isAnimationActive={false}
+            {...chartMotion}
             type="monotone"
             dataKey="expense"
             name="Saídas"
@@ -97,7 +99,7 @@ export function FlowChart({
             fill="transparent"
           />
           <Area
-            isAnimationActive={false}
+            {...chartMotion}
             type="monotone"
             dataKey="yield"
             name="Rendimentos"
@@ -134,13 +136,14 @@ export function CategoryChart({
   center?: { value: string; label: string };
 }) {
   const mobileChart = useMobileChart();
+  const chartMotion = useChartMotion();
   return (
     <div className="donut" aria-label="Distribuição dos gastos por categoria">
       <ResponsiveContainer width="100%" height={center ? 160 : '100%'}>
         <PieChart>
           <Pie
             data={data}
-            isAnimationActive={false}
+            {...chartMotion}
             dataKey="value"
             innerRadius={compact ? 49 : 58}
             outerRadius={compact ? 72 : 84}
@@ -154,7 +157,7 @@ export function CategoryChart({
           </Pie>
           <Tooltip
             trigger={center && mobileChart ? 'click' : 'hover'}
-            isAnimationActive={center ? false : undefined}
+            isAnimationActive={false}
             position={center ? { x: 0, y: 164 } : undefined}
             allowEscapeViewBox={center ? { x: false, y: true } : undefined}
             wrapperStyle={center ? { width: '100%', pointerEvents: 'none' } : undefined}

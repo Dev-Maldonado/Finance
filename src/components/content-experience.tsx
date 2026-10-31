@@ -1,7 +1,9 @@
 'use client';
 import {useEffect,type RefObject} from 'react';
+import { useInteractiveFinance } from './use-interactive-finance';
 /** Presentation only. Content is visible even without animation/observer support. */
 export function useContentExperience(ref:RefObject<HTMLElement|null>,enabled:boolean){
+ useInteractiveFinance(ref,enabled);
  useEffect(()=>{
   const element=ref.current;if(!element||!enabled)return;
   const root:HTMLElement=element;

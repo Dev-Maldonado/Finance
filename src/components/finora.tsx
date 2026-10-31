@@ -5,6 +5,7 @@ import { dashboardGroups, workspaceLocation } from "@/lib/workspace-navigation";
 import { ModuleNavigation } from "./workspace-navigation";
 import { GlobalAdd } from "./global-add";
 import {useContentExperience,ContentSkeleton} from "./content-experience";
+import {clearFinancialFeedback,emitFinancialFeedback} from './financial-feedback';
 import {useReadableAmounts} from "./use-readable-amounts";
 import { DashboardWalletArt } from "./dashboard-overview";
 import { TransactionList } from './transaction-list';
@@ -324,6 +325,7 @@ function Workspace({
       // Reconfirming this user's session must not unmount an unsaved form.
       // A different user or sign-out always clears all private cached data.
       if(!nextUser||changed){
+        clearFinancialFeedback();
         qc.clear();setModal(null);setRemoval(null);setSettlement(null);setRecurringChange(null);setAdding(false);setNotice('');setWealthFeedback(null);
       }
       else if(_event==='SIGNED_IN')void qc.invalidateQueries({queryKey:['snapshot']});
@@ -444,6 +446,7 @@ function Workspace({
         message: alreadyRegistered ? "Posição patrimonial de hoje atualizada." : "Posição patrimonial de hoje registrada.",
         detail: `${pretty(position.date)} · Patrimônio líquido: ${brl(D(position.assets).minus(position.liabilities).toFixed(2))}. ${outsidePeriod ? "O período foi ajustado para o mês atual para mostrar o registro." : "Salvar novamente hoje atualiza este registro, sem duplicar o histórico."}`,
       });
+      emitFinancialFeedback({kind:'success',title:'Posição patrimonial salva',description:'O histórico reflete os valores registrados hoje.'});
       notifySnapshotChange();
       await qc.invalidateQueries({ queryKey: ["snapshot"] });
     } catch (error) {
@@ -1656,6 +1659,7 @@ function Workspace({
           onClose={() => setRemoval(null)}
           onSaved={() => {
             setNotice("Alteração concluída. Totais atualizados.");
+            emitFinancialFeedback({kind:'success',title:'Alteração concluída',description:'Seus registros e totais serão atualizados.'});
             refresh();
           }}
         />

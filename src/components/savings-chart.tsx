@@ -1,4 +1,5 @@
 "use client";
+import { useChartMotion } from './use-motion-preference';
 import { useMobileChart, MobileChartData } from "./mobile-chart";
 import {
   ResponsiveContainer,
@@ -15,6 +16,7 @@ export function SavingsChart({
   data: { date: string; principal: number; yield: number; estimateComplete?: boolean }[];
 }) {
   const mobileChart = useMobileChart();
+  const chartMotion = useChartMotion();
   if (!data.length)
     return (
       <p className="notice" role="status">
@@ -40,6 +42,7 @@ export function SavingsChart({
           />
           <YAxis fontSize={10} width={60} />
           <Tooltip
+            isAnimationActive={false}
             trigger={mobileChart ? "click" : "hover"}
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
@@ -49,7 +52,7 @@ export function SavingsChart({
             }
           />
           <Area
-            isAnimationActive={false}
+            {...chartMotion}
             dataKey="principal"
             name="Capital aportado restante"
             stackId="total"
@@ -57,7 +60,7 @@ export function SavingsChart({
             fill="#e8e0fb"
           />
           <Area
-            isAnimationActive={false}
+            {...chartMotion}
             dataKey="yield"
             connectNulls={false}
             name="Rendimento bruto estimado"

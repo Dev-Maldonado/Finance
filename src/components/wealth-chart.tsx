@@ -1,4 +1,5 @@
 "use client";
+import { useChartMotion } from './use-motion-preference';
 import { useMobileChart, MobileChartData } from "./mobile-chart";
 import {
   ResponsiveContainer,
@@ -16,6 +17,7 @@ export function WealthChart({
   data: { date: string; net: number; assets: number }[];
 }) {
   const mobileChart = useMobileChart();
+  const chartMotion = useChartMotion();
   if (!data.length)
     return (
       <p className="notice">
@@ -48,6 +50,7 @@ export function WealthChart({
           />
           <YAxis fontSize={10} width={60} />
           <Tooltip
+            isAnimationActive={false}
             trigger={mobileChart ? "click" : "hover"}
             formatter={(v) =>
               new Intl.NumberFormat("pt-BR", {
@@ -57,14 +60,14 @@ export function WealthChart({
             }
           />
           <Line
-            isAnimationActive={false}
+            {...chartMotion}
             dataKey="net"
             name="Patrimônio líquido registrado"
             stroke="#5B35D5"
             strokeWidth={2}
           />
           <Line
-            isAnimationActive={false}
+            {...chartMotion}
             dataKey="assets"
             name="Patrimônio bruto registrado"
             stroke="#a58cd9"

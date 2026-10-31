@@ -11,6 +11,8 @@ import { D } from "@/financial/engine";
 import { requestJson } from "@/lib/client-request";
 import { CategoryPicker } from './category-picker';
 import { categoryTree } from '@/lib/categories';
+import { financialFeedbackForSave } from '@/lib/financial-feedback';
+import { emitFinancialFeedback } from './financial-feedback';
 export async function post(url: string, body: unknown) {
   return requestJson(url, {
     method: "POST",
@@ -176,6 +178,7 @@ export function Dialog({
         await post(`/api/data/${form.resource}`, { data, id: initial?.id });
 
       }
+      if (dialog.current?.open) emitFinancialFeedback(financialFeedbackForSave(form, data, initial, snapshot, today, recurringExpense && canCreateRecurring));
       onSaved();
       onClose();
     } catch (e) {

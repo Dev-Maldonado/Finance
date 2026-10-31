@@ -11,7 +11,11 @@ import "./dashboard-viewport.css";
 import "./dashboard-organization.css";
 import "./workspace-organization.css";
 import "./visual-quality.css";
+import "./premium-experience.css";
+import "./interactive-finance.css";
+import "./financial-feedback.css";
 import { PwaProvider } from "@/components/pwa";
+import { FinancialFeedbackProvider } from "@/components/financial-feedback";
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   // Next emits the standard mobile capability tag; keep the Apple tag for older iOS versions.
@@ -57,7 +61,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body><PwaProvider>{children}</PwaProvider></body>
+      <body><PwaProvider><FinancialFeedbackProvider>{children}</FinancialFeedbackProvider></PwaProvider></body>
     </html>
   );
 }
