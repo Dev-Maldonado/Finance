@@ -86,9 +86,14 @@ try {
     const rec = await db.from("recurring_transactions").insert({ account_id: accountId, description: "Paused annual resume", amount: "5", type: "expense", frequency: "monthly", next_date: "2026-01-31", active: false }).select("id").single();assert.equal(rec.error, null);
     assert.equal((await db.rpc("revise_recurring", { recurrence_id: rec.data!.id, replacement: { active: true, start_date: null }, cancel: false })).error, null);
     const resumed = await db.from("recurring_transactions").select("next_date,anchor_day,start_date").eq("id", rec.data!.id).single();assert.equal(resumed.error, null);assert.ok(resumed.data!.next_date >= today);assert.equal(resumed.data!.anchor_day, 31);assert.equal(resumed.data!.start_date, "2026-01-31");
-    assert.equal((await db.rpc("generate_recurring", { until_date: today })).data, 0);
-    const missing = await db.from("transactions").select("id").eq("description", "Paused annual resume");assert.equal(missing.data!.length, 0);
-    const nextMonth = Number(resumed.data!.next_date.slice(5, 7));
+    // Resuming skips past dates, while an occurrence due today remains eligible.
+    const dueToday = resumed.data!.next_date === today;
+    const generated = await db.rpc("generate_recurring", { until_date: today });assert.equal(generated.error, null);assert.equal(generated.data, dueToday ? 1 : 0);
+    const ledger = await db.from("transactions").select("date,status").eq("description", "Paused annual resume");assert.equal(ledger.error, null);
+    assert.deepEqual(ledger.data, dueToday ? [{date:today,status:"pending"}] : []);
+    const repeated = await db.rpc("generate_recurring", { until_date: today });assert.equal(repeated.error, null);assert.equal(repeated.data, 0);
+    const next = await db.from("recurring_transactions").select("next_date").eq("id", rec.data!.id).single();assert.equal(next.error, null);
+    const nextMonth = Number(next.data!.next_date.slice(5, 7));
     assert.equal((await db.rpc("revise_recurring", { recurrence_id: rec.data!.id, replacement: { frequency: "annual" }, cancel: false })).error, null);
     const annual = await db.from("recurring_transactions").select("anchor_month").eq("id", rec.data!.id).single();assert.equal(annual.data!.anchor_month, nextMonth);
   });

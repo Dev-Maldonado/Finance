@@ -687,3 +687,21 @@ oito indicadores e props financeiras preservadas; sem modificações em APIs,
 serviços, cálculos ou migrations. Somente usuários descartáveis locais usados.
 Sem pendências de implementação. Testes Chromium/emulação, sem aparelhos físicos
 ou Safari nativo. Publicação do commit e verificação da Vercel em andamento.
+
+Publicação da interface: `b74734f3f1e9da6852fef2b4a67e32c10ee6bb4f` no main,
+Vercel `dpl_5LSAT2PV5o9334G1nEFGHWtTvbKP` READY. As 31 rotas HTTP200, worker
+com SHA correto, manifest standalone e variáveis/estilos de geometria confirmados.
+Uma sondagem inicial de asset recebeu503 transitório; nova conferência integral
+sem erros. Nenhuma operação financeira real foi feita na validação pública.
+
+CI 41162736843 falhou em scheduling-test.ts:89 ao virar para 31/10 no ambiente.
+Teste preexistente assumia zero gerações após reativação; uma mensalidade ancorada
+no dia31 vence hoje e é corretamente gerada. Reprodução local confirmou a mesma
+falha. Corrigida somente a premissa do teste: ocorrência de hoje permitida, nenhuma
+passada, status pendente e reexecução idempotente; âncora anual consulta a próxima
+data após a geração. Nenhum código financeiro, regra ou banco alterado.
+
+Repetição local completa das integrações: geral20, integridade13, importação7,
+agendamento8, remoção6, compromissos8, baixas8, investimentos8, caixinhas15 =93
+verificações aprovadas. Correção do teste será enviada em commit separado, sem
+novo deploy da interface; novo CI integral precisa ser verificado antes de encerrar.
