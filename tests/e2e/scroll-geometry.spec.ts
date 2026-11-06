@@ -53,7 +53,7 @@ for(const [width,height] of [[320,568],[667,375],[1366,768]])test(`all create fo
    await page.getByRole('button',{name:'Adicionar',exact:true}).filter({visible:true}).click();const menu=page.getByRole('dialog',{name:'O que deseja adicionar?',exact:true});
    const button=menu.getByRole('button').filter({has:page.getByText(action,{exact:true})});await button.scrollIntoViewIfNeeded();await button.click();await check();
   }
-  await page.goto('/patrimonio/investimentos');await page.getByRole('button',{name:'Novo investimento',exact:true}).click();await check();
+  await page.goto('/patrimonio/investimentos');await page.getByRole('button',{name:'Atualizar valores',exact:true}).click();await expect(page.getByLabel('Ações e FIIs (R$)')).toBeVisible();await page.getByRole('button',{name:'Cancelar',exact:true}).click();
  }finally{expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();}
 });
 

@@ -735,3 +735,23 @@ Revisão independente concluída; confetes elevados acima da confirmação e an�
 consecutivos com texto idêntico recebem nova região de conteúdo. Autenticação
 revalidada após remover o role redundante da região live vazia. Teste adicional de
 indicadores aprovado: valor final exato animado; filtros não simulam ganhos.
+
+## 06/11/2026 — Controle patrimonial por categoria
+
+Substituída a interface por ativo por Ações e FIIs / Criptomoedas e total Decimal,
+com edição manual, cancelamento, confirmação e estado de erro. Dashboard e posição
+patrimonial usam os totais sem fluxo de caixa nem rentabilidade presumida. Valores
+antigos servem de abertura até o primeiro salvamento, depois são substituídos,
+sem duplicação. Sem excluir registros antigos; Caixinhas não foram modificadas.
+Migration30 aplicada em banco local e Supabase hospedado; tabela vazia, sem inserir
+valores de exemplo nem alterar registros financeiros existentes. RLS por usuário.
+190 testes unitários, types/build e integração geral aprovados. Cenário novo browser
+aprovado: gravar531,49+145,79, persistência, edição para zero, dashboard, rejeição de
+negativos e escrita em outro usuário, responsividade. Regressões de Caixinhas e
+efeitos aprovadas. Revisão dos atalhos e restante da validação em andamento.
+
+Revisão final: testes antigos adaptados ao pedido atual (cadastro por ativo deixou
+explicitamente de existir). Corrigida a espera de autenticação no novo cenário.
+9 regressões browser aprovadas na execução conjunta; os2 casos com expectativas
+antigas/espera foram repetidos após ajuste. Build de entrega aprovado, inclusive
+formulário inline com largura natural320px. Publicação em andamento.

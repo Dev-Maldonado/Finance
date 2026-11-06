@@ -160,3 +160,14 @@ lucro, metas só celebram ao cruzar objetivo existente e crescimento exige avali
 manual válida. Provider único, efeitos limitados/efêmeros, sem dados persistidos,
 sem interferir em cliques ou geometria. Movimento reduzido reativo também nos
 gráficos e cartões. Preservar valores finais exatos nos indicadores animados.
+
+## Investimentos consolidados — 06/11/2026
+
+Pedido atual substitui o cadastro por ativo: apenas totais manuais Ações/FIIs e
+Criptomoedas. Migration30 cria investment_totals com uma linha por usuário e RLS.
+Sem backfill fictício: até o primeiro salvamento, consolidar posições antigas;
+after save os dois valores substituem integralmente a carteira no patrimônio,
+sem somar ativos antigos. Histórico antigo e Caixinhas preservados. Nenhum fluxo
+bancário, receita/despesa ou rentabilidade é criado por alterar esses valores.
+Exemplos531,49/145,79 não são inseridos como dados reais. Atualização em
+Patrimônio > Investimentos; cadastro individual removido da interface.

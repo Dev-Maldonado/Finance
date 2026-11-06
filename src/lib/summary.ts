@@ -1,5 +1,5 @@
+import {investmentTotals} from './investment-totals';
 import { manualSavingsPosition } from './manual-savings';
-import { manualPosition } from './manual-investments';
 import { periodMetrics } from "./dashboard";
 import { cardInvoices } from "./card-invoices";
 import { D, money } from "@/financial/engine";
@@ -40,11 +40,13 @@ export function financialSummary(
     accounts.filter((a) => a.kind === "savings"),
     "balance",
   );
-  const positions = rows(s, "investment_assets").map(asset => {
-    const manual = manualPosition(s, asset, asOf);
-    const quote = manual.latest ? { ...manual.latest, source: 'manual', currency: asset.currency } : undefined;
-    return { asset, pos: manual.pos, quote, value: manual.supported ? manual.current ?? manual.pos.cost : '0.00', unrealized: manual.supported ? manual.profit ?? '0.00' : '0.00', supported: manual.supported };
-  });
+  const totals = investmentTotals(s,asOf);
+  const positions = [{id:'equities',name:'Ações e FIIs',value:totals.equities},{id:'crypto',name:'Criptomoedas',value:totals.crypto}].map(item=>({
+    asset:{id:item.id,name:item.name,ticker:item.name,currency:'BRL'} as Row,
+    pos:{quantity:'1',average:'0',cost:item.value},
+    quote:totals.updatedAt?{source:'Valor informado',date:totals.updatedAt.slice(0,10)} as Row:undefined,
+    value:item.value,unrealized:'0.00',supported:true,
+  }));
   const investments = positions.reduce((a, p) => a.plus(p.value), D(0));
   const cardLiability = cardInvoices(s, asOf).reduce((a, invoice) => a.plus(invoice.balance), D(0));
   const liability = cardLiability.plus(

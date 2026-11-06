@@ -1,0 +1,7 @@
+import {expect,test} from 'vitest';
+import {investmentTotals} from '../src/lib/investment-totals';
+import {financialSummary,type Snapshot} from '../src/lib/summary';
+const s:Snapshot={user:{id:'u',email:'u@test'},investment_totals:[{equities:'531.49',crypto:'145.79',updated_at:'2026-11-06T12:00:00Z'}],investment_assets:[{id:'old',currency:'BRL',manual_kind:'fund'}],manual_investment_purchases:[{id:'p',asset_id:'old',quantity:'10',amount:'9999',date:'2026-01-01'}]};
+test('consolidated totals replace legacy positions without duplicating wealth or creating cash flow',()=>{expect(investmentTotals(s,'2026-11-06').total).toBe('677.28');const result=financialSummary(s,'2026-11-01','2026-11-30','2026-11-06');expect(result.investments).toBe('677.28');expect(result.assets).toBe('677.28');expect(result.income).toBe('0.00');expect(result.expense).toBe('0.00');expect(result.cash).toBe('0.00');});
+test('explicit zero replaces an old portfolio and empty accounts never invent example values',()=>{expect(investmentTotals({...s,investment_totals:[{equities:'0',crypto:'0'}]},'2026-11-06').total).toBe('0.00');expect(investmentTotals({user:s.user},'2026-11-06').total).toBe('0.00');});
+test('legacy holdings remain as opening category values until totals are explicitly saved',()=>{expect(investmentTotals({...s,investment_totals:[]},'2026-11-06')).toMatchObject({equities:'9999.00',crypto:'0.00',consolidated:false});});

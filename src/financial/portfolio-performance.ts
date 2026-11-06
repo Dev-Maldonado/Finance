@@ -3,6 +3,7 @@ import { benchmarkReturn, modifiedDietz } from "./performance";
 import { Snapshot, Row, rows, str } from "@/lib/summary";
 import { manualOperations, manualUpdates } from '@/lib/manual-investments';
 export function portfolioPerformance(s: Snapshot, start: string, end: string) {
+  if(rows(s,'investment_totals').length)return {personal:null,cdi:null,complete:false,benchmarkComplete:false,relative:null};
   // Opening is the close before the first selected date; selected-date flows
   // and benchmark factors therefore use the same inclusive financial window.
   const openingDate = new Date(Date.parse(`${start}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);

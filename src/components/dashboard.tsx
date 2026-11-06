@@ -124,7 +124,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <Metric label="Faturas a pagar no mês" value={model.invoiceTotals.pending} detail={`${brl(model.invoiceTotals.paid)} já pagos nessas faturas`} icon={CalendarDays} tone={model.monthlyInvoices.some(i => i.status === "Atrasada") ? "danger" : D(model.invoiceTotals.pending).eq(0) ? "paid" : "pending"} />
       </div></section>
       <section className="dashboard-metric-group metric-group-assets" aria-labelledby="metric-group-assets"><header><h3 id="metric-group-assets">Investimentos e caixinhas</h3><p>Posições atuais e rendimento informado.</p></header><div className="dashboard-metrics-grid">
-      <Metric label="Investido em BRL" value={summary.investments} detail="Posições atuais · cotação ou custo identificado" icon={ChartNoAxesCombined} tone="investment" />
+      <Metric label="Investido em BRL" value={summary.investments} detail="Valores consolidados informados por categoria" icon={ChartNoAxesCombined} tone="investment" />
       <Metric label={monthly ? "Rendimento das caixinhas no mês" : "Rendimento das caixinhas no período"} value={periodSavings.value} display={periodSavings.partial && summary.goals.every(g=>!g.manual.known) ? 'Aguardando atualização' : undefined} detail={periodSavings.partial ? 'Atualizações manuais no período · há caixinhas sem atualização' : 'Variação dos saldos informados, excluindo depósitos e retiradas'} icon={PiggyBank} tone="income" />
       </div></section>
     </div>
@@ -209,7 +209,7 @@ export function Dashboard({ snapshot, summary, start, end, period, today, onPay,
       <div className="dashboard-section-grid dashboard-assets-grid">
       <Block title="Composição do patrimônio" subtitle="Distribuição entre contas, caixinhas e investimentos"><div className="dashboard-allocation">{allocation.map(a => <div key={a.name}><i style={{ background: a.color }} /><span>{a.name}</span><b>{brl(a.value)}</b></div>)}</div></Block>
       <Block title="Minha carteira" subtitle="Posições em BRL e fontes de avaliação" link="/investimentos">
-        <div className="dashboard-liquidity"><span>Valor atual da carteira</span><strong>{brl(summary.investments)}</strong></div>{summary.positions.length ? summary.positions.filter(p => D(p.pos.quantity).gt(0)).slice(0, 5).map(p => <div className="dashboard-position" key={str(p.asset, 'id')}><span className="asset-icon">{str(p.asset, 'ticker').slice(0, 2)}</span><div><strong>{str(p.asset, 'ticker')}</strong><small>{p.quote ? `${str(p.quote, 'source')} · ${pretty(str(p.quote, 'date'))}` : 'Sem cotação · custo de aquisição'}</small></div><b>{p.supported ? brl(p.value) : 'Moeda estrangeira'}</b></div>) : <p className="dashboard-empty">Sua carteira aparecerá após cadastrar os ativos e as posições.</p>}
+        <div className="dashboard-liquidity"><span>Valor atual da carteira</span><strong>{brl(summary.investments)}</strong></div>{summary.positions.length ? summary.positions.filter(p => D(p.pos.quantity).gt(0)).slice(0, 5).map(p => <div className="dashboard-position" key={str(p.asset, 'id')}><span className="asset-icon">{str(p.asset, 'ticker').slice(0, 2)}</span><div><strong>{str(p.asset, 'ticker')}</strong><small>{p.quote ? `${str(p.quote, 'source')} · ${pretty(str(p.quote, 'date'))}` : 'Valor consolidado da carteira anterior'}</small></div><b>{p.supported ? brl(p.value) : 'Moeda estrangeira'}</b></div>) : <p className="dashboard-empty">Informe seus valores consolidados em Patrimônio.</p>}
       </Block>
       </div>
     </DashboardGroup>
