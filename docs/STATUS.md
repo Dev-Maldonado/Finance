@@ -755,3 +755,12 @@ explicitamente de existir). Corrigida a espera de autenticação no novo cenári
 9 regressões browser aprovadas na execução conjunta; os2 casos com expectativas
 antigas/espera foram repetidos após ajuste. Build de entrega aprovado, inclusive
 formulário inline com largura natural320px. Publicação em andamento.
+
+Concluído: os2 casos repetidos passaram (53,7s), total11 cenários browser distintos
+aprovados nesta revisão;190 unitários,20 integrações, TypeScript e build aprovados.
+Código d7f54e0e37c4c7da148c50aab530a00cbea7336a enviado ao main. Vercel
+ dpl_EeFoTttHduXjvJvNJZXo7LMr58ka READY. Interface consolidada e endpoint novos
+confirmados nos bundles públicos; rota HTTP200 e manifest standalone preservados.
+CI remoto integral não foi aguardado nesta entrega; resultados acima são locais.
+Nenhum teste com dados reais nem alteração em Caixinhas. Limitação: Chromium com
+emulação, sem aparelhos físicos/Safari nativo.
